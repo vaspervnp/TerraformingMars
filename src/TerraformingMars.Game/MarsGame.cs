@@ -72,6 +72,9 @@ public class MarsGame : Microsoft.Xna.Framework.Game
     private string _lastNotification = "";
     private bool _prevWon;
     private bool _prevLost;
+    private bool _confirmNewMap;
+    private bool _uiClick;
+    private Dictionary<string, Texture2D> _icons = null!;
 
     public MarsGame()
     {
@@ -112,7 +115,8 @@ public class MarsGame : Microsoft.Xna.Framework.Game
         _renderer.Build(_map);
         _lastMapRevision = _world.MapRevision;
         _audio = new AudioManager();
-        FitCamera();
+        _icons = IconFactory.CreateAll(GraphicsDevice, _catalog);
+        InitCamera();
     }
 
     private void StartGame()
@@ -125,8 +129,9 @@ public class MarsGame : Microsoft.Xna.Framework.Game
         _selected = null;
         _selectedBuilding = null;
         _buildMode = false;
+        _confirmNewMap = false;
         ResetTransitionTrackers();
-        FitCamera();
+        InitCamera();
         _state = GameState.Playing;
     }
 
@@ -206,25 +211,27 @@ public class MarsGame : Microsoft.Xna.Framework.Game
         _selected = null;
         _selectedBuilding = null;
         ResetTransitionTrackers();
+        InitCamera();
     }
 
-    private void FitCamera()
+    /// <summary>Μέγιστο zoom-out = ~20 εξάγωνα οριζόντια (προσαρμόζεται στο πλάτος παραθύρου).</summary>
+    private void UpdateMinZoom()
     {
-        float minX = float.MaxValue, minY = float.MaxValue, maxX = float.MinValue, maxY = float.MinValue;
-        foreach (var t in _map.Tiles)
-        {
-            var (x, y) = _renderer.Layout.HexToPixel(t.Coord);
-            minX = MathF.Min(minX, (float)x); minY = MathF.Min(minY, (float)y);
-            maxX = MathF.Max(maxX, (float)x); maxY = MathF.Max(maxY, (float)y);
-        }
+        float minZoom = GraphicsDevice.Viewport.Width / (20f * MathF.Sqrt(3f) * HexSize);
+        _camera.MinZoom = minZoom;
+        if (_camera.Zoom < minZoom) _camera.Zoom = minZoom;
+    }
 
-        float w = (maxX - minX) + HexSize * 2f;
-        float h = (maxY - minY) + HexSize * 2f;
-        _camera.Position = new Vector2((minX + maxX) * 0.5f, (minY + maxY) * 0.5f);
+    private void InitCamera()
+    {
+        UpdateMinZoom();
+        _camera.Zoom = _camera.MinZoom; // ξεκινάμε από το μέγιστο zoom-out (20 εξάγωνα)
 
-        float vw = GraphicsDevice.Viewport.Width;
-        float vh = GraphicsDevice.Viewport.Height;
-        _camera.Zoom = MathHelper.Clamp(MathF.Min(vw / w, vh / h), _camera.MinZoom, _camera.MaxZoom);
+        Hex center = _world.Colony.Buildings.Count > 0
+            ? _world.Colony.Buildings[0].Location
+            : new OffsetCoord(_map.Width / 2, _map.Height / 2).ToHex();
+        var (x, y) = _renderer.Layout.HexToPixel(center);
+        _camera.Position = new Vector2((float)x, (float)y);
     }
 
     protected override void Update(GameTime gameTime)
@@ -235,6 +242,17 @@ public class MarsGame : Microsoft.Xna.Framework.Game
         if (_state == GameState.Menu)
         {
             UpdateMenu(keys);
+            _prevMouse = mouse;
+            _prevKeys = keys;
+            base.Update(gameTime);
+            return;
+        }
+
+        // Επιβεβαίωση νέου χάρτη (modal): Y = ναι, N/Esc = άκυρο
+        if (_confirmNewMap)
+        {
+            if (KeyPressed(keys, Keys.Y)) { Regenerate(new Random().Next()); _confirmNewMap = false; }
+            else if (KeyPressed(keys, Keys.N) || KeyPressed(keys, Keys.Escape)) _confirmNewMap = false;
             _prevMouse = mouse;
             _prevKeys = keys;
             base.Update(gameTime);
@@ -253,6 +271,7 @@ public class MarsGame : Microsoft.Xna.Framework.Game
         if (KeyPressed(keys, Keys.U)) _audio.Enabled = !_audio.Enabled;
 
         _camera.SetViewport(GraphicsDevice.Viewport.Width, GraphicsDevice.Viewport.Height);
+        UpdateMinZoom();
 
         // Pan με drag (αριστερό ή μεσαίο κουμπί)
         bool dragging = mouse.LeftButton == ButtonState.Pressed || mouse.MiddleButton == ButtonState.Pressed;
@@ -274,9 +293,8 @@ public class MarsGame : Microsoft.Xna.Framework.Game
         if (keys.IsKeyDown(Keys.D) || keys.IsKeyDown(Keys.Right)) move.X += 1;
         if (move != Vector2.Zero) _camera.Position += Vector2.Normalize(move) * panSpeed;
 
-        // Νέος χάρτης (N) / fit (F) / εναλλαγή sponsor (G, ξεκινά νέο παιχνίδι)
-        if (KeyPressed(keys, Keys.N)) Regenerate(new Random().Next());
-        if (KeyPressed(keys, Keys.F)) FitCamera();
+        // Νέος χάρτης (N, με επιβεβαίωση) / εναλλαγή sponsor (G, ξεκινά νέο παιχνίδι)
+        if (KeyPressed(keys, Keys.N)) _confirmNewMap = true;
         if (KeyPressed(keys, Keys.G))
         {
             _sponsorIndex = (_sponsorIndex + 1) % _sponsorCatalog.All.Count;
@@ -301,6 +319,7 @@ public class MarsGame : Microsoft.Xna.Framework.Game
             _selected = null;
             _selectedBuilding = null;
             ResetTransitionTrackers();
+            InitCamera();
             _status = "Game loaded";
             _statusTimer = 3.0;
         }
@@ -363,14 +382,25 @@ public class MarsGame : Microsoft.Xna.Framework.Game
         _hoverHex = _renderer.Layout.PixelToHex(world.X, world.Y);
         _hasHover = _map.TryGetTile(_hoverHex, out _hoveredTile) && _hoveredTile is not null;
 
-        // Αριστερό κλικ (χωρίς drag) σε build mode → τοποθέτηση κτιρίου
+        // Αριστερό κλικ: μπάρα κτιρίων (UI) ή τοποθέτηση στον χάρτη
         if (mouse.LeftButton == ButtonState.Pressed && _prevMouse.LeftButton == ButtonState.Released)
+        {
             _mouseDownPos = new Point(mouse.X, mouse.Y);
+            int btn = ToolbarHitIndex(mouse.X, mouse.Y);
+            if (btn >= 0)
+            {
+                if (_buildMode && _buildIndex == btn) _buildMode = false; // ξανα-κλικ = κλείσιμο
+                else { _buildMode = true; _buildIndex = btn; }
+                _audio.Blip();
+                _uiClick = true;
+            }
+        }
         if (mouse.LeftButton == ButtonState.Released && _prevMouse.LeftButton == ButtonState.Pressed)
         {
             int dx = mouse.X - _mouseDownPos.X, dy = mouse.Y - _mouseDownPos.Y;
             bool isClick = dx * dx + dy * dy < 36; // < 6px ⇒ κλικ (όχι drag/pan)
-            if (isClick && _buildMode && _hasHover) TryPlaceSelected();
+            if (!_uiClick && isClick && _buildMode && _hasHover) TryPlaceSelected();
+            _uiClick = false;
         }
 
         // Δεξί κλικ: ακυρώνει το build mode, αλλιώς επιλέγει tile/κτίριο
@@ -434,7 +464,7 @@ public class MarsGame : Microsoft.Xna.Framework.Game
             0, GraphicsDevice.Viewport.Width, GraphicsDevice.Viewport.Height, 0, 0f, 1f);
 
         _renderer.Draw(view, projection);
-        _renderer.DrawBuildings(_world.Colony.Buildings, view, projection);
+        DrawBuildingIcons(view);
 
         if (_selected is not null)
             _renderer.DrawHighlight(_selected.Coord, new Color(0xff, 0xd0, 0x40), view, projection);
@@ -452,6 +482,91 @@ public class MarsGame : Microsoft.Xna.Framework.Game
         DrawHud();
 
         base.Draw(gameTime);
+    }
+
+    /// <summary>Σχεδιάζει τα εικονίδια κτιρίων σε world-space (γεμίζουν με χρώμα όσο χτίζονται).</summary>
+    private void DrawBuildingIcons(Matrix view)
+    {
+        _spriteBatch.Begin(SpriteSortMode.Deferred, BlendState.NonPremultiplied, SamplerState.LinearClamp,
+            DepthStencilState.None, RasterizerState.CullNone, null, view);
+
+        const float iconWorld = HexSize * 1.7f;
+        foreach (var b in _world.Colony.Buildings)
+        {
+            if (!_icons.TryGetValue(b.Definition.Id, out var tex)) continue;
+            var (wx, wy) = _renderer.Layout.HexToPixel(b.Location);
+            var rect = new Rectangle((int)(wx - iconWorld / 2), (int)(wy - iconWorld / 2), (int)iconWorld, (int)iconWorld);
+
+            double progress = b.State == BuildingState.Operational ? 1.0 : b.BuildFraction;
+            Color dim = b.State == BuildingState.Disabled ? new Color(120, 50, 50) : new Color(55, 58, 70);
+
+            _spriteBatch.Draw(tex, rect, null, dim); // αχτιστο = αμυδρό περίγραμμα
+            if (progress > 0)                        // χτισμένο μέρος = γεμίζει με χρώμα από κάτω
+            {
+                int fillTex = (int)(progress * IconFactory.Size);
+                int fillDst = (int)(progress * rect.Height);
+                var src = new Rectangle(0, IconFactory.Size - fillTex, IconFactory.Size, fillTex);
+                var dst = new Rectangle(rect.X, rect.Bottom - fillDst, rect.Width, fillDst);
+                _spriteBatch.Draw(tex, dst, src, Color.White);
+            }
+        }
+
+        _spriteBatch.End();
+    }
+
+    private Rectangle ToolbarButtonRect(int index, int count)
+    {
+        const int bs = 46, gap = 6, bottom = 8;
+        int total = count * bs + (count - 1) * gap;
+        int startX = (GraphicsDevice.Viewport.Width - total) / 2;
+        int y = GraphicsDevice.Viewport.Height - bs - bottom;
+        return new Rectangle(startX + index * (bs + gap), y, bs, bs);
+    }
+
+    private int ToolbarHitIndex(int mx, int my)
+    {
+        for (int i = 0; i < _buildables.Count; i++)
+            if (ToolbarButtonRect(i, _buildables.Count).Contains(mx, my)) return i;
+        return -1;
+    }
+
+    private void DrawToolbar()
+    {
+        int count = _buildables.Count;
+        var ms = Mouse.GetState();
+        int hover = ToolbarHitIndex(ms.X, ms.Y);
+
+        for (int i = 0; i < count; i++)
+        {
+            var def = _buildables[i];
+            var rect = ToolbarButtonRect(i, count);
+            bool selected = _buildMode && _buildIndex == i;
+
+            _spriteBatch.Draw(_pixel, rect, selected ? new Color(50, 80, 50, 235) : new Color(18, 20, 28, 215));
+            DrawRectOutline(rect, selected ? new Color(120, 230, 120) : new Color(70, 74, 90));
+
+            if (_icons.TryGetValue(def.Id, out var tex))
+                _spriteBatch.Draw(tex, new Rectangle(rect.X + 3, rect.Y + 3, rect.Width - 6, rect.Height - 6), Color.White);
+        }
+
+        if (hover >= 0)
+        {
+            var def = _buildables[hover];
+            string label = $"{def.Name}   ({CostString(def)})";
+            var size = _font.MeasureString(label);
+            var pos = new Vector2(ToolbarButtonRect(hover, count).Center.X - size.X / 2f,
+                GraphicsDevice.Viewport.Height - 46 - 8 - 24);
+            _spriteBatch.Draw(_pixel, new Rectangle((int)pos.X - 5, (int)pos.Y - 2, (int)size.X + 10, (int)size.Y + 4), new Color(0, 0, 0, 220));
+            _spriteBatch.DrawString(_font, label, pos, HudWhite);
+        }
+    }
+
+    private void DrawRectOutline(Rectangle r, Color c)
+    {
+        _spriteBatch.Draw(_pixel, new Rectangle(r.X, r.Y, r.Width, 1), c);
+        _spriteBatch.Draw(_pixel, new Rectangle(r.X, r.Bottom - 1, r.Width, 1), c);
+        _spriteBatch.Draw(_pixel, new Rectangle(r.X, r.Y, 1, r.Height), c);
+        _spriteBatch.Draw(_pixel, new Rectangle(r.Right - 1, r.Y, 1, r.Height), c);
     }
 
     // ----------------------------------------------------------------- HUD
@@ -555,13 +670,18 @@ public class MarsGame : Microsoft.Xna.Framework.Game
         foreach (var note in _world.EventNotifications.AsEnumerable().Reverse().Take(3))
             bottom.Add(("* " + note, HudDim));
 
-        bottom.Add(("Space=pause 1/2/3=speed B=build T=research G=sponsor F5=save F9=load N=new Esc=quit", HudDim));
+        bottom.Add(("Space=pause  1/2/3=speed  click icon=build  T=research  +/-=crew  G=sponsor  F5/F9=save/load  N=new  U=mute  Esc=menu", HudDim));
 
         float panelH = bottom.Count * _font.LineSpacing + 16f;
-        DrawTextPanel(new Vector2(10, GraphicsDevice.Viewport.Height - panelH - 10f), bottom);
+        DrawTextPanel(new Vector2(10, GraphicsDevice.Viewport.Height - panelH - 64f), bottom);
 
         if (_selectedBuilding is not null)
             DrawBuildingPanel();
+
+        DrawToolbar();
+
+        if (_confirmNewMap)
+            DrawCenterBanner("New random map?    Y = yes    N = no", new Color(255, 210, 90));
 
         if (_world.IsTerraformed)
             DrawCenterBanner("***  PLANET TERRAFORMED  ***", new Color(120, 230, 120));
