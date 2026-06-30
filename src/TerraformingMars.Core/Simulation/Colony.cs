@@ -20,6 +20,8 @@ public sealed class Colony
     public List<Colonist> Colonists { get; } = new();
 
     public bool LifeSupportFailing { get; set; }
+    public int LifeSupportFailingTicks { get; internal set; }
+    public bool Collapsed { get; internal set; }
 
     public IEnumerable<Colonist> IdleColonists => Colonists.Where(c => c.Assignment is null);
 

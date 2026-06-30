@@ -14,10 +14,25 @@ src/TerraformingMars.Core   — domain & simulation (engine-agnostic)
     Grid/        Hex, OffsetCoord, HexLayout
     Map/         TerrainType, ResourceType, ResourceDeposit, HexTile, HexMap
     Generation/  INoiseSource, PerlinNoise, MapGenerator, MapGenerationSettings
-    Simulation/  GameClock, ResourceLedger, World, Colony, systems
-src/TerraformingMars.Game   — MonoGame viewer (Camera2D, HexMapRenderer, MarsGame)
-tests/TerraformingMars.Core.Tests — xUnit
+    Simulation/  GameClock, ResourceLedger, World, Colony, systems (production/
+                 construction/research/planet/biosphere/population/events/life-support)
+    Buildings/   BuildingDefinition, BuildingCatalog, Building (data-driven, JSON)
+    Colonists/   Specialty, Colonist
+    Research/    TechDefinition, TechCatalog, TechTree
+    Planet/      PlanetMetric, PlanetState (terraforming metrics)
+    Events/      EventType, SponsorProfile (difficulty), SponsorCatalog
+    Persistence/ SaveSystem, SaveGame (JSON save/load)
+    Data/        buildings.json, technologies.json, sponsors.json
+src/TerraformingMars.Game   — MonoGame (Camera2D, HexMapRenderer, AudioManager, MarsGame)
+tests/TerraformingMars.Core.Tests — xUnit (77 tests)
 ```
+
+## Gameplay
+Διάλεξε χορηγό (Easy/Normal/Hard) & seed, προσγειώσου, εξόρυξε πόρους, χτίσε υποδομές, ερεύνησε
+το δέντρο τεχνολογίας 4 φάσεων, και κάνε terraforming τον Άρη (θερμοκρασία, πίεση, O₂, νερό →
+ο πάγος λιώνει σε θάλασσες, η βλάστηση απλώνεται). Πρόσεχε αμμοθύελλες (μειώνουν ηλιακή ενέργεια →
+brownout), ηλιακές εκλάμψεις, και βλάβες life-support — αλλιώς το πλήρωμα πεθαίνει. **Νίκη** όταν
+και οι 4 πλανητικές μετρικές φτάσουν τους στόχους.
 
 ## Build & Run
 ```bash
@@ -25,17 +40,25 @@ dotnet test                                    # unit tests
 dotnet run --project src/TerraformingMars.Game # ο viewer
 ```
 
-### Controls (viewer)
+### Controls
+**Μενού:** Left/Right = χορηγός · R = τυχαίο seed · Enter = έναρξη · Esc = έξοδος
+
+**Παιχνίδι:**
 | Πλήκτρο | Δράση |
 |---|---|
 | drag (αριστερό/μεσαίο) | pan |
 | ροδέλα | zoom (γύρω από κέρσορα) |
-| WASD / βελάκια | κίνηση κάμερας |
-| F | fit χάρτη στην οθόνη |
+| WASD / βελάκια | κίνηση κάμερας · F = fit |
+| Space · 1 / 2 / 3 | pause · ταχύτητα ×1 / ×2 / ×4 |
+| B | build menu (κύκλος κτιρίων) · κλικ = τοποθέτηση |
+| δεξί κλικ | επιλογή hex/κτιρίου |
+| + / − | ανάθεση / αφαίρεση αποίκου στο επιλεγμένο κτίριο |
+| T | επιλογή/κύκλος έρευνας |
+| G | αλλαγή χορηγού (νέο παιχνίδι) |
 | N | νέος τυχαίος χάρτης |
-| δεξί κλικ | επιλογή hex |
-| Space | pause/resume σιμουλασιόν |
-| 1 / 2 / 3 | ταχύτητα ×1 / ×2 / ×4 |
-| Esc | έξοδος |
+| F5 / F9 | save / load |
+| U | mute/unmute |
+| Esc | πίσω στο μενού |
 
-Πληροφορίες tile και κατάσταση αποικίας (Sol/ώρα, πόροι, rates) εμφανίζονται στον **τίτλο του παραθύρου** (font-based HUD έρχεται σε επόμενη φάση).
+Όλη η κατάσταση (Sol/ώρα, πόροι & rates, πλανητικές μετρικές & terraforming %, alerts γεγονότων,
+επιλεγμένο κτίριο/tile) εμφανίζεται σε on-screen HUD panels.

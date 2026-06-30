@@ -13,6 +13,7 @@ using TerraformingMars.Core.Map;
 using TerraformingMars.Core.Persistence;
 using TerraformingMars.Core.Planet;
 using TerraformingMars.Core.Simulation;
+using TerraformingMars.Game.Audio;
 using TerraformingMars.Game.Rendering;
 
 namespace TerraformingMars.Game;
@@ -63,6 +64,15 @@ public class MarsGame : Microsoft.Xna.Framework.Game
     private double _statusTimer;
     private Point _mouseDownPos;
 
+    // Polish: μενού, audio, ανίχνευση μεταβάσεων (win/lose/research/events)
+    private enum GameState { Menu, Playing }
+    private GameState _state = GameState.Menu;
+    private AudioManager _audio = null!;
+    private int _prevResearchedCount;
+    private string _lastNotification = "";
+    private bool _prevWon;
+    private bool _prevLost;
+
     public MarsGame()
     {
         _graphics = new GraphicsDeviceManager(this)
@@ -101,7 +111,88 @@ public class MarsGame : Microsoft.Xna.Framework.Game
         _renderer = new HexMapRenderer(GraphicsDevice, HexSize);
         _renderer.Build(_map);
         _lastMapRevision = _world.MapRevision;
+        _audio = new AudioManager();
         FitCamera();
+    }
+
+    private void StartGame()
+    {
+        _settings = new MapGenerationSettings { Width = 64, Height = 44, Seed = _seed };
+        _map = new MapGenerator(_settings).Generate();
+        _world = ColonyFactory.CreateStartingWorld(_map, _catalog, _sponsor, enableEvents: true);
+        _renderer.Build(_map);
+        _lastMapRevision = _world.MapRevision;
+        _selected = null;
+        _selectedBuilding = null;
+        _buildMode = false;
+        ResetTransitionTrackers();
+        FitCamera();
+        _state = GameState.Playing;
+    }
+
+    private void ResetTransitionTrackers()
+    {
+        _prevResearchedCount = _world.Colony.Tech.Researched.Count;
+        _lastNotification = _world.EventNotifications.Count > 0 ? _world.EventNotifications[^1] : "";
+        _prevWon = false;
+        _prevLost = false;
+    }
+
+    private void CheckAudioTransitions()
+    {
+        int researched = _world.Colony.Tech.Researched.Count;
+        if (researched > _prevResearchedCount) _audio.Chime();
+        _prevResearchedCount = researched;
+
+        string last = _world.EventNotifications.Count > 0 ? _world.EventNotifications[^1] : "";
+        if (last.Length > 0 && last != _lastNotification) _audio.Alert();
+        _lastNotification = last;
+
+        bool won = _world.IsTerraformed;
+        if (won && !_prevWon) _audio.Win();
+        _prevWon = won;
+
+        bool lost = _world.IsLost;
+        if (lost && !_prevLost) _audio.Lose();
+        _prevLost = lost;
+    }
+
+    private void UpdateMenu(KeyboardState keys)
+    {
+        if (KeyPressed(keys, Keys.Escape)) Exit();
+        if (KeyPressed(keys, Keys.Left) || KeyPressed(keys, Keys.A))
+            _sponsorIndex = (_sponsorIndex - 1 + _sponsorCatalog.All.Count) % _sponsorCatalog.All.Count;
+        if (KeyPressed(keys, Keys.Right) || KeyPressed(keys, Keys.D))
+            _sponsorIndex = (_sponsorIndex + 1) % _sponsorCatalog.All.Count;
+        _sponsor = _sponsorCatalog.All[_sponsorIndex];
+
+        if (KeyPressed(keys, Keys.R)) _seed = new Random().Next();
+        if (KeyPressed(keys, Keys.Enter)) StartGame();
+    }
+
+    private void DrawMenu()
+    {
+        GraphicsDevice.Clear(new Color(0x0b, 0x0b, 0x12));
+        _spriteBatch.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, SamplerState.PointClamp);
+
+        float h = GraphicsDevice.Viewport.Height;
+        DrawCentered("TERRAFORMING MARS", h * 0.20f, 2.4f, new Color(230, 120, 80));
+
+        float y = h * 0.42f;
+        DrawCentered($"<   Sponsor:  {_sponsor.Name}   >", y, 1.3f, HudWhite); y += 40;
+        DrawCentered(_sponsor.Description, y, 1.0f, HudDim); y += 48;
+        DrawCentered($"Seed:  {_seed}", y, 1.2f, HudWhite); y += 64;
+        DrawCentered("Left/Right = sponsor     R = random seed", y, 1.0f, HudDim); y += 30;
+        DrawCentered("Enter = start     Esc = quit", y, 1.0f, HudDim);
+
+        _spriteBatch.End();
+    }
+
+    private void DrawCentered(string text, float y, float scale, Color color)
+    {
+        var size = _font.MeasureString(text);
+        var pos = new Vector2((GraphicsDevice.Viewport.Width - size.X * scale) / 2f, y);
+        _spriteBatch.DrawString(_font, text, pos, color, 0f, Vector2.Zero, scale, SpriteEffects.None, 0f);
     }
 
     private void Regenerate(int seed)
@@ -114,6 +205,7 @@ public class MarsGame : Microsoft.Xna.Framework.Game
         _lastMapRevision = _world.MapRevision;
         _selected = null;
         _selectedBuilding = null;
+        ResetTransitionTrackers();
     }
 
     private void FitCamera()
@@ -140,7 +232,25 @@ public class MarsGame : Microsoft.Xna.Framework.Game
         var mouse = Mouse.GetState();
         var keys = Keyboard.GetState();
 
-        if (keys.IsKeyDown(Keys.Escape)) Exit();
+        if (_state == GameState.Menu)
+        {
+            UpdateMenu(keys);
+            _prevMouse = mouse;
+            _prevKeys = keys;
+            base.Update(gameTime);
+            return;
+        }
+
+        // Esc → πίσω στο μενού (από εκεί κλείνει το παιχνίδι)
+        if (KeyPressed(keys, Keys.Escape))
+        {
+            _state = GameState.Menu;
+            _prevMouse = mouse;
+            _prevKeys = keys;
+            base.Update(gameTime);
+            return;
+        }
+        if (KeyPressed(keys, Keys.U)) _audio.Enabled = !_audio.Enabled;
 
         _camera.SetViewport(GraphicsDevice.Viewport.Width, GraphicsDevice.Viewport.Height);
 
@@ -190,6 +300,7 @@ public class MarsGame : Microsoft.Xna.Framework.Game
             _lastMapRevision = _world.MapRevision;
             _selected = null;
             _selectedBuilding = null;
+            ResetTransitionTrackers();
             _status = "Game loaded";
             _statusTimer = 3.0;
         }
@@ -215,6 +326,7 @@ public class MarsGame : Microsoft.Xna.Framework.Game
                     ? -1
                     : available.FindIndex(t => t.Id == _world.Colony.Tech.CurrentTarget);
                 _world.Colony.Tech.StartResearch(available[(idx + 1) % available.Count].Id);
+                _audio.Blip();
             }
         }
 
@@ -243,6 +355,8 @@ public class MarsGame : Microsoft.Xna.Framework.Game
             _renderer.Build(_map);
             _lastMapRevision = _world.MapRevision;
         }
+
+        CheckAudioTransitions();
 
         // Hover hex μέσω screen→world→PixelToHex
         Vector2 world = _camera.ScreenToWorld(new Vector2(mouse.X, mouse.Y));
@@ -283,6 +397,7 @@ public class MarsGame : Microsoft.Xna.Framework.Game
         var result = _world.Colony.TryPlaceBuilding(def, _hoverHex, _map);
         _status = result.Success ? $"Built {def.Name}" : $"Cannot place {def.Name}: {result.Error}";
         _statusTimer = 3.0;
+        if (result.Success) _audio.Blip();
     }
 
     private static string CostString(BuildingDefinition def) =>
@@ -305,6 +420,13 @@ public class MarsGame : Microsoft.Xna.Framework.Game
 
     protected override void Draw(GameTime gameTime)
     {
+        if (_state == GameState.Menu)
+        {
+            DrawMenu();
+            base.Draw(gameTime);
+            return;
+        }
+
         GraphicsDevice.Clear(new Color(0x0b, 0x0b, 0x12));
 
         Matrix view = _camera.GetViewMatrix();
@@ -393,6 +515,8 @@ public class MarsGame : Microsoft.Xna.Framework.Game
             top.Add(($"!! {EventLabel(ev.Type)}  {ev.TicksRemaining / 4}s", HudWarn));
         if (_world.SolarEfficiency < 1.0)
             top.Add(($"solar output {_world.SolarEfficiency * 100:0}%", HudWarn));
+        if (_world.PowerOutage)
+            top.Add(("BROWNOUT - low power", HudWarn));
         if (_world.HasCaveShelter)
             top.Add(("cave shelter active", new Color(120, 230, 120)));
         double minHealth = _world.Colony.Colonists.Count > 0 ? _world.Colony.Colonists.Min(c => c.Health) : 1.0;
@@ -440,14 +564,15 @@ public class MarsGame : Microsoft.Xna.Framework.Game
             DrawBuildingPanel();
 
         if (_world.IsTerraformed)
-            DrawWinBanner();
+            DrawCenterBanner("***  PLANET TERRAFORMED  ***", new Color(120, 230, 120));
+        else if (_world.IsLost)
+            DrawCenterBanner("***  COLONY LOST - press Esc  ***", new Color(255, 90, 80));
 
         _spriteBatch.End();
     }
 
-    private void DrawWinBanner()
+    private void DrawCenterBanner(string msg, Color color)
     {
-        const string msg = "***  PLANET TERRAFORMED  ***";
         const float scale = 1.6f;
         var size = _font.MeasureString(msg);
         var pos = new Vector2((GraphicsDevice.Viewport.Width - size.X * scale) / 2f, GraphicsDevice.Viewport.Height * 0.14f);
@@ -455,7 +580,7 @@ public class MarsGame : Microsoft.Xna.Framework.Game
         _spriteBatch.Draw(_pixel,
             new Rectangle((int)pos.X - 24, (int)pos.Y - 12, (int)(size.X * scale) + 48, (int)(size.Y * scale) + 24),
             new Color(0, 0, 0, 200));
-        _spriteBatch.DrawString(_font, msg, pos, new Color(120, 230, 120), 0f, Vector2.Zero, scale, SpriteEffects.None, 0f);
+        _spriteBatch.DrawString(_font, msg, pos, color, 0f, Vector2.Zero, scale, SpriteEffects.None, 0f);
     }
 
     private void DrawBuildingPanel()

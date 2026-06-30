@@ -48,6 +48,7 @@ public class BuildingPlacementTests
     private static Colony RichColony()
     {
         var c = new Colony();
+        c.Ledger.Set(ResourceKind.Energy, 100_000);
         c.Ledger.Set(ResourceKind.Materials, 1000);
         c.Ledger.Set(ResourceKind.Credits, 100_000);
         return c;
@@ -131,6 +132,7 @@ public class BuildingLifecycleTests
     private static Colony RichColony()
     {
         var c = new Colony();
+        c.Ledger.Set(ResourceKind.Energy, 100_000);
         c.Ledger.Set(ResourceKind.Materials, 1000);
         c.Ledger.Set(ResourceKind.Credits, 100_000);
         return c;

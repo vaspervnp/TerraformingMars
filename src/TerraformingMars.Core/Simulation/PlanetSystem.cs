@@ -42,7 +42,7 @@ public sealed class PlanetSystem : ISimulationSystem
                 if (metric == PlanetMetric.Water)
                     _floodAccumulator += delta * eff;       // νερό κομητών → πλημμύρα χαμηλών εδαφών
                 else
-                    planet.Add(metric, delta * eff);
+                    planet.Add(metric, delta * eff * Saturation(metric, planet.Get(metric)));
             }
         }
 
@@ -60,6 +60,23 @@ public sealed class PlanetSystem : ISimulationSystem
 
         if (_totalTiles > 0)
             planet.SetWaterCoverage((double)_waterTiles / _totalTiles);
+    }
+
+    /// <summary>
+    /// Φθίνουσα απόδοση πάνω από τον στόχο (homeostasis): η επίδραση μειώνεται γραμμικά από
+    /// τον στόχο μέχρι ένα soft cap, ώστε η μετρική να σταθεροποιείται αντί να εκτοξεύεται.
+    /// </summary>
+    private static double Saturation(PlanetMetric metric, double value)
+    {
+        (double target, double softCap) = metric switch
+        {
+            PlanetMetric.Temperature => (PlanetState.TargetTemperature, 25.0),
+            PlanetMetric.Pressure => (PlanetState.TargetPressure, 30.0),
+            PlanetMetric.Oxygen => (PlanetState.TargetOxygen, 30.0),
+            _ => (0.0, 1.0)
+        };
+        if (value <= target) return 1.0;
+        return Math.Clamp(1.0 - (value - target) / (softCap - target), 0.0, 1.0);
     }
 
     private void EnsureQueues(World world)

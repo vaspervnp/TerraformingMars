@@ -23,6 +23,9 @@ public sealed class World
     /// <summary>True όταν και οι 4 πλανητικές μετρικές φτάσουν τους στόχους — νίκη.</summary>
     public bool IsTerraformed => Planet.IsTerraformed;
 
+    /// <summary>True όταν χαθεί όλο το πλήρωμα (κατάρρευση life support) — ήττα.</summary>
+    public bool IsLost => Colony.Collapsed;
+
     /// <summary>Αυξάνεται όταν αλλάζει το terrain (π.χ. πάγος→νερό), ώστε το rendering να ξαναχτίσει τον χάρτη.</summary>
     public int MapRevision { get; private set; }
     internal void BumpMapRevision() => MapRevision++;

@@ -43,18 +43,23 @@ public sealed class ConstructionSystem : ISimulationSystem
 }
 
 /// <summary>
-/// Εφαρμόζει την καθαρή παραγωγή/κατανάλωση όλων των operational κτιρίων, πολλαπλασιασμένη
-/// με το <see cref="Building.WorkerEfficiency"/> (στελέχωση + bonus ειδικότητας).
+/// Εφαρμόζει παραγωγή/κατανάλωση των operational κτιρίων (× efficiency, mining, ηλιακά).
+/// <b>Brownout gating</b>: αν η διαθέσιμη ενέργεια (αποθηκευμένη + παραγωγή) δεν καλύπτει την
+/// κατανάλωση, οι καταναλωτές στραγγαλίζονται αναλογικά (π.χ. σε αμμοθύελλα χωρίς μπαταρίες/fission).
 /// </summary>
 public sealed class ProductionSystem : ISimulationSystem
 {
     private readonly Dictionary<ResourceKind, double> _net = new();
+    private readonly List<(Building building, double factor)> _active = new();
 
     public void Tick(World world)
     {
-        world.PowerOutage = world.Colony.Ledger.Get(ResourceKind.Energy) <= 0.0001;
+        var ledger = world.Colony.Ledger;
 
-        _net.Clear();
+        // --- Pass 1: factor ανά κτίριο + ισοζύγιο ενέργειας ---
+        _active.Clear();
+        double energyProduction = 0, energyConsumption = 0;
+
         foreach (var building in world.Colony.Buildings)
         {
             if (building.State != BuildingState.Operational) continue;
@@ -77,14 +82,34 @@ public sealed class ProductionSystem : ISimulationSystem
 
             if (def.SolarPowered) factor *= world.SolarEfficiency; // αμμοθύελλα μειώνει τα ηλιακά
 
+            _active.Add((building, factor));
+
+            double energy = def.Production.GetValueOrDefault(ResourceKind.Energy) * factor;
+            if (energy >= 0) energyProduction += energy;
+            else energyConsumption += -energy;
+        }
+
+        double available = ledger.Get(ResourceKind.Energy) + energyProduction;
+        double brownout = energyConsumption > available && energyConsumption > 0
+            ? available / energyConsumption
+            : 1.0;
+        world.PowerOutage = brownout < 0.999;
+
+        // --- Pass 2: εφαρμογή (οι καταναλωτές × brownout) ---
+        _net.Clear();
+        foreach (var (building, factor) in _active)
+        {
+            var def = building.Definition;
+            double energy = def.Production.GetValueOrDefault(ResourceKind.Energy) * factor;
+            double scale = energy < 0 ? brownout : 1.0;
+
             foreach (var (kind, perTick) in def.Production)
             {
                 if (kind == ResourceKind.Research) continue; // το χειρίζεται το ResearchSystem
-                _net[kind] = _net.GetValueOrDefault(kind) + perTick * factor;
+                _net[kind] = _net.GetValueOrDefault(kind) + perTick * factor * scale;
             }
         }
 
-        var ledger = world.Colony.Ledger;
         foreach (var (kind, perTick) in _net)
             ledger.Add(kind, perTick);
     }
@@ -123,6 +148,11 @@ public sealed class LifeSupportSystem : ISimulationSystem
     public double WaterPerCrew { get; init; } = 0.05;
     public double FoodPerCrew { get; init; } = 0.03;
 
+    private const int GraceTicks = 200;              // περιθώριο πριν αρχίσουν θάνατοι (~λίγα λεπτά)
+    private const double DeathRatePerTick = 0.02;    // ~1 θάνατος ανά 50 ticks μετά το grace
+
+    private double _deathAccumulator;
+
     public void Tick(World world)
     {
         var colony = world.Colony;
@@ -134,5 +164,28 @@ public sealed class LifeSupportSystem : ISimulationSystem
         bool food = ledger.TryConsume(ResourceKind.Food, FoodPerCrew * crew);
 
         colony.LifeSupportFailing = crew > 0 && !(oxygen && water && food);
+
+        if (!colony.LifeSupportFailing)
+        {
+            colony.LifeSupportFailingTicks = 0;
+            _deathAccumulator = 0;
+            return;
+        }
+
+        // Παρατεταμένη αποτυχία → οι άποικοι αρχίζουν να πεθαίνουν.
+        colony.LifeSupportFailingTicks++;
+        if (colony.LifeSupportFailingTicks <= GraceTicks) return;
+
+        _deathAccumulator += DeathRatePerTick;
+        while (_deathAccumulator >= 1.0 && colony.Colonists.Count > 0)
+        {
+            _deathAccumulator -= 1.0;
+            var victim = colony.Colonists[^1];
+            colony.Unassign(victim);
+            colony.Colonists.RemoveAt(colony.Colonists.Count - 1);
+            colony.Crew = colony.Colonists.Count;
+        }
+
+        if (colony.Colonists.Count == 0) colony.Collapsed = true;
     }
 }
