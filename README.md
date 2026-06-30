@@ -6,7 +6,7 @@ Open-source base-building / simulation game σε **C# / .NET 9**, με procedura
 - **.NET 9**, καθαρό domain layer ανεξάρτητο από engine
 - **MonoGame (DesktopGL)** για rendering/input
 - Hex grid (pointy-top, axial/cube coordinates), procedural generation με Perlin noise (fBm + quantile classification)
-- Real-time σιμουλασιόν με fixed-timestep (pause / ×1 / ×2 / ×4)
+- Real-time simulation με fixed-timestep (pause / ×1 / ×2 / ×4)
 
 ## Δομή Solution
 ```
