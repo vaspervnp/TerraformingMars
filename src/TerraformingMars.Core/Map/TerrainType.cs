@@ -13,5 +13,6 @@ public enum TerrainType
     Highland,
     Mountain,
     PolarIce,
-    Water
+    Water,
+    Vegetation  // βλάστηση που απλώνεται όταν ο πλανήτης γίνεται κατοικήσιμος (Φάση 7)
 }

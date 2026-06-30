@@ -6,6 +6,7 @@
     "Buildable": false,
     "BuildTimeTicks": 0,
     "MaxWorkers": 0,
+    "HousingCapacity": 6,
     "Storage": { "Energy": 5000, "Water": 2000, "Oxygen": 2000, "Food": 1500 },
     "Production": { "Energy": -1.0 }
   },
@@ -152,5 +153,55 @@
     "Cost": { "Materials": 130, "Credits": 16000 },
     "Production": { "Energy": -2.5 },
     "PlanetEffects": { "Water": 0.03, "Pressure": 0.015 }
+  },
+  {
+    "Id": "cyanobacteria_farm",
+    "Name": "Cyanobacteria Farm",
+    "Category": "Biosphere",
+    "RequiredTech": "cyanobacteria",
+    "BuildTimeTicks": 120,
+    "MaxWorkers": 1,
+    "OptimalSpecialty": "Botanist",
+    "Cost": { "Materials": 70, "Credits": 6000 },
+    "Production": { "Energy": -0.6 },
+    "PlanetEffects": { "Oxygen": 0.012 },
+    "VegetationSpreadPerTick": 0.010
+  },
+  {
+    "Id": "gm_forest",
+    "Name": "GM Forest",
+    "Category": "Biosphere",
+    "RequiredTech": "gm_trees",
+    "BuildTimeTicks": 150,
+    "MaxWorkers": 1,
+    "OptimalSpecialty": "Botanist",
+    "Cost": { "Materials": 90, "Credits": 8000 },
+    "Production": { "Energy": -0.4 },
+    "PlanetEffects": { "Oxygen": 0.025 },
+    "VegetationSpreadPerTick": 0.040
+  },
+  {
+    "Id": "fauna_reserve",
+    "Name": "Wildlife Reserve",
+    "Category": "Biosphere",
+    "RequiredTech": "gm_trees",
+    "BuildTimeTicks": 140,
+    "MaxWorkers": 1,
+    "OptimalSpecialty": "Botanist",
+    "Cost": { "Materials": 80, "Credits": 7000 },
+    "Production": { "Energy": -0.3, "Food": 0.5 },
+    "PlanetEffects": { "Oxygen": 0.010 },
+    "VegetationSpreadPerTick": 0.020
+  },
+  {
+    "Id": "domeless_city",
+    "Name": "Domeless City",
+    "Category": "Habitat",
+    "RequiredTech": "domeless_cities",
+    "BuildTimeTicks": 250,
+    "MaxWorkers": 0,
+    "HousingCapacity": 30,
+    "Cost": { "Materials": 200, "Credits": 25000 },
+    "Production": { "Energy": -2.0 }
   }
 ]

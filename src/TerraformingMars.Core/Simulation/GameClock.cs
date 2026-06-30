@@ -43,6 +43,9 @@ public sealed class GameClock
         return ticks;
     }
 
+    /// <summary>Επαναφορά μετρητή ticks (για load παιχνιδιού).</summary>
+    public void RestoreTicks(long ticks) => TotalTicks = ticks;
+
     public double TotalInGameMinutes => TotalTicks * InGameMinutesPerTick;
     public int Sol => (int)(TotalInGameMinutes / MinutesPerSol) + 1;          // 1-based
     public int HourOfSol => (int)(TotalInGameMinutes / 60 % 24);

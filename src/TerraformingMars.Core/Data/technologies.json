@@ -76,7 +76,7 @@
     "Phase": 4,
     "Cost": 500,
     "Prerequisites": [ "orbital_mirrors" ],
-    "Unlocks": []
+    "Unlocks": [ "cyanobacteria_farm" ]
   },
   {
     "Id": "gm_trees",
@@ -85,7 +85,7 @@
     "Phase": 4,
     "Cost": 700,
     "Prerequisites": [ "cyanobacteria" ],
-    "Unlocks": []
+    "Unlocks": [ "gm_forest", "fauna_reserve" ]
   },
   {
     "Id": "domeless_cities",
@@ -94,6 +94,6 @@
     "Phase": 4,
     "Cost": 1000,
     "Prerequisites": [ "gm_trees", "artificial_magnetosphere" ],
-    "Unlocks": []
+    "Unlocks": [ "domeless_city" ]
   }
 ]

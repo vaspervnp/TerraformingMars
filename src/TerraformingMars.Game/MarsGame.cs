@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
@@ -9,6 +10,7 @@ using TerraformingMars.Core.Events;
 using TerraformingMars.Core.Generation;
 using TerraformingMars.Core.Grid;
 using TerraformingMars.Core.Map;
+using TerraformingMars.Core.Persistence;
 using TerraformingMars.Core.Planet;
 using TerraformingMars.Core.Simulation;
 using TerraformingMars.Game.Rendering;
@@ -23,6 +25,7 @@ namespace TerraformingMars.Game;
 public class MarsGame : Microsoft.Xna.Framework.Game
 {
     private const float HexSize = 22f;
+    private static readonly string SavePath = Path.Combine(AppContext.BaseDirectory, "terraforming_save.json");
 
     private readonly GraphicsDeviceManager _graphics;
     private readonly Camera2D _camera = new();
@@ -169,6 +172,26 @@ public class MarsGame : Microsoft.Xna.Framework.Game
             _sponsorIndex = (_sponsorIndex + 1) % _sponsorCatalog.All.Count;
             _sponsor = _sponsorCatalog.All[_sponsorIndex];
             Regenerate(_seed);
+        }
+
+        // Save (F5) / Load (F9)
+        if (KeyPressed(keys, Keys.F5))
+        {
+            File.WriteAllText(SavePath, SaveSystem.ToJson(_world, _sponsor));
+            _status = "Game saved";
+            _statusTimer = 3.0;
+        }
+        if (KeyPressed(keys, Keys.F9) && File.Exists(SavePath))
+        {
+            _world = SaveSystem.Load(File.ReadAllText(SavePath), _catalog, _sponsorCatalog, out _sponsor);
+            _map = _world.Map;
+            _sponsorIndex = Math.Max(0, _sponsorCatalog.All.ToList().FindIndex(s => s.Id == _sponsor.Id));
+            _renderer.Build(_map);
+            _lastMapRevision = _world.MapRevision;
+            _selected = null;
+            _selectedBuilding = null;
+            _status = "Game loaded";
+            _statusTimer = 3.0;
         }
 
         // Έλεγχος ταχύτητας σιμουλασιόν
@@ -359,6 +382,9 @@ public class MarsGame : Microsoft.Xna.Framework.Game
             MetricColor(planet.Progress(PlanetMetric.Oxygen))));
         top.Add((MetricLine("Water", planet.WaterCoverage * 100, "%", planet.Progress(PlanetMetric.Water)),
             MetricColor(planet.Progress(PlanetMetric.Water))));
+        top.Add(($"Biomass  {planet.Biomass * 100,6:0.0} %", new Color(90, 200, 90)));
+        int housing = _world.Colony.Buildings.Where(b => b.State == BuildingState.Operational).Sum(b => b.Definition.HousingCapacity);
+        top.Add(($"Population {_world.Colony.Colonists.Count}/{housing}", HudDim));
 
         // Sponsor & alerts (Φάση 6)
         top.Add(("", HudWhite));
@@ -405,7 +431,7 @@ public class MarsGame : Microsoft.Xna.Framework.Game
         foreach (var note in _world.EventNotifications.AsEnumerable().Reverse().Take(3))
             bottom.Add(("* " + note, HudDim));
 
-        bottom.Add(("Space=pause  1/2/3=speed  B=build  T=research  G=sponsor  N=new  F=fit  Esc=quit", HudDim));
+        bottom.Add(("Space=pause 1/2/3=speed B=build T=research G=sponsor F5=save F9=load N=new Esc=quit", HudDim));
 
         float panelH = bottom.Count * _font.LineSpacing + 16f;
         DrawTextPanel(new Vector2(10, GraphicsDevice.Viewport.Height - panelH - 10f), bottom);
@@ -413,7 +439,23 @@ public class MarsGame : Microsoft.Xna.Framework.Game
         if (_selectedBuilding is not null)
             DrawBuildingPanel();
 
+        if (_world.IsTerraformed)
+            DrawWinBanner();
+
         _spriteBatch.End();
+    }
+
+    private void DrawWinBanner()
+    {
+        const string msg = "***  PLANET TERRAFORMED  ***";
+        const float scale = 1.6f;
+        var size = _font.MeasureString(msg);
+        var pos = new Vector2((GraphicsDevice.Viewport.Width - size.X * scale) / 2f, GraphicsDevice.Viewport.Height * 0.14f);
+
+        _spriteBatch.Draw(_pixel,
+            new Rectangle((int)pos.X - 24, (int)pos.Y - 12, (int)(size.X * scale) + 48, (int)(size.Y * scale) + 24),
+            new Color(0, 0, 0, 200));
+        _spriteBatch.DrawString(_font, msg, pos, new Color(120, 230, 120), 0f, Vector2.Zero, scale, SpriteEffects.None, 0f);
     }
 
     private void DrawBuildingPanel()

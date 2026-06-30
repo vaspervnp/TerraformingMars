@@ -23,6 +23,20 @@ public sealed class PlanetState
     public double Oxygen { get; private set; } = StartOxygen;
     public double WaterCoverage { get; private set; } = StartWater;
 
+    /// <summary>Κάλυψη βλάστησης (0..1) — δείκτης οικοσυστήματος (Φάση 7), εκτός των μετρικών νίκης.</summary>
+    public double Biomass { get; private set; }
+    public void SetBiomass(double fraction) => Biomass = Math.Clamp(fraction, 0, 1);
+
+    /// <summary>Επαναφορά όλων των τιμών (για load παιχνιδιού).</summary>
+    public void Restore(double temperature, double pressure, double oxygen, double water, double biomass)
+    {
+        Temperature = temperature;
+        Pressure = pressure;
+        Oxygen = oxygen;
+        WaterCoverage = water;
+        Biomass = biomass;
+    }
+
     public double Get(PlanetMetric metric) => metric switch
     {
         PlanetMetric.Temperature => Temperature,

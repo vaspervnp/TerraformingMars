@@ -53,5 +53,11 @@ public sealed class BuildingDefinition
 
     /// <summary>Αν true, η ενεργειακή του παραγωγή επηρεάζεται από αμμοθύελλες (ηλιακά panel).</summary>
     public bool SolarPowered { get; init; } = false;
+
+    /// <summary>Tiles βλάστησης που απλώνει/tick (βιόσφαιρα — απαιτεί ζεστασιά & νερό).</summary>
+    public double VegetationSpreadPerTick { get; init; } = 0.0;
+
+    /// <summary>Πόσους αποίκους μπορεί να στεγάσει (όριο πληθυσμού).</summary>
+    public int HousingCapacity { get; init; } = 0;
 }
 

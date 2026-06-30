@@ -20,6 +20,9 @@ public sealed class World
     public PlanetState Planet { get; } = new();
     public GameClock Clock { get; } = new();
 
+    /// <summary>True όταν και οι 4 πλανητικές μετρικές φτάσουν τους στόχους — νίκη.</summary>
+    public bool IsTerraformed => Planet.IsTerraformed;
+
     /// <summary>Αυξάνεται όταν αλλάζει το terrain (π.χ. πάγος→νερό), ώστε το rendering να ξαναχτίσει τον χάρτη.</summary>
     public int MapRevision { get; private set; }
     internal void BumpMapRevision() => MapRevision++;

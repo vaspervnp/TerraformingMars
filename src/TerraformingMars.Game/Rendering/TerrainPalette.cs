@@ -16,6 +16,7 @@ public static class TerrainPalette
         TerrainType.Mountain => new Color(0xe6, 0xa8, 0x78),
         TerrainType.PolarIce => new Color(0xe8, 0xf0, 0xf5),
         TerrainType.Water    => new Color(0x2b, 0x6f, 0xb0),
+        TerrainType.Vegetation => new Color(0x3c, 0xa0, 0x46),
         _ => Color.Magenta
     };
 

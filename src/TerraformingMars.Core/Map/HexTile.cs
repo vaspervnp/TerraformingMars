@@ -15,7 +15,7 @@ public sealed class HexTile
     public ResourceDeposit Deposit { get; internal set; }
 
     /// <summary>Εναπομείναν κοίτασμα (μειώνεται από την εξόρυξη). Αρχικά = <see cref="ResourceDeposit.Amount"/>.</summary>
-    public double RemainingDeposit { get; private set; }
+    public double RemainingDeposit { get; internal set; }
 
     // Runtime state (επόμενες φάσεις)
     public bool Discovered { get; set; }

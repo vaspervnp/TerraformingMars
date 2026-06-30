@@ -1,0 +1,77 @@
+namespace TerraformingMars.Core.Persistence;
+
+/// <summary>Serializable στιγμιότυπο παιχνιδιού (JSON). Ο χάρτης ανακατασκευάζεται από το seed + overrides.</summary>
+public sealed class SaveGame
+{
+    public int Version { get; set; } = 1;
+    public int Seed { get; set; }
+    public int Width { get; set; }
+    public int Height { get; set; }
+    public long Ticks { get; set; }
+    public string Speed { get; set; } = "Normal";
+    public string SponsorId { get; set; } = "normal";
+    public int Crew { get; set; }
+    public bool HasCaveShelter { get; set; }
+    public double SolarEfficiency { get; set; } = 1.0;
+
+    public PlanetSave Planet { get; set; } = new();
+    public Dictionary<string, double> Resources { get; set; } = new();
+    public Dictionary<string, double> Capacities { get; set; } = new();
+    public TechSave Tech { get; set; } = new();
+    public List<BuildingSave> Buildings { get; set; } = new();
+    public List<ColonistSave> Colonists { get; set; } = new();
+    public List<TileSave> TileOverrides { get; set; } = new();
+    public List<EventSave> Events { get; set; } = new();
+}
+
+public sealed class PlanetSave
+{
+    public double Temperature { get; set; }
+    public double Pressure { get; set; }
+    public double Oxygen { get; set; }
+    public double Water { get; set; }
+    public double Biomass { get; set; }
+}
+
+public sealed class TechSave
+{
+    public List<string> Researched { get; set; } = new();
+    public string? Current { get; set; }
+    public double Progress { get; set; }
+}
+
+public sealed class BuildingSave
+{
+    public string Id { get; set; } = "";
+    public int Q { get; set; }
+    public int R { get; set; }
+    public string State { get; set; } = "Operational";
+    public int BuildProgress { get; set; }
+    public double MaterialsPaid { get; set; }
+    public bool Stalled { get; set; }
+    public bool DepositDepleted { get; set; }
+    public int RepairTicksRemaining { get; set; }
+}
+
+public sealed class ColonistSave
+{
+    public string Name { get; set; } = "";
+    public string Specialty { get; set; } = "None";
+    public double Health { get; set; } = 1.0;
+    public double Morale { get; set; } = 1.0;
+    public int AssignmentIndex { get; set; } = -1; // index στη λίστα Buildings, -1 = idle
+}
+
+public sealed class TileSave
+{
+    public int Q { get; set; }
+    public int R { get; set; }
+    public string Terrain { get; set; } = "Flatland";
+    public double Remaining { get; set; }
+}
+
+public sealed class EventSave
+{
+    public string Type { get; set; } = "DustStorm";
+    public int TicksRemaining { get; set; }
+}

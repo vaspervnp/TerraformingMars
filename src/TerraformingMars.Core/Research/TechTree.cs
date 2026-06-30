@@ -56,6 +56,15 @@ public sealed class TechTree
         }
     }
 
+    /// <summary>Επαναφορά κατάστασης έρευνας (για load παιχνιδιού).</summary>
+    public void Restore(IEnumerable<string> researched, string? current, double progress)
+    {
+        Researched.Clear();
+        foreach (var id in researched) Researched.Add(id);
+        CurrentTarget = current;
+        CurrentProgress = progress;
+    }
+
     /// <summary>Building ids που έχουν ξεκλειδωθεί από τις researched τεχνολογίες.</summary>
     public IEnumerable<string> UnlockedBuildingIds =>
         _catalog.All.Where(t => Researched.Contains(t.Id)).SelectMany(t => t.Unlocks);

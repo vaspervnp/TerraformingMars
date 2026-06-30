@@ -63,7 +63,7 @@ public sealed class HexMapRenderer : IDisposable
     /// <summary>Διαμορφώνει το χρώμα terrain ανά υψόμετρο για ψευδο-ανάγλυφο (κοιλάδες σκούρες, κορυφές φωτεινές).</summary>
     private static Color ShadeByElevation(Color baseColor, TerrainType terrain, float elevation)
     {
-        if (terrain is TerrainType.PolarIce or TerrainType.Water) return baseColor; // μένουν επίπεδα
+        if (terrain is TerrainType.PolarIce or TerrainType.Water or TerrainType.Vegetation) return baseColor; // μένουν επίπεδα
         float shade = MathHelper.Clamp(0.80f + elevation * 0.40f, 0.55f, 1.25f);
         return Shade(baseColor, shade);
     }
@@ -241,6 +241,7 @@ public sealed class HexMapRenderer : IDisposable
         "Habitat" => new Color(235, 235, 240),
         "Research" => new Color(180, 140, 255),
         "Planetary" => new Color(120, 220, 200),
+        "Biosphere" => new Color(90, 200, 90),
         _ => new Color(200, 200, 205)
     };
 
