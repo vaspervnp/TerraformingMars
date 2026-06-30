@@ -33,6 +33,9 @@ public sealed class Building
     /// <summary>Ticks επισκευής που απομένουν όταν το κτίριο είναι <see cref="BuildingState.Disabled"/>.</summary>
     public int RepairTicksRemaining { get; internal set; }
 
+    /// <summary>Tick κατά το οποίο τοποθετήθηκε (για υπολογισμό επιστροφής στο reclaim).</summary>
+    public long CreatedTick { get; internal set; }
+
     public List<Colonist> Workers { get; } = new();
 
     public Building(BuildingDefinition definition, Hex location, bool startOperational = false)

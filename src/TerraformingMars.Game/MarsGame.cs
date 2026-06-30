@@ -52,6 +52,7 @@ public class MarsGame : Microsoft.Xna.Framework.Game
     private Hex _hoverHex;
     private bool _hasHover;
     private HexTile? _hoveredTile;
+    private Building? _hoveredBuilding;
     private HexTile? _selected;
     private Building? _selectedBuilding;
 
@@ -381,6 +382,7 @@ public class MarsGame : Microsoft.Xna.Framework.Game
         Vector2 world = _camera.ScreenToWorld(new Vector2(mouse.X, mouse.Y));
         _hoverHex = _renderer.Layout.PixelToHex(world.X, world.Y);
         _hasHover = _map.TryGetTile(_hoverHex, out _hoveredTile) && _hoveredTile is not null;
+        _hoveredBuilding = _hasHover ? _world.Colony.Buildings.FirstOrDefault(b => b.Location == _hoverHex) : null;
 
         // Αριστερό κλικ: μπάρα κτιρίων (UI) ή τοποθέτηση στον χάρτη
         if (mouse.LeftButton == ButtonState.Pressed && _prevMouse.LeftButton == ButtonState.Released)
@@ -569,6 +571,32 @@ public class MarsGame : Microsoft.Xna.Framework.Game
         _spriteBatch.Draw(_pixel, new Rectangle(r.Right - 1, r.Y, 1, r.Height), c);
     }
 
+    /// <summary>Tooltip κοντά στον κέρσορα όταν είμαστε πάνω σε κτίριο: τίτλος, προσωπικό, % χτισίματος.</summary>
+    private void DrawHoverHint()
+    {
+        if (_hoveredBuilding is null) return;
+        var b = _hoveredBuilding;
+        var d = b.Definition;
+
+        var lines = new List<(string text, Color color)> { (d.Name, HudWhite) };
+        lines.Add(d.MaxWorkers > 0
+            ? ($"workers: {b.Workers.Count}/{d.MaxWorkers}", HudDim)
+            : ("automatic (no crew)", HudDim));
+
+        if (b.State == BuildingState.UnderConstruction)
+            lines.Add(($"building {b.BuildFraction * 100:0}%{(b.Stalled ? " (stalled)" : "")}",
+                b.Stalled ? HudWarn : new Color(120, 230, 120)));
+        else if (b.State == BuildingState.Disabled)
+            lines.Add(($"DISABLED ({b.RepairTicksRemaining / 4}s to repair)", HudWarn));
+
+        var ms = Mouse.GetState();
+        float w = PanelWidth(lines);
+        float h = lines.Count * _font.LineSpacing + 16f;
+        float x = MathF.Min(ms.X + 16, GraphicsDevice.Viewport.Width - w - 6);
+        float y = MathF.Min(ms.Y + 16, GraphicsDevice.Viewport.Height - h - 6);
+        DrawTextPanel(new Vector2(x, y), lines);
+    }
+
     // ----------------------------------------------------------------- HUD
 
     private static readonly Color HudWhite = new(235, 235, 240);
@@ -679,6 +707,9 @@ public class MarsGame : Microsoft.Xna.Framework.Game
             DrawBuildingPanel();
 
         DrawToolbar();
+
+        if (ToolbarHitIndex(Mouse.GetState().X, Mouse.GetState().Y) < 0)
+            DrawHoverHint();
 
         if (_confirmNewMap)
             DrawCenterBanner("New random map?    Y = yes    N = no", new Color(255, 210, 90));
