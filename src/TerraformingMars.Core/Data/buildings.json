@@ -1,0 +1,73 @@
+[
+  {
+    "Id": "landing_capsule",
+    "Name": "Landing Capsule",
+    "Category": "Habitat",
+    "Buildable": false,
+    "BuildTimeTicks": 0,
+    "MaxWorkers": 0,
+    "Storage": { "Energy": 5000, "Water": 2000, "Oxygen": 2000, "Food": 1500 },
+    "Production": { "Energy": -1.0 }
+  },
+  {
+    "Id": "solar_panel",
+    "Name": "Solar Panel Array",
+    "Category": "Power",
+    "BuildTimeTicks": 60,
+    "MaxWorkers": 0,
+    "Cost": { "Materials": 40, "Credits": 2000 },
+    "Production": { "Energy": 4.0 },
+    "AllowedTerrain": [ "Flatland", "Lowland", "Highland", "Crater" ]
+  },
+  {
+    "Id": "battery",
+    "Name": "Battery Bank",
+    "Category": "Power",
+    "BuildTimeTicks": 50,
+    "MaxWorkers": 0,
+    "Cost": { "Materials": 30, "Credits": 1500 },
+    "Storage": { "Energy": 3000 }
+  },
+  {
+    "Id": "o2_recycler",
+    "Name": "Oxygen Recycler",
+    "Category": "LifeSupport",
+    "BuildTimeTicks": 80,
+    "MaxWorkers": 1,
+    "OptimalSpecialty": "Engineer",
+    "Cost": { "Materials": 50, "Credits": 3000 },
+    "Production": { "Oxygen": 1.2, "Energy": -0.5 }
+  },
+  {
+    "Id": "ice_drill",
+    "Name": "Subsurface Ice Drill",
+    "Category": "LifeSupport",
+    "BuildTimeTicks": 90,
+    "MaxWorkers": 1,
+    "OptimalSpecialty": "Geologist",
+    "RequiresDeposit": "Ice",
+    "Cost": { "Materials": 50, "Credits": 2500 },
+    "Production": { "Water": 1.2, "Energy": -0.3 }
+  },
+  {
+    "Id": "hydroponics",
+    "Name": "Hydroponics Bay",
+    "Category": "Food",
+    "BuildTimeTicks": 100,
+    "MaxWorkers": 1,
+    "OptimalSpecialty": "Botanist",
+    "Cost": { "Materials": 60, "Credits": 3500 },
+    "Production": { "Food": 0.9, "Water": -0.3, "Energy": -0.4 }
+  },
+  {
+    "Id": "regolith_printer",
+    "Name": "Regolith Processor",
+    "Category": "Industry",
+    "BuildTimeTicks": 80,
+    "MaxWorkers": 1,
+    "OptimalSpecialty": "Engineer",
+    "RequiresDeposit": "Regolith",
+    "Cost": { "Materials": 20, "Credits": 2000 },
+    "Production": { "Materials": 0.5, "Energy": -0.4 }
+  }
+]

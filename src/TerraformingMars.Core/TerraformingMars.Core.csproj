@@ -1,0 +1,15 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Default game data, embedded ώστε το Core να φορτώνει χωρίς εξωτερικά αρχεία (tests included).
+         Override με BuildingCatalog.LoadFromFile(path) για modding/hot-reload. -->
+    <EmbeddedResource Include="Data\buildings.json" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,94 @@
+using TerraformingMars.Core.Buildings;
+using TerraformingMars.Core.Colonists;
+
+namespace TerraformingMars.Core.Simulation;
+
+/// <summary>
+/// Προωθεί την κατασκευή των κτιρίων που χτίζονται. Παρουσία <see cref="Specialty.Engineer"/>
+/// στους workers επιταχύνει την πρόοδο. Όταν ολοκληρωθεί → operational.
+/// </summary>
+public sealed class ConstructionSystem : ISimulationSystem
+{
+    public void Tick(World world)
+    {
+        var ledger = world.Colony.Ledger;
+
+        foreach (var building in world.Colony.Buildings)
+        {
+            if (building.State != BuildingState.UnderConstruction) continue;
+
+            var def = building.Definition;
+            int speed = building.Workers.Any(w => w.Specialty == Specialty.Engineer) ? 2 : 1; // Engineer επιταχύνει
+
+            // Σταδιακή παράδοση υλικών· χωρίς αρκετά → η κατασκευή σταματά (stall).
+            double totalMaterials = def.Cost.GetValueOrDefault(ResourceKind.Materials);
+            if (totalMaterials > 0 && def.BuildTimeTicks > 0)
+            {
+                double needThisTick = totalMaterials / def.BuildTimeTicks * speed;
+                if (!ledger.TryConsume(ResourceKind.Materials, needThisTick))
+                {
+                    building.Stalled = true;
+                    continue;
+                }
+                building.MaterialsPaid += needThisTick;
+            }
+
+            building.Stalled = false;
+            building.BuildProgress += speed;
+
+            if (building.BuildProgress >= def.BuildTimeTicks)
+                world.Colony.MarkOperational(building);
+        }
+    }
+}
+
+/// <summary>
+/// Εφαρμόζει την καθαρή παραγωγή/κατανάλωση όλων των operational κτιρίων, πολλαπλασιασμένη
+/// με το <see cref="Building.WorkerEfficiency"/> (στελέχωση + bonus ειδικότητας).
+/// </summary>
+public sealed class ProductionSystem : ISimulationSystem
+{
+    private readonly Dictionary<ResourceKind, double> _net = new();
+
+    public void Tick(World world)
+    {
+        _net.Clear();
+        foreach (var building in world.Colony.Buildings)
+        {
+            if (building.State != BuildingState.Operational) continue;
+            double eff = building.WorkerEfficiency();
+            if (eff <= 0) continue;
+
+            foreach (var (kind, perTick) in building.Definition.Production)
+                _net[kind] = _net.GetValueOrDefault(kind) + perTick * eff;
+        }
+
+        var ledger = world.Colony.Ledger;
+        foreach (var (kind, perTick) in _net)
+            ledger.Add(kind, perTick);
+    }
+}
+
+/// <summary>
+/// Καταναλώνει O₂/νερό/τροφή ανάλογα με το πλήρωμα. Αν λείψει οτιδήποτε,
+/// σηκώνει <see cref="Colony.LifeSupportFailing"/>.
+/// </summary>
+public sealed class LifeSupportSystem : ISimulationSystem
+{
+    public double OxygenPerCrew { get; init; } = 0.08;
+    public double WaterPerCrew { get; init; } = 0.05;
+    public double FoodPerCrew { get; init; } = 0.03;
+
+    public void Tick(World world)
+    {
+        var colony = world.Colony;
+        var ledger = colony.Ledger;
+        int crew = colony.Crew;
+
+        bool oxygen = ledger.TryConsume(ResourceKind.Oxygen, OxygenPerCrew * crew);
+        bool water = ledger.TryConsume(ResourceKind.Water, WaterPerCrew * crew);
+        bool food = ledger.TryConsume(ResourceKind.Food, FoodPerCrew * crew);
+
+        colony.LifeSupportFailing = crew > 0 && !(oxygen && water && food);
+    }
+}
