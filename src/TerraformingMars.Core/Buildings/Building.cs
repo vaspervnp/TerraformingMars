@@ -27,6 +27,12 @@ public sealed class Building
     /// <summary>True αν η κατασκευή έχει σταματήσει λόγω έλλειψης υλικών.</summary>
     public bool Stalled { get; internal set; }
 
+    /// <summary>True αν το κοίτασμα κάτω από ένα ορυχείο έχει εξαντληθεί (σταματά η παραγωγή).</summary>
+    public bool DepositDepleted { get; internal set; }
+
+    /// <summary>Ticks επισκευής που απομένουν όταν το κτίριο είναι <see cref="BuildingState.Disabled"/>.</summary>
+    public int RepairTicksRemaining { get; internal set; }
+
     public List<Colonist> Workers { get; } = new();
 
     public Building(BuildingDefinition definition, Hex location, bool startOperational = false)
@@ -62,7 +68,8 @@ public sealed class Building
         double staffing = Math.Min(1.0, (double)Workers.Count / Definition.MaxWorkers);
         bool hasSpecialist = Definition.OptimalSpecialty != Specialty.None
                              && Workers.Any(w => w.Specialty == Definition.OptimalSpecialty);
-        return staffing * (hasSpecialist ? 1.5 : 1.0);
+        double health = Workers.Average(w => w.Health); // άρρωστοι άποικοι μειώνουν την απόδοση
+        return staffing * (hasSpecialist ? 1.5 : 1.0) * health;
     }
 
     public override string ToString() => $"{Definition.Name} @ {OffsetCoord.FromHex(Location)} ({State})";

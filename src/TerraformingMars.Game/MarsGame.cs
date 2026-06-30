@@ -5,9 +5,11 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using TerraformingMars.Core.Buildings;
+using TerraformingMars.Core.Events;
 using TerraformingMars.Core.Generation;
 using TerraformingMars.Core.Grid;
 using TerraformingMars.Core.Map;
+using TerraformingMars.Core.Planet;
 using TerraformingMars.Core.Simulation;
 using TerraformingMars.Game.Rendering;
 
@@ -34,6 +36,11 @@ public class MarsGame : Microsoft.Xna.Framework.Game
     private HexMap _map = null!;
     private World _world = null!;
     private int _seed = 424242;
+    private int _lastMapRevision;
+
+    private SponsorCatalog _sponsorCatalog = null!;
+    private SponsorProfile _sponsor = null!;
+    private int _sponsorIndex;
 
     private MouseState _prevMouse;
     private KeyboardState _prevKeys;
@@ -71,9 +78,13 @@ public class MarsGame : Microsoft.Xna.Framework.Game
         _catalog = BuildingCatalog.LoadDefault();
         _buildables = _catalog.Buildables.ToList();
 
+        _sponsorCatalog = SponsorCatalog.LoadDefault();
+        _sponsorIndex = Math.Max(0, _sponsorCatalog.All.ToList().FindIndex(s => s.Id == "normal"));
+        _sponsor = _sponsorCatalog.All[_sponsorIndex];
+
         _settings = new MapGenerationSettings { Width = 64, Height = 44, Seed = _seed };
         _map = new MapGenerator(_settings).Generate();
-        _world = ColonyFactory.CreateStartingWorld(_map, _catalog);
+        _world = ColonyFactory.CreateStartingWorld(_map, _catalog, _sponsor, enableEvents: true);
         base.Initialize();
     }
 
@@ -86,6 +97,7 @@ public class MarsGame : Microsoft.Xna.Framework.Game
 
         _renderer = new HexMapRenderer(GraphicsDevice, HexSize);
         _renderer.Build(_map);
+        _lastMapRevision = _world.MapRevision;
         FitCamera();
     }
 
@@ -94,8 +106,9 @@ public class MarsGame : Microsoft.Xna.Framework.Game
         _seed = seed;
         _settings = new MapGenerationSettings { Width = _settings.Width, Height = _settings.Height, Seed = _seed };
         _map = new MapGenerator(_settings).Generate();
-        _world = ColonyFactory.CreateStartingWorld(_map, _catalog);
+        _world = ColonyFactory.CreateStartingWorld(_map, _catalog, _sponsor, enableEvents: true);
         _renderer.Build(_map);
+        _lastMapRevision = _world.MapRevision;
         _selected = null;
         _selectedBuilding = null;
     }
@@ -148,9 +161,15 @@ public class MarsGame : Microsoft.Xna.Framework.Game
         if (keys.IsKeyDown(Keys.D) || keys.IsKeyDown(Keys.Right)) move.X += 1;
         if (move != Vector2.Zero) _camera.Position += Vector2.Normalize(move) * panSpeed;
 
-        // Νέος χάρτης (N) / fit (F)
+        // Νέος χάρτης (N) / fit (F) / εναλλαγή sponsor (G, ξεκινά νέο παιχνίδι)
         if (KeyPressed(keys, Keys.N)) Regenerate(new Random().Next());
         if (KeyPressed(keys, Keys.F)) FitCamera();
+        if (KeyPressed(keys, Keys.G))
+        {
+            _sponsorIndex = (_sponsorIndex + 1) % _sponsorCatalog.All.Count;
+            _sponsor = _sponsorCatalog.All[_sponsorIndex];
+            Regenerate(_seed);
+        }
 
         // Έλεγχος ταχύτητας σιμουλασιόν
         if (KeyPressed(keys, Keys.Space))
@@ -158,6 +177,23 @@ public class MarsGame : Microsoft.Xna.Framework.Game
         if (KeyPressed(keys, Keys.D1)) _world.Clock.Speed = GameSpeed.Normal;
         if (KeyPressed(keys, Keys.D2)) _world.Clock.Speed = GameSpeed.Fast;
         if (KeyPressed(keys, Keys.D3)) _world.Clock.Speed = GameSpeed.Ultra;
+
+        // Διαθέσιμα κτίρια = όσα έχουν ξεκλειδωθεί από έρευνα
+        _buildables = _catalog.Buildables.Where(d => _world.Colony.Tech.IsResearched(d.RequiredTech)).ToList();
+        if (_buildIndex >= _buildables.Count) _buildIndex = 0;
+
+        // Επιλογή έρευνας: T κυκλώνει τα διαθέσιμα techs ως target
+        if (KeyPressed(keys, Keys.T))
+        {
+            var available = _world.Colony.Tech.Available.ToList();
+            if (available.Count > 0)
+            {
+                int idx = _world.Colony.Tech.CurrentTarget is null
+                    ? -1
+                    : available.FindIndex(t => t.Id == _world.Colony.Tech.CurrentTarget);
+                _world.Colony.Tech.StartResearch(available[(idx + 1) % available.Count].Id);
+            }
+        }
 
         // Build mode: B μπαίνει/κυκλώνει τύπους κτιρίων
         if (KeyPressed(keys, Keys.B))
@@ -177,6 +213,13 @@ public class MarsGame : Microsoft.Xna.Framework.Game
 
         // Προώθηση σιμουλασιόν (fixed-timestep μέσα στο World)
         _world.Update(gameTime.ElapsedGameTime.TotalSeconds);
+
+        // Αν άλλαξε το terrain (πάγος→νερό), ξαναχτίζουμε τον χάρτη
+        if (_world.MapRevision != _lastMapRevision)
+        {
+            _renderer.Build(_map);
+            _lastMapRevision = _world.MapRevision;
+        }
 
         // Hover hex μέσω screen→world→PixelToHex
         Vector2 world = _camera.ScreenToWorld(new Vector2(mouse.X, mouse.Y));
@@ -293,6 +336,43 @@ public class MarsGame : Microsoft.Xna.Framework.Game
         };
         if (colony.LifeSupportFailing) top.Add(("!! LIFE SUPPORT FAILURE !!", HudWarn));
 
+        // Έρευνα
+        var tech = colony.Tech;
+        double researchOut = colony.Buildings
+            .Where(b => b.State == BuildingState.Operational)
+            .Sum(b => b.Definition.Production.GetValueOrDefault(ResourceKind.Research) * b.WorkerEfficiency());
+        if (tech.CurrentTech is { } current)
+            top.Add(($"Research   {current.Name}  {tech.CurrentProgress / current.Cost * 100:0}%  (+{researchOut:0.0}/t)",
+                new Color(190, 150, 255)));
+        else
+            top.Add(($"Research   none  (T to choose, {tech.Available.Count()} available)", HudDim));
+
+        // Πλανητικές μετρικές (terraforming)
+        var planet = _world.Planet;
+        top.Add(("", HudWhite));
+        top.Add(($"PLANET   terraforming {planet.OverallProgress * 100:0}%", HudWhite));
+        top.Add((MetricLine("Temp", planet.Temperature, "C", planet.Progress(PlanetMetric.Temperature)),
+            MetricColor(planet.Progress(PlanetMetric.Temperature))));
+        top.Add((MetricLine("Pressure", planet.Pressure, "kPa", planet.Progress(PlanetMetric.Pressure)),
+            MetricColor(planet.Progress(PlanetMetric.Pressure))));
+        top.Add((MetricLine("Oxygen", planet.Oxygen, "%", planet.Progress(PlanetMetric.Oxygen)),
+            MetricColor(planet.Progress(PlanetMetric.Oxygen))));
+        top.Add((MetricLine("Water", planet.WaterCoverage * 100, "%", planet.Progress(PlanetMetric.Water)),
+            MetricColor(planet.Progress(PlanetMetric.Water))));
+
+        // Sponsor & alerts (Φάση 6)
+        top.Add(("", HudWhite));
+        top.Add(($"SPONSOR  {_sponsor.Name}", HudDim));
+        foreach (var ev in _world.ActiveEvents)
+            top.Add(($"!! {EventLabel(ev.Type)}  {ev.TicksRemaining / 4}s", HudWarn));
+        if (_world.SolarEfficiency < 1.0)
+            top.Add(($"solar output {_world.SolarEfficiency * 100:0}%", HudWarn));
+        if (_world.HasCaveShelter)
+            top.Add(("cave shelter active", new Color(120, 230, 120)));
+        double minHealth = _world.Colony.Colonists.Count > 0 ? _world.Colony.Colonists.Min(c => c.Health) : 1.0;
+        if (minHealth < 0.95)
+            top.Add(($"crew health {minHealth * 100:0}%", HudWarn));
+
         DrawTextPanel(new Vector2(10, 10), top);
 
         var bottom = new List<(string text, Color color)>();
@@ -302,7 +382,7 @@ public class MarsGame : Microsoft.Xna.Framework.Game
             bottom.Add(($"{OffsetCoord.FromHex(t.Coord)}  {t.Terrain}  elev {t.Elevation:0.00}", HudWhite));
             bottom.Add((t.Deposit.IsEmpty
                 ? "deposit: none"
-                : $"deposit: {t.Deposit.Type} x{t.Deposit.Amount}{(t.Deposit.Hidden ? "  (hidden)" : "")}",
+                : $"deposit: {t.Deposit.Type} {(int)t.RemainingDeposit}/{t.Deposit.Amount}{(t.Deposit.Hidden ? "  (hidden)" : "")}",
                 t.Deposit.IsEmpty ? HudDim : HudWhite));
         }
         else
@@ -322,7 +402,10 @@ public class MarsGame : Microsoft.Xna.Framework.Game
         if (_statusTimer > 0)
             bottom.Add((_status, _status.StartsWith("Built") ? new Color(120, 230, 120) : HudWarn));
 
-        bottom.Add(("Space=pause  1/2/3=speed  drag=pan  wheel=zoom  N=new  F=fit  Esc=quit", HudDim));
+        foreach (var note in _world.EventNotifications.AsEnumerable().Reverse().Take(3))
+            bottom.Add(("* " + note, HudDim));
+
+        bottom.Add(("Space=pause  1/2/3=speed  B=build  T=research  G=sponsor  N=new  F=fit  Esc=quit", HudDim));
 
         float panelH = bottom.Count * _font.LineSpacing + 16f;
         DrawTextPanel(new Vector2(10, GraphicsDevice.Viewport.Height - panelH - 10f), bottom);
@@ -348,6 +431,11 @@ public class MarsGame : Microsoft.Xna.Framework.Game
             lines.Add(($"building... {b.BuildFraction * 100:0}%", HudWhite));
             if (b.Stalled) lines.Add(("STALLED - no materials", HudWarn));
         }
+        else if (b.State == BuildingState.Disabled)
+        {
+            lines.Add(($"DISABLED  ({b.RepairTicksRemaining / 4}s to repair)", HudWarn));
+            if (b.Definition.MaxWorkers > 0) lines.Add(("assign Engineer to speed repair", HudDim));
+        }
         else
         {
             lines.Add((b.State.ToString(), HudDim));
@@ -359,6 +447,14 @@ public class MarsGame : Microsoft.Xna.Framework.Game
             foreach (var (kind, value) in d.Production)
                 lines.Add(($"  {value.ToString("+0.00;-0.00")} {kind}",
                     value >= 0 ? new Color(120, 230, 120) : new Color(240, 130, 110)));
+        }
+
+        if (d.ExtractionPerTick > 0)
+        {
+            var tile = _map.GetTile(b.Location);
+            if (tile is not null)
+                lines.Add(($"deposit: {(int)tile.RemainingDeposit} left", b.DepositDepleted ? HudWarn : HudDim));
+            if (b.DepositDepleted) lines.Add(("DEPLETED - idle", HudWarn));
         }
 
         if (d.MaxWorkers > 0)
@@ -429,6 +525,21 @@ public class MarsGame : Microsoft.Xna.Framework.Game
         if (r < -0.001) return new Color(240, 130, 110);
         return HudDim;
     }
+
+    private static string MetricLine(string label, double value, string unit, double progress) =>
+        $"{label,-9}{value,7:0.0} {unit,-3} {progress * 100,4:0}%";
+
+    private static Color MetricColor(double progress) =>
+        progress >= 1.0 ? new Color(120, 230, 120) : new Color(210, 210, 220);
+
+    private static string EventLabel(EventType type) => type switch
+    {
+        EventType.DustStorm => "DUST STORM",
+        EventType.SolarFlare => "SOLAR FLARE",
+        EventType.LifeSupportFailure => "LIFE SUPPORT FAILURE",
+        EventType.CaveDiscovery => "CAVE",
+        _ => type.ToString()
+    };
 
     protected override void Dispose(bool disposing)
     {

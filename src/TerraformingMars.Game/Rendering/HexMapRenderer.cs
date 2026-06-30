@@ -207,10 +207,11 @@ public sealed class HexMapRenderer : IDisposable
 
             if (!operational)
             {
-                _buildLine.Add(new(p0, Color.White)); _buildLine.Add(new(p1, Color.White));
-                _buildLine.Add(new(p1, Color.White)); _buildLine.Add(new(p2, Color.White));
-                _buildLine.Add(new(p2, Color.White)); _buildLine.Add(new(p3, Color.White));
-                _buildLine.Add(new(p3, Color.White)); _buildLine.Add(new(p0, Color.White));
+                Color edge = b.State == BuildingState.Disabled ? new Color(255, 80, 80) : Color.White;
+                _buildLine.Add(new(p0, edge)); _buildLine.Add(new(p1, edge));
+                _buildLine.Add(new(p1, edge)); _buildLine.Add(new(p2, edge));
+                _buildLine.Add(new(p2, edge)); _buildLine.Add(new(p3, edge));
+                _buildLine.Add(new(p3, edge)); _buildLine.Add(new(p0, edge));
             }
         }
 
@@ -238,6 +239,8 @@ public sealed class HexMapRenderer : IDisposable
         "Food" => new Color(110, 220, 110),
         "Industry" => new Color(255, 150, 70),
         "Habitat" => new Color(235, 235, 240),
+        "Research" => new Color(180, 140, 255),
+        "Planetary" => new Color(120, 220, 200),
         _ => new Color(200, 200, 205)
     };
 

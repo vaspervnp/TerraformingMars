@@ -52,6 +52,8 @@ public sealed class ProductionSystem : ISimulationSystem
 
     public void Tick(World world)
     {
+        world.PowerOutage = world.Colony.Ledger.Get(ResourceKind.Energy) <= 0.0001;
+
         _net.Clear();
         foreach (var building in world.Colony.Buildings)
         {
@@ -59,13 +61,55 @@ public sealed class ProductionSystem : ISimulationSystem
             double eff = building.WorkerEfficiency();
             if (eff <= 0) continue;
 
-            foreach (var (kind, perTick) in building.Definition.Production)
-                _net[kind] = _net.GetValueOrDefault(kind) + perTick * eff;
+            var def = building.Definition;
+            double factor = eff;
+
+            // Ορυχεία: η παραγωγή περιορίζεται από / εξαντλεί το κοίτασμα του hex.
+            if (def.ExtractionPerTick > 0)
+            {
+                var tile = world.Map.GetTile(building.Location);
+                double need = def.ExtractionPerTick * eff;
+                double extracted = tile?.Extract(need) ?? 0;
+                building.DepositDepleted = tile is null || tile.RemainingDeposit <= 0;
+                if (extracted <= 0) continue; // εξαντλημένο κοίτασμα → αδρανές
+                factor = extracted / def.ExtractionPerTick;
+            }
+
+            if (def.SolarPowered) factor *= world.SolarEfficiency; // αμμοθύελλα μειώνει τα ηλιακά
+
+            foreach (var (kind, perTick) in def.Production)
+            {
+                if (kind == ResourceKind.Research) continue; // το χειρίζεται το ResearchSystem
+                _net[kind] = _net.GetValueOrDefault(kind) + perTick * factor;
+            }
         }
 
         var ledger = world.Colony.Ledger;
         foreach (var (kind, perTick) in _net)
             ledger.Add(kind, perTick);
+    }
+}
+
+/// <summary>
+/// Συγκεντρώνει research points από τα operational εργαστήρια (Production[Research] × efficiency)
+/// και τα προσθέτει στο τρέχον target του δέντρου τεχνολογίας.
+/// </summary>
+public sealed class ResearchSystem : ISimulationSystem
+{
+    public void Tick(World world)
+    {
+        var tech = world.Colony.Tech;
+        if (tech.CurrentTarget is null) return;
+
+        double points = 0;
+        foreach (var building in world.Colony.Buildings)
+        {
+            if (building.State != BuildingState.Operational) continue;
+            double output = building.Definition.Production.GetValueOrDefault(ResourceKind.Research);
+            if (output > 0) points += output * building.WorkerEfficiency();
+        }
+
+        tech.AddProgress(points);
     }
 }
 

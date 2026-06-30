@@ -2,6 +2,7 @@ using TerraformingMars.Core.Buildings;
 using TerraformingMars.Core.Colonists;
 using TerraformingMars.Core.Grid;
 using TerraformingMars.Core.Map;
+using TerraformingMars.Core.Research;
 
 namespace TerraformingMars.Core.Simulation;
 
@@ -13,6 +14,7 @@ namespace TerraformingMars.Core.Simulation;
 public sealed class Colony
 {
     public ResourceLedger Ledger { get; } = new();
+    public TechTree Tech { get; } = new();
     public int Crew { get; set; }
     public List<Building> Buildings { get; } = new();
     public List<Colonist> Colonists { get; } = new();
@@ -49,6 +51,7 @@ public sealed class Colony
     public PlacementResult CanPlace(BuildingDefinition def, Hex hex, HexMap map)
     {
         if (!def.Buildable) return PlacementResult.Fail("not buildable");
+        if (!Tech.IsResearched(def.RequiredTech)) return PlacementResult.Fail("locked (needs research)");
 
         var tile = map.GetTile(hex);
         if (tile is null) return PlacementResult.Fail("outside map");

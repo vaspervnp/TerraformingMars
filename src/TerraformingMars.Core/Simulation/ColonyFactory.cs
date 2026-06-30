@@ -1,58 +1,72 @@
 using TerraformingMars.Core.Buildings;
 using TerraformingMars.Core.Colonists;
+using TerraformingMars.Core.Events;
 using TerraformingMars.Core.Grid;
 using TerraformingMars.Core.Map;
 
 namespace TerraformingMars.Core.Simulation;
 
 /// <summary>
-/// Στήνει την αρχική αποικία: κάψουλα προσεδάφισης + βασικά κτίρια (ήδη operational)
-/// + πλήρωμα 4 ειδικοτήτων ανατεθειμένο στα κατάλληλα κτίρια.
+/// Στήνει την αρχική αποικία: κάψουλα + βασικά κτίρια (operational), ορυχεία πάνω σε
+/// κοιτάσματα, εργαστήριο έρευνας, και πλήρωμα 4 ειδικοτήτων ανατεθειμένο κατάλληλα.
 /// </summary>
 public static class ColonyFactory
 {
-    public static World CreateStartingWorld(HexMap map, BuildingCatalog? catalog = null)
+    public static World CreateStartingWorld(HexMap map, BuildingCatalog? catalog = null,
+        SponsorProfile? sponsor = null, bool enableEvents = false)
     {
         catalog ??= BuildingCatalog.LoadDefault();
+        sponsor ??= SponsorCatalog.LoadDefault().Get("normal");
         var colony = new Colony();
+        var occupied = new HashSet<Hex>();
 
         Hex spot = FindLandingSpot(map);
-
-        // Κάψουλα: δίνει αποθήκευση & «στεγάζει» το πλήρωμα (operational από την αρχή)
+        occupied.Add(spot);
         colony.AddBuilding(new Building(catalog.Get("landing_capsule"), spot, startOperational: true));
 
-        // Αρχικά αποθέματα (αφού η κάψουλα όρισε τις χωρητικότητες)
+        double m = sponsor.StartingResourceMultiplier;
         var ledger = colony.Ledger;
-        ledger.Set(ResourceKind.Energy, 2500);
-        ledger.Set(ResourceKind.Water, 800);
-        ledger.Set(ResourceKind.Oxygen, 800);
-        ledger.Set(ResourceKind.Food, 600);
-        ledger.Set(ResourceKind.Materials, 300);
-        ledger.Set(ResourceKind.Credits, 100_000);
+        ledger.Set(ResourceKind.Energy, 2500 * m);
+        ledger.Set(ResourceKind.Water, 800 * m);
+        ledger.Set(ResourceKind.Oxygen, 800 * m);
+        ledger.Set(ResourceKind.Food, 600 * m);
+        ledger.Set(ResourceKind.Materials, 300 * m);
+        ledger.Set(ResourceKind.Credits, 100_000 * m);
 
-        // Βασικά κτίρια γύρω από την κάψουλα (prebuilt· τα starter παρακάμπτουν validation κοιτασμάτων)
-        var spots = Spiral(spot, 4).Skip(1).GetEnumerator();
-        void Place(string id)
+        // Μη-εξορυκτικά κτίρια στο δαχτυλίδι γύρω από την κάψουλα
+        var ring = Spiral(spot, 4).Skip(1).GetEnumerator();
+        void PlaceOnRing(string id)
         {
-            while (spots.MoveNext())
+            while (ring.MoveNext())
             {
-                Hex h = spots.Current;
-                if (map.GetTile(h) is { IsBuildable: true } && !colony.IsOccupied(h))
+                Hex h = ring.Current;
+                if (!occupied.Contains(h) && map.GetTile(h) is { IsBuildable: true })
                 {
+                    occupied.Add(h);
                     colony.AddBuilding(new Building(catalog.Get(id), h, startOperational: true));
                     return;
                 }
             }
         }
+        PlaceOnRing("solar_panel");
+        PlaceOnRing("solar_panel");
+        PlaceOnRing("o2_recycler");
+        PlaceOnRing("hydroponics");
+        PlaceOnRing("research_lab");
 
-        Place("solar_panel");
-        Place("solar_panel");
-        Place("o2_recycler");
-        Place("ice_drill");
-        Place("hydroponics");
-        Place("regolith_printer");
+        // Ορυχεία πάνω στα πλησιέστερα κατάλληλα κοιτάσματα
+        void PlaceOnDeposit(string id, ResourceType deposit)
+        {
+            if (FindNearestDeposit(map, spot, deposit, occupied) is { } hex)
+            {
+                occupied.Add(hex);
+                colony.AddBuilding(new Building(catalog.Get(id), hex, startOperational: true));
+            }
+        }
+        PlaceOnDeposit("ice_drill", ResourceType.Ice);
+        PlaceOnDeposit("regolith_printer", ResourceType.Regolith);
 
-        // Πλήρωμα + ανάθεση στις κατάλληλες θέσεις
+        // Πλήρωμα + ανάθεση
         var engineer = new Colonist("Ada Reyes", Specialty.Engineer);
         var geologist = new Colonist("Boris Kane", Specialty.Geologist);
         var botanist = new Colonist("Chen Liu", Specialty.Botanist);
@@ -63,14 +77,16 @@ public static class ColonyFactory
         AssignToFirst(colony, engineer, "o2_recycler");
         AssignToFirst(colony, geologist, "ice_drill");
         AssignToFirst(colony, botanist, "hydroponics");
-        AssignToFirst(colony, climatologist, "regolith_printer");
+        AssignToFirst(colony, climatologist, "research_lab");
 
-        return new World(map, colony, new ISimulationSystem[]
-        {
-            new ConstructionSystem(),
-            new ProductionSystem(),
-            new LifeSupportSystem()
-        });
+        var systems = new List<ISimulationSystem>();
+        if (enableEvents) systems.Add(new EventSystem(sponsor, map.Seed));
+        systems.Add(new ConstructionSystem());
+        systems.Add(new ProductionSystem());
+        systems.Add(new ResearchSystem());
+        systems.Add(new PlanetSystem());
+        systems.Add(new LifeSupportSystem());
+        return new World(map, colony, systems);
     }
 
     private static void AssignToFirst(Colony colony, Colonist colonist, string buildingId)
@@ -93,6 +109,21 @@ public static class ColonyFactory
         }
 
         return (best ?? map.Tiles.First()).Coord;
+    }
+
+    private static Hex? FindNearestDeposit(HexMap map, Hex from, ResourceType type, HashSet<Hex> occupied)
+    {
+        HexTile? best = null;
+        int bestDist = int.MaxValue;
+
+        foreach (var tile in map.Tiles)
+        {
+            if (!tile.IsBuildable || tile.Deposit.Type != type || occupied.Contains(tile.Coord)) continue;
+            int d = tile.Coord.DistanceTo(from);
+            if (d < bestDist) { bestDist = d; best = tile; }
+        }
+
+        return best?.Coord;
     }
 
     /// <summary>Hexes σε δαχτυλίδια γύρω από το κέντρο (από μέσα προς τα έξω).</summary>

@@ -232,6 +232,35 @@ public class BuildingLifecycleTests
     }
 
     [Fact]
+    public void Mining_Depletes_Deposit_And_Stops_Production()
+    {
+        var map = Map();
+        var colony = RichColony();
+        var ice = map.Tiles
+            .Where(t => t.IsBuildable && t.Deposit.Type == ResourceType.Ice)
+            .OrderBy(t => t.Deposit.Amount)
+            .First();
+        double initial = ice.RemainingDeposit;
+
+        var def = BuildingCatalog.LoadDefault().Get("ice_drill");
+        var building = colony.TryPlaceBuilding(def, ice.Coord, map).Building!;
+        var geologist = new Colonist("G", Specialty.Geologist);
+        colony.Colonists.Add(geologist);
+        colony.Assign(geologist, building);
+
+        var world = new World(map, colony, new ISimulationSystem[] { new ConstructionSystem(), new ProductionSystem() });
+        for (int i = 0; i < def.BuildTimeTicks; i++) world.Tick(); // κατασκευή
+        Assert.Equal(BuildingState.Operational, building.State);
+
+        for (int i = 0; i < 50; i++) world.Tick();
+        Assert.True(ice.RemainingDeposit < initial); // εξορύσσει
+
+        for (int i = 0; i < 3000; i++) world.Tick();   // εξάντληση
+        Assert.Equal(0, ice.RemainingDeposit);
+        Assert.True(building.DepositDepleted);
+    }
+
+    [Fact]
     public void WorkerEfficiency_Reflects_Staffing_And_Specialty()
     {
         var catalog = BuildingCatalog.LoadDefault();

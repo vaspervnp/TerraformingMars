@@ -1,4 +1,6 @@
+using TerraformingMars.Core.Events;
 using TerraformingMars.Core.Map;
+using TerraformingMars.Core.Planet;
 
 namespace TerraformingMars.Core.Simulation;
 
@@ -15,7 +17,19 @@ public sealed class World
 
     public HexMap Map { get; }
     public Colony Colony { get; }
+    public PlanetState Planet { get; } = new();
     public GameClock Clock { get; } = new();
+
+    /// <summary>Αυξάνεται όταν αλλάζει το terrain (π.χ. πάγος→νερό), ώστε το rendering να ξαναχτίσει τον χάρτη.</summary>
+    public int MapRevision { get; private set; }
+    internal void BumpMapRevision() => MapRevision++;
+
+    // --- Κατάσταση γεγονότων (Φάση 6) ---
+    public double SolarEfficiency { get; internal set; } = 1.0;   // 1 = κανονικά, <1 σε αμμοθύελλα
+    public bool HasCaveShelter { get; internal set; }             // θωράκιση από ακτινοβολία
+    public bool PowerOutage { get; internal set; }                // ενημερωτικό (αποθηκευμένη ενέργεια = 0)
+    public List<ActiveEvent> ActiveEvents { get; } = new();
+    public List<string> EventNotifications { get; } = new();      // πρόσφατα μηνύματα για το HUD
 
     public World(HexMap map, Colony colony, IEnumerable<ISimulationSystem>? systems = null)
     {

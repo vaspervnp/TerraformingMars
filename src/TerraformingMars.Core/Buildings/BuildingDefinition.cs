@@ -1,5 +1,6 @@
 using TerraformingMars.Core.Colonists;
 using TerraformingMars.Core.Map;
+using TerraformingMars.Core.Planet;
 using TerraformingMars.Core.Simulation;
 
 namespace TerraformingMars.Core.Buildings;
@@ -26,6 +27,12 @@ public sealed class BuildingDefinition
     /// <summary>Αν != None, το hex πρέπει να έχει αυτό το κοίτασμα (π.χ. ice drill → Ice).</summary>
     public ResourceType RequiresDeposit { get; init; } = ResourceType.None;
 
+    /// <summary>Μονάδες κοιτάσματος που εξορύσσονται/tick (>0 ⇒ ορυχείο· η παραγωγή σταματά όταν εξαντληθεί).</summary>
+    public double ExtractionPerTick { get; init; } = 0.0;
+
+    /// <summary>Τεχνολογία που απαιτείται για να ξεκλειδωθεί (κενό = διαθέσιμο από την αρχή).</summary>
+    public string RequiredTech { get; init; } = "";
+
     /// <summary>Επιτρεπτά terrain. Κενό = οποιοδήποτε buildable.</summary>
     public List<TerrainType> AllowedTerrain { get; init; } = new();
 
@@ -37,4 +44,14 @@ public sealed class BuildingDefinition
 
     /// <summary>Χωρητικότητα αποθήκευσης που προσθέτει όταν γίνει operational.</summary>
     public Dictionary<ResourceKind, double> Storage { get; init; } = new();
+
+    /// <summary>Επίδραση στις πλανητικές μετρικές ανά tick (macro-engineering· Water = tiles/tick για πλημμύρα).</summary>
+    public Dictionary<PlanetMetric, double> PlanetEffects { get; init; } = new();
+
+    /// <summary>Αν true, προστατεύει την ατμόσφαιρα (τεχνητή μαγνητόσφαιρα) — σταματά την απώλεια πίεσης.</summary>
+    public bool ShieldsAtmosphere { get; init; } = false;
+
+    /// <summary>Αν true, η ενεργειακή του παραγωγή επηρεάζεται από αμμοθύελλες (ηλιακά panel).</summary>
+    public bool SolarPowered { get; init; } = false;
 }
+

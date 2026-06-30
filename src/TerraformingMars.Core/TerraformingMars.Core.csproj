@@ -9,7 +9,7 @@
   <ItemGroup>
     <!-- Default game data, embedded ώστε το Core να φορτώνει χωρίς εξωτερικά αρχεία (tests included).
          Override με BuildingCatalog.LoadFromFile(path) για modding/hot-reload. -->
-    <EmbeddedResource Include="Data\buildings.json" />
+    <EmbeddedResource Include="Data\*.json" />
   </ItemGroup>
 
 </Project>

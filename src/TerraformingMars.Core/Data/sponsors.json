@@ -1,0 +1,41 @@
+[
+  {
+    "Id": "easy",
+    "Name": "Tech Billionaire",
+    "Description": "Άφθονο αρχικό κεφάλαιο, ήπιες συνθήκες, σπάνια γεγονότα.",
+    "StartingResourceMultiplier": 2.0,
+    "EventChancePerTick": 0.0004,
+    "DustStormSolarFactor": 0.40,
+    "DustStormMinTicks": 200,
+    "DustStormMaxTicks": 400,
+    "SolarFlareMinTicks": 120,
+    "SolarFlareMaxTicks": 240,
+    "RepairTicks": 200
+  },
+  {
+    "Id": "normal",
+    "Name": "United Space Agency",
+    "Description": "Ισορροπημένη εμπειρία, ρεαλιστική φθορά, κανονική συχνότητα.",
+    "StartingResourceMultiplier": 1.0,
+    "EventChancePerTick": 0.0008,
+    "DustStormSolarFactor": 0.20,
+    "DustStormMinTicks": 300,
+    "DustStormMaxTicks": 600,
+    "SolarFlareMinTicks": 150,
+    "SolarFlareMaxTicks": 300,
+    "RepairTicks": 300
+  },
+  {
+    "Id": "hard",
+    "Name": "Private Crowdfunding",
+    "Description": "Ελάχιστοι πόροι, μακριές αμμοθύελλες, γρήγορη φθορά εξοπλισμού.",
+    "StartingResourceMultiplier": 0.5,
+    "EventChancePerTick": 0.0016,
+    "DustStormSolarFactor": 0.15,
+    "DustStormMinTicks": 500,
+    "DustStormMaxTicks": 1000,
+    "SolarFlareMinTicks": 200,
+    "SolarFlareMaxTicks": 400,
+    "RepairTicks": 500
+  }
+]

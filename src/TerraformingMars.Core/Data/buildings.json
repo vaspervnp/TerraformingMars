@@ -15,6 +15,7 @@
     "Category": "Power",
     "BuildTimeTicks": 60,
     "MaxWorkers": 0,
+    "SolarPowered": true,
     "Cost": { "Materials": 40, "Credits": 2000 },
     "Production": { "Energy": 4.0 },
     "AllowedTerrain": [ "Flatland", "Lowland", "Highland", "Crater" ]
@@ -46,6 +47,7 @@
     "MaxWorkers": 1,
     "OptimalSpecialty": "Geologist",
     "RequiresDeposit": "Ice",
+    "ExtractionPerTick": 1.0,
     "Cost": { "Materials": 50, "Credits": 2500 },
     "Production": { "Water": 1.2, "Energy": -0.3 }
   },
@@ -64,10 +66,91 @@
     "Name": "Regolith Processor",
     "Category": "Industry",
     "BuildTimeTicks": 80,
-    "MaxWorkers": 1,
-    "OptimalSpecialty": "Engineer",
+    "MaxWorkers": 0,
     "RequiresDeposit": "Regolith",
+    "ExtractionPerTick": 1.0,
     "Cost": { "Materials": 20, "Credits": 2000 },
     "Production": { "Materials": 0.5, "Energy": -0.4 }
+  },
+  {
+    "Id": "research_lab",
+    "Name": "Research Lab",
+    "Category": "Research",
+    "BuildTimeTicks": 100,
+    "MaxWorkers": 1,
+    "OptimalSpecialty": "Climatologist",
+    "Cost": { "Materials": 60, "Credits": 4000 },
+    "Production": { "Research": 1.5, "Energy": -0.5 }
+  },
+  {
+    "Id": "fission_reactor",
+    "Name": "Fission Reactor",
+    "Category": "Power",
+    "RequiredTech": "nuclear_fission",
+    "BuildTimeTicks": 150,
+    "MaxWorkers": 1,
+    "OptimalSpecialty": "Engineer",
+    "Cost": { "Materials": 120, "Credits": 12000 },
+    "Production": { "Energy": 12.0 }
+  },
+  {
+    "Id": "iron_mine",
+    "Name": "Iron Mine",
+    "Category": "Industry",
+    "RequiredTech": "heavy_metallurgy",
+    "RequiresDeposit": "Iron",
+    "ExtractionPerTick": 1.5,
+    "BuildTimeTicks": 90,
+    "MaxWorkers": 1,
+    "OptimalSpecialty": "Geologist",
+    "Cost": { "Materials": 40, "Credits": 3000 },
+    "Production": { "Materials": 1.2, "Energy": -0.5 }
+  },
+  {
+    "Id": "ghg_factory",
+    "Name": "GHG Factory",
+    "Category": "Planetary",
+    "RequiredTech": "greenhouse_gas_production",
+    "BuildTimeTicks": 140,
+    "MaxWorkers": 1,
+    "OptimalSpecialty": "Climatologist",
+    "Cost": { "Materials": 100, "Credits": 9000 },
+    "Production": { "Energy": -1.5 },
+    "PlanetEffects": { "Temperature": 0.020, "Pressure": 0.010 }
+  },
+  {
+    "Id": "orbital_mirror",
+    "Name": "Orbital Mirror Control",
+    "Category": "Planetary",
+    "RequiredTech": "orbital_mirrors",
+    "BuildTimeTicks": 160,
+    "MaxWorkers": 1,
+    "OptimalSpecialty": "Climatologist",
+    "Cost": { "Materials": 120, "Credits": 14000 },
+    "Production": { "Energy": -2.0 },
+    "PlanetEffects": { "Temperature": 0.035 }
+  },
+  {
+    "Id": "magnetosphere_station",
+    "Name": "L1 Magnetosphere Station",
+    "Category": "Planetary",
+    "RequiredTech": "artificial_magnetosphere",
+    "BuildTimeTicks": 200,
+    "MaxWorkers": 0,
+    "ShieldsAtmosphere": true,
+    "Cost": { "Materials": 150, "Credits": 20000 },
+    "Production": { "Energy": -4.0 }
+  },
+  {
+    "Id": "comet_redirector",
+    "Name": "Comet Redirector",
+    "Category": "Planetary",
+    "RequiredTech": "comet_redirection",
+    "BuildTimeTicks": 180,
+    "MaxWorkers": 1,
+    "OptimalSpecialty": "Climatologist",
+    "Cost": { "Materials": 130, "Credits": 16000 },
+    "Production": { "Energy": -2.5 },
+    "PlanetEffects": { "Water": 0.03, "Pressure": 0.015 }
   }
 ]

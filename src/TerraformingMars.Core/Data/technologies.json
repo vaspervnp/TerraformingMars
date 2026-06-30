@@ -1,0 +1,99 @@
+// Δέντρο τεχνολογίας. Phase 1 (Επιβίωση) θεωρείται γνωστή κατά την προσεδάφιση
+// (τα βασικά κτίρια είναι διαθέσιμα από την αρχή). Phase 2–4 ερευνώνται in-game.
+[
+  // ---------- Phase 2: Βιομηχανική Επέκταση ----------
+  {
+    "Id": "nuclear_fission",
+    "Name": "Nuclear Fission",
+    "Description": "Πυρηνικοί αντιδραστήρες — ενέργεια ανεξάρτητη από τον ήλιο (αμμοθύελλες).",
+    "Phase": 2,
+    "Cost": 300,
+    "Prerequisites": [],
+    "Unlocks": [ "fission_reactor" ]
+  },
+  {
+    "Id": "heavy_metallurgy",
+    "Name": "Heavy Metallurgy",
+    "Description": "Εξόρυξη & επεξεργασία βαρέων μετάλλων για δομικά υλικά.",
+    "Phase": 2,
+    "Cost": 250,
+    "Prerequisites": [],
+    "Unlocks": [ "iron_mine" ]
+  },
+  {
+    "Id": "rover_networks",
+    "Name": "Rover Networks",
+    "Description": "Δίκτυα αυτόνομων rovers για επέκταση & logistics.",
+    "Phase": 2,
+    "Cost": 200,
+    "Prerequisites": [],
+    "Unlocks": []
+  },
+  {
+    "Id": "greenhouse_gas_production",
+    "Name": "GHG Factories",
+    "Description": "Εργοστάσια υπερφθορανθράκων — ισχυρά αέρια θερμοκηπίου.",
+    "Phase": 2,
+    "Cost": 400,
+    "Prerequisites": [ "nuclear_fission" ],
+    "Unlocks": [ "ghg_factory" ]
+  },
+
+  // ---------- Phase 3: Πλανητική Μηχανική ----------
+  {
+    "Id": "orbital_mirrors",
+    "Name": "Orbital Mirrors",
+    "Description": "Τροχιακά κάτοπτρα για λιώσιμο των πολικών καλυπτρών.",
+    "Phase": 3,
+    "Cost": 600,
+    "Prerequisites": [ "greenhouse_gas_production" ],
+    "Unlocks": [ "orbital_mirror" ]
+  },
+  {
+    "Id": "artificial_magnetosphere",
+    "Name": "Artificial Magnetosphere",
+    "Description": "Τεχνητή μαγνητόσφαιρα στο L1 — προστασία της νέας ατμόσφαιρας.",
+    "Phase": 3,
+    "Cost": 700,
+    "Prerequisites": [ "nuclear_fission" ],
+    "Unlocks": [ "magnetosphere_station" ]
+  },
+  {
+    "Id": "comet_redirection",
+    "Name": "Comet Redirection",
+    "Description": "Πρόσκρουση κομητών για εισαγωγή αζώτου & νερού.",
+    "Phase": 3,
+    "Cost": 800,
+    "Prerequisites": [ "orbital_mirrors" ],
+    "Unlocks": [ "comet_redirector" ]
+  },
+
+  // ---------- Phase 4: Βιόσφαιρα & Οικοσύστημα ----------
+  {
+    "Id": "cyanobacteria",
+    "Name": "Cyanobacteria & Lichen",
+    "Description": "Πρώτο στάδιο οξυγόνωσης μέσω ανθεκτικών μικροοργανισμών.",
+    "Phase": 4,
+    "Cost": 500,
+    "Prerequisites": [ "orbital_mirrors" ],
+    "Unlocks": []
+  },
+  {
+    "Id": "gm_trees",
+    "Name": "GM Cold-Resistant Trees",
+    "Description": "Γενετικά τροποποιημένα δέντρα ανθεκτικά στο κρύο.",
+    "Phase": 4,
+    "Cost": 700,
+    "Prerequisites": [ "cyanobacteria" ],
+    "Unlocks": []
+  },
+  {
+    "Id": "domeless_cities",
+    "Name": "Domeless Cities",
+    "Description": "Πόλεις χωρίς θόλο — ζωή στην ανοιχτή επιφάνεια.",
+    "Phase": 4,
+    "Cost": 1000,
+    "Prerequisites": [ "gm_trees", "artificial_magnetosphere" ],
+    "Unlocks": []
+  }
+]
