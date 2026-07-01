@@ -257,9 +257,11 @@ public class BuildingLifecycleTests
         for (int i = 0; i < 50; i++) world.Tick();
         Assert.True(ice.RemainingDeposit < initial); // εξορύσσει
 
+        int revisionBeforeDepletion = world.MapRevision;
         for (int i = 0; i < 3000; i++) world.Tick();   // εξάντληση
         Assert.Equal(0, ice.RemainingDeposit);
         Assert.True(building.DepositDepleted);
+        Assert.True(world.MapRevision > revisionBeforeDepletion); // η εξάντληση ζητά επανασχεδίαση (χάνεται ο ρόμβος)
     }
 
     [Fact]

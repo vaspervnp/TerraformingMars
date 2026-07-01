@@ -74,8 +74,12 @@ public sealed class ProductionSystem : ISimulationSystem
             {
                 var tile = world.Map.GetTile(building.Location);
                 double need = def.ExtractionPerTick * eff;
+                double before = tile?.RemainingDeposit ?? 0;
                 double extracted = tile?.Extract(need) ?? 0;
                 building.DepositDepleted = tile is null || tile.RemainingDeposit <= 0;
+                // Μόλις εξαντληθεί το κοίτασμα, ξαναχτίζουμε τον χάρτη ώστε να χαθεί ο ρόμβος του πόρου.
+                if (tile is not null && before > 0 && tile.RemainingDeposit <= 0)
+                    world.BumpMapRevision();
                 if (extracted <= 0) continue; // εξαντλημένο κοίτασμα → αδρανές
                 factor = extracted / def.ExtractionPerTick;
             }

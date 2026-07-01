@@ -74,6 +74,11 @@ public class MarsGame : Microsoft.Xna.Framework.Game
     private List<string> _tracks = null!;
     private int _trackIndex;
     private int _menuRow;
+
+    // Background μενού: οι 4 φάσεις γεωπλασίας του Άρη (από mars_terraforming.jpg) που κάνουν dissolve.
+    private Texture2D? _phaseTex;
+    private readonly Rectangle[] _phaseSrc = new Rectangle[4];
+    private double _bgTime;
     private int _prevResearchedCount;
     private string _lastNotification = "";
     private bool _prevWon;
@@ -101,7 +106,11 @@ public class MarsGame : Microsoft.Xna.Framework.Game
     private bool _reclaimMode;
     private Building? _reclaimTarget;
     private bool ReclaimUnlocked => _world.Colony.Tech.IsResearched(ReclaimTechId);
-    private int TotalToolbarSlots => _buildables.Count + (ReclaimUnlocked ? 1 : 0);
+    private int HelpSlotIndex => _buildables.Count + (ReclaimUnlocked ? 1 : 0); // το help είναι πάντα τελευταίο
+    private int TotalToolbarSlots => HelpSlotIndex + 1;
+
+    // Οθόνη βοήθειας (modal· ανοίγει από τη μπάρα ή το μενού)
+    private bool _showHelp;
 
     public MarsGame()
     {
@@ -146,6 +155,7 @@ public class MarsGame : Microsoft.Xna.Framework.Game
         InitAudio();
         _icons = IconFactory.CreateAll(GraphicsDevice, _catalog);
         _reclaimIcon = IconFactory.CreateReclaim(GraphicsDevice);
+        _phaseTex = LoadPhaseTexture();
         InitCamera();
     }
 
@@ -263,6 +273,7 @@ public class MarsGame : Microsoft.Xna.Framework.Game
         var list = new List<(string, Action, Color)>();
         if (_hasActiveGame) list.Add(("Continue", () => _state = GameState.Playing, new Color(120, 230, 120)));
         list.Add((_hasActiveGame ? "New Game" : "Start Game", StartGame, new Color(255, 220, 120)));
+        list.Add(("Help", () => _showHelp = true, new Color(150, 200, 255)));
         list.Add(("Quit", Exit, new Color(230, 120, 110)));
         return list;
     }
@@ -364,9 +375,78 @@ public class MarsGame : Microsoft.Xna.Framework.Game
         };
     }
 
+    /// <summary>Φορτώνει το mars_terraforming.jpg και υπολογίζει τα 4 τετράγωνα crop (ένας πλανήτης ανά φάση).</summary>
+    private Texture2D? LoadPhaseTexture()
+    {
+        try
+        {
+            string path = Path.Combine(AudioSettings.AssetsDir, "MarsTransitionV.jpg");
+            if (!File.Exists(path)) return null;
+
+            using var fs = File.OpenRead(path);
+            var tex = Texture2D.FromStream(GraphicsDevice, fs);
+
+            // Πλέγμα 2×2, σειρά dissolve TL → TR → BL → BR (ξηρός Άρης → πλήρης γεωπλασία).
+            if (tex.Width == 2606 && tex.Height == 2626)
+            {
+                // Μετρημένα tight bounding boxes ανά πλανήτη — χωρίς bleed από τη γειτονική φάση.
+                _phaseSrc[0] = new Rectangle(16, 3, 1276, 1287);
+                _phaseSrc[1] = new Rectangle(1341, 9, 1227, 1277);
+                _phaseSrc[2] = new Rectangle(73, 1298, 1209, 1257);
+                _phaseSrc[3] = new Rectangle(1288, 1302, 1272, 1278);
+            }
+            else // fallback: απλό πλέγμα 2×2 αν αλλάξει η εικόνα
+            {
+                int hw = tex.Width / 2, hh = tex.Height / 2;
+                _phaseSrc[0] = new Rectangle(0, 0, hw, hh);
+                _phaseSrc[1] = new Rectangle(hw, 0, hw, hh);
+                _phaseSrc[2] = new Rectangle(0, hh, hw, hh);
+                _phaseSrc[3] = new Rectangle(hw, hh, hw, hh);
+            }
+            return tex;
+        }
+        catch { return null; } // λείπει/χαλασμένο αρχείο → χωρίς background
+    }
+
+    /// <summary>Σχεδιάζει τον κεντρικό πλανήτη που κάνει dissolve από τη μία φάση στην επόμενη.</summary>
+    private void DrawMenuBackground()
+    {
+        if (_phaseTex is null) return;
+        int vw = GraphicsDevice.Viewport.Width, vh = GraphicsDevice.Viewport.Height;
+
+        // Ο πλανήτης γεμίζει όλο το ύψος (διατηρώντας την αναλογία του crop), κεντραρισμένος.
+        Rectangle DestFor(Rectangle src)
+        {
+            int destW = (int)(vh * (float)src.Width / src.Height);
+            return new Rectangle((vw - destW) / 2, 0, destW, vh);
+        }
+
+        const double hold = 3.0, fade = 2.2;             // δευτ. σταθερό + δευτ. dissolve ανά φάση
+        double per = hold + fade;
+        double t = _bgTime % (per * 4);
+        int i = (int)(t / per);
+        double local = t - i * per;
+        int next = (i + 1) % 4;
+
+        _spriteBatch.Draw(_phaseTex, DestFor(_phaseSrc[i]), _phaseSrc[i], Color.White);
+        if (local > hold)
+        {
+            float a = (float)Math.Clamp((local - hold) / fade, 0, 1);
+            _spriteBatch.Draw(_phaseTex, DestFor(_phaseSrc[next]), _phaseSrc[next], Color.White * a); // dissolve-in
+        }
+
+        _spriteBatch.Draw(_pixel, new Rectangle(0, 0, vw, vh), new Color(0, 0, 0, 120)); // dim για ευανάγνωστο κείμενο
+    }
+
     private void DrawMenu()
     {
         GraphicsDevice.Clear(new Color(0x0b, 0x0b, 0x12));
+
+        // Φόντο (φωτογραφία) με ομαλό (linear) sampling — ξεχωριστό batch από το κείμενο.
+        _spriteBatch.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, SamplerState.LinearClamp);
+        DrawMenuBackground();
+        _spriteBatch.End();
+
         _spriteBatch.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, SamplerState.PointClamp);
 
         var ms = Mouse.GetState();
@@ -377,13 +457,16 @@ public class MarsGame : Microsoft.Xna.Framework.Game
         {
             var r = MenuRowRect(i);
             bool focused = i == _menuRow;
-            if (focused || r.Contains(ms.X, ms.Y))
-                _spriteBatch.Draw(_pixel, r, new Color(255, 255, 255, focused ? 26 : 14));
+            // Premultiplied AlphaBlend: πολλαπλασιάζουμε το χρώμα επί το opacity (αλλιώς βγαίνει σχεδόν λευκό).
+            if (focused)
+                _spriteBatch.Draw(_pixel, r, new Color(45, 75, 140) * 0.85f); // μπλε selection bar
+            else if (r.Contains(ms.X, ms.Y))
+                _spriteBatch.Draw(_pixel, r, new Color(70, 82, 105) * 0.5f);  // απαλό hover
 
             var size = _font.MeasureString(rows[i]) * 1.1f;
             _spriteBatch.DrawString(_font, rows[i],
                 new Vector2(r.X + (r.Width - size.X) / 2f, r.Y + (r.Height - size.Y) / 2f),
-                focused ? new Color(255, 220, 120) : HudWhite, 0f, Vector2.Zero, 1.1f, SpriteEffects.None, 0f);
+                focused ? new Color(255, 232, 150) : HudWhite, 0f, Vector2.Zero, 1.1f, SpriteEffects.None, 0f);
 
             if (RowHasArrows(i))
             {
@@ -421,6 +504,88 @@ public class MarsGame : Microsoft.Xna.Framework.Game
         var size = _font.MeasureString(glyph) * 1.2f;
         _spriteBatch.DrawString(_font, glyph, new Vector2(r.X + (r.Width - size.X) / 2f, r.Y + (r.Height - size.Y) / 2f),
             HudWhite, 0f, Vector2.Zero, 1.2f, SpriteEffects.None, 0f);
+    }
+
+    // ----------------------------------------------------------------- Help screen
+
+    // Οι κεφαλίδες (χωρίς πεζά) χρωματίζονται διαφορετικά από το σώμα κειμένου.
+    private static readonly string[] HelpText =
+    {
+        "GOAL",
+        "Terraform Mars: raise Temperature, Pressure, Oxygen and Water to their targets.",
+        "Reach 100% on all four planet metrics to win - and keep your crew alive.",
+        "",
+        "BUILD",
+        "Click an icon in the bottom toolbar, then click a hex to place a building.",
+        "Buildings cost Credits up front and use Materials while under construction.",
+        "Mines need a matching deposit (H2O / Fe / Si / Rg), shown as coloured diamonds.",
+        "",
+        "CREW & RESOURCES",
+        "Select a building and press +/- to assign or remove crew (staffed = more output).",
+        "Watch Energy, Water, Oxygen, Food and Materials - shortages stall the colony.",
+        "",
+        "RESEARCH & RECLAIM",
+        "Press T to choose a technology; finishing it unlocks new buildings.",
+        "Research 'Reclaim' to recycle a building for some Credits back (refund shrinks",
+        "over time). Click the recycle icon, then the building.",
+        "",
+        "CONTROLS",
+        "Move: WASD / arrows / drag     Zoom: mouse wheel",
+        "Speed: Space = pause, 1 / 2 / 3 = normal / fast / ultra",
+        "Save / Load: F5 / F9     New map: N     Mute SFX: U     Menu: Esc",
+    };
+
+    private Rectangle HelpPanelRect()
+    {
+        int vw = GraphicsDevice.Viewport.Width, vh = GraphicsDevice.Viewport.Height;
+        int w = Math.Min(vw - 80, 880), h = Math.Min(vh - 60, 680);
+        return new Rectangle((vw - w) / 2, (vh - h) / 2, w, h);
+    }
+
+    private Rectangle HelpCloseRect()
+    {
+        var p = HelpPanelRect();
+        const int bw = 170, bh = 44;
+        return new Rectangle(p.Center.X - bw / 2, p.Bottom - bh - 16, bw, bh);
+    }
+
+    private void DrawHelpOverlay()
+    {
+        int vw = GraphicsDevice.Viewport.Width, vh = GraphicsDevice.Viewport.Height;
+        var ms = Mouse.GetState();
+        var panel = HelpPanelRect();
+
+        _spriteBatch.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, SamplerState.PointClamp);
+
+        _spriteBatch.Draw(_pixel, new Rectangle(0, 0, vw, vh), new Color(0, 0, 0, 180));
+        _spriteBatch.Draw(_pixel, panel, new Color(16, 18, 26, 250));
+        DrawRectOutline(panel, new Color(120, 130, 150));
+
+        const string title = "HOW TO PLAY";
+        var tsz = _font.MeasureString(title) * 1.5f;
+        _spriteBatch.DrawString(_font, title, new Vector2(panel.Center.X - tsz.X / 2f, panel.Y + 16),
+            new Color(230, 150, 90), 0f, Vector2.Zero, 1.5f, SpriteEffects.None, 0f);
+
+        float y = panel.Y + 62;
+        foreach (var line in HelpText)
+        {
+            if (line.Length == 0) { y += 9f; continue; }
+            bool header = !line.Any(char.IsLower);
+            _spriteBatch.DrawString(_font, line, new Vector2(panel.X + 26, y),
+                header ? new Color(255, 205, 120) : HudWhite, 0f, Vector2.Zero,
+                header ? 1.05f : 1.0f, SpriteEffects.None, 0f);
+            y += header ? 27f : 22f;
+        }
+
+        var close = HelpCloseRect();
+        bool hover = close.Contains(ms.X, ms.Y);
+        _spriteBatch.Draw(_pixel, close, hover ? new Color(60, 70, 90) : new Color(34, 38, 50));
+        DrawRectOutline(close, new Color(150, 200, 255));
+        const string cl = "Close (Esc)";
+        var csz = _font.MeasureString(cl);
+        _spriteBatch.DrawString(_font, cl, new Vector2(close.Center.X - csz.X / 2f, close.Center.Y - csz.Y / 2f), HudWhite);
+
+        _spriteBatch.End();
     }
 
     private void DrawCentered(string text, float y, float scale, Color color)
@@ -472,8 +637,25 @@ public class MarsGame : Microsoft.Xna.Framework.Game
         var mouse = Mouse.GetState();
         var keys = Keyboard.GetState();
 
+        // Οθόνη βοήθειας: modal σε όλες τις καταστάσεις (Close κουμπί ή Esc κλείνει).
+        if (_showHelp)
+        {
+            _uiClick = false; // αποφυγή stale click μετά το κλείσιμο
+            bool click = mouse.LeftButton == ButtonState.Released && _prevMouse.LeftButton == ButtonState.Pressed;
+            if (KeyPressed(keys, Keys.Escape) || (click && HelpCloseRect().Contains(mouse.X, mouse.Y)))
+            {
+                _showHelp = false;
+                _audio.Blip();
+            }
+            _prevMouse = mouse;
+            _prevKeys = keys;
+            base.Update(gameTime);
+            return;
+        }
+
         if (_state == GameState.Menu)
         {
+            _bgTime += gameTime.ElapsedGameTime.TotalSeconds;
             UpdateMenu(keys, mouse);
             _prevMouse = mouse;
             _prevKeys = keys;
@@ -649,6 +831,12 @@ public class MarsGame : Microsoft.Xna.Framework.Game
             {
                 _reclaimMode = !_reclaimMode;
                 _buildMode = false;
+                _audio.Blip();
+                _uiClick = true;
+            }
+            else if (HelpButtonHit(mouse.X, mouse.Y))
+            {
+                _showHelp = true;
                 _audio.Blip();
                 _uiClick = true;
             }
@@ -833,6 +1021,7 @@ public class MarsGame : Microsoft.Xna.Framework.Game
         if (_state == GameState.Menu)
         {
             DrawMenu();
+            if (_showHelp) DrawHelpOverlay();
             base.Draw(gameTime);
             return;
         }
@@ -844,6 +1033,7 @@ public class MarsGame : Microsoft.Xna.Framework.Game
             0, GraphicsDevice.Viewport.Width, GraphicsDevice.Viewport.Height, 0, 0f, 1f);
 
         _renderer.Draw(view, projection);
+        DrawDepositSymbols(view);
         DrawBuildingIcons(view);
 
         if (_selected is not null)
@@ -865,8 +1055,44 @@ public class MarsGame : Microsoft.Xna.Framework.Game
         }
 
         DrawHud();
+        if (_showHelp) DrawHelpOverlay();
 
         base.Draw(gameTime);
+    }
+
+    /// <summary>Χημικό σύμβολο κοιτάσματος (Regolith = "Rg", μείγμα χωρίς μοναδικό στοιχείο).</summary>
+    private static string ResourceSymbol(ResourceType type) => type switch
+    {
+        ResourceType.Ice => "H2O",
+        ResourceType.Iron => "Fe",
+        ResourceType.Silicon => "Si",
+        ResourceType.Regolith => "Rg",
+        _ => ""
+    };
+
+    /// <summary>Σχεδιάζει το χημικό σύμβολο πάνω σε κάθε ορατό (μη-εξαντλημένο) κοίτασμα, σε world-space.</summary>
+    private void DrawDepositSymbols(Matrix view)
+    {
+        _spriteBatch.Begin(SpriteSortMode.Deferred, BlendState.NonPremultiplied, SamplerState.LinearClamp,
+            DepthStencilState.None, RasterizerState.CullNone, null, view);
+
+        foreach (var tile in _map.Tiles)
+        {
+            if (tile.Deposit.IsEmpty || tile.RemainingDeposit <= 0) continue;
+            string sym = ResourceSymbol(tile.Deposit.Type);
+            if (sym.Length == 0) continue;
+
+            var (wx, wy) = _renderer.Layout.HexToPixel(tile.Coord);
+            var size = _font.MeasureString(sym);
+            // Εγγραφή στον ρόμβο (ίδιες ακτίνες με τον renderer): halfW + halfH ≤ r.
+            float r = HexSize * (tile.Deposit.Hidden ? 0.36f : 0.5f);
+            float scale = 2f * r * 0.82f / (size.X + size.Y);
+            Color col = tile.Deposit.Hidden ? new Color(30, 33, 44) * 0.5f : new Color(25, 28, 38);
+            _spriteBatch.DrawString(_font, sym, new Vector2((float)wx, (float)wy), col,
+                0f, size / 2f, scale, SpriteEffects.None, 0f);
+        }
+
+        _spriteBatch.End();
     }
 
     /// <summary>Σχεδιάζει τα εικονίδια κτιρίων σε world-space (γεμίζουν με χρώμα όσο χτίζονται).</summary>
@@ -919,6 +1145,9 @@ public class MarsGame : Microsoft.Xna.Framework.Game
     private bool ReclaimButtonHit(int mx, int my) =>
         ReclaimUnlocked && ToolbarButtonRect(_buildables.Count, TotalToolbarSlots).Contains(mx, my);
 
+    private bool HelpButtonHit(int mx, int my) =>
+        ToolbarButtonRect(HelpSlotIndex, TotalToolbarSlots).Contains(mx, my);
+
     private void DrawToolbar()
     {
         int slots = TotalToolbarSlots;
@@ -946,6 +1175,16 @@ public class MarsGame : Microsoft.Xna.Framework.Game
             _spriteBatch.Draw(_reclaimIcon, new Rectangle(rect.X + 3, rect.Y + 3, rect.Width - 6, rect.Height - 6), Color.White);
         }
 
+        // Κουμπί βοήθειας "?" (πάντα τελευταίο)
+        {
+            var rect = ToolbarButtonRect(HelpSlotIndex, slots);
+            _spriteBatch.Draw(_pixel, rect, _showHelp ? new Color(30, 50, 80, 235) : new Color(18, 20, 28, 215));
+            DrawRectOutline(rect, _showHelp ? new Color(150, 200, 255) : new Color(70, 74, 90));
+            var qs = _font.MeasureString("?") * 1.6f;
+            _spriteBatch.DrawString(_font, "?", new Vector2(rect.Center.X - qs.X / 2f, rect.Center.Y - qs.Y / 2f),
+                new Color(150, 200, 255), 0f, Vector2.Zero, 1.6f, SpriteEffects.None, 0f);
+        }
+
         int hover = ToolbarHitIndex(ms.X, ms.Y);
         if (hover >= 0)
         {
@@ -956,6 +1195,10 @@ public class MarsGame : Microsoft.Xna.Framework.Game
         {
             DrawToolbarTooltip("Reclaim   (recycle a building for credits)",
                 ToolbarButtonRect(_buildables.Count, slots).Center.X);
+        }
+        else if (HelpButtonHit(ms.X, ms.Y))
+        {
+            DrawToolbarTooltip("Help   (how to play)", ToolbarButtonRect(HelpSlotIndex, slots).Center.X);
         }
     }
 
@@ -1272,6 +1515,7 @@ public class MarsGame : Microsoft.Xna.Framework.Game
         if (disposing)
         {
             _music?.Dispose();
+            _phaseTex?.Dispose();
             _renderer?.Dispose();
             _pixel?.Dispose();
             _spriteBatch?.Dispose();

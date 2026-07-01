@@ -99,10 +99,10 @@ public sealed class HexMapRenderer : IDisposable
                 outline.Add(new VertexPositionColor(new Vector3(corners[j], 0f), OutlineColor));
             }
 
-            if (!tile.Deposit.IsEmpty)
+            if (!tile.Deposit.IsEmpty && tile.RemainingDeposit > 0)
             {
                 Color rc = TerrainPalette.Resource(tile.Deposit.Type);
-                float r = _size * (tile.Deposit.Hidden ? 0.26f : 0.36f);
+                float r = _size * (tile.Deposit.Hidden ? 0.36f : 0.5f);
                 if (tile.Deposit.Hidden) rc = new Color(rc, 0.45f);
 
                 var up = new Vector3(c.X, c.Y - r, 0f);
