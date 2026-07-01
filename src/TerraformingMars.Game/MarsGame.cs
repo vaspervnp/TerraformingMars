@@ -62,6 +62,7 @@ public class MarsGame : Microsoft.Xna.Framework.Game
     private int _buildIndex;
     private bool _buildMode;
     private bool _buildMenuOpen;   // popup παλέτα κτιρίων (2 σειρές πάνω από τη μπάρα)
+    private bool _speedMenuOpen;   // popup ταχύτητας (pause / x1 / x2 / x4)
     private string _status = "";
     private double _statusTimer;
     private Point _mouseDownPos;
@@ -87,6 +88,8 @@ public class MarsGame : Microsoft.Xna.Framework.Game
     private bool _uiClick;
     private bool _hasActiveGame;
     private Dictionary<string, Texture2D> _icons = null!;
+    private Dictionary<string, Texture2D> _resIcons = null!;
+    private Dictionary<string, Texture2D> _toolIcons = null!;
 
     // Modal dialog με κουμπιά (mouse + Enter/Esc). Όσο είναι ανοιχτό, παγώνει η σιμουλασιόν.
     private sealed class DialogButton
@@ -109,11 +112,16 @@ public class MarsGame : Microsoft.Xna.Framework.Game
     private Building? _reclaimTarget;
     private bool ReclaimUnlocked => _world.Colony.Tech.IsResearched(ReclaimTechId);
 
-    // Σταθερή μπάρα: [Κτίρια] [Reclaim;] [Βοήθεια]. Τα κτίρια ανοίγουν popup παλέτα (2 σειρές).
-    private const int BuildingsSlotIndex = 0;
-    private int ReclaimSlotIndex => ReclaimUnlocked ? 1 : -1;
-    private int HelpSlotIndex => ReclaimUnlocked ? 2 : 1;      // το help είναι πάντα τελευταίο
-    private int TotalToolbarSlots => HelpSlotIndex + 1;
+    // Μπάρα εργαλείων: δυναμική λίστα κουμπιών (το Reclaim εμφανίζεται μόνο όταν ξεκλειδωθεί).
+    private enum Tool { Buildings, Research, Speed, Save, Mute, Reclaim, Menu, Help }
+    private List<Tool> ToolbarTools()
+    {
+        var list = new List<Tool> { Tool.Buildings, Tool.Research, Tool.Speed, Tool.Save, Tool.Mute };
+        if (ReclaimUnlocked) list.Add(Tool.Reclaim);
+        list.Add(Tool.Menu);
+        list.Add(Tool.Help);
+        return list;
+    }
 
     // Οθόνη βοήθειας (modal· ανοίγει από τη μπάρα ή το μενού)
     private bool _showHelp;
@@ -162,6 +170,8 @@ public class MarsGame : Microsoft.Xna.Framework.Game
         _icons = IconFactory.CreateAll(GraphicsDevice, _catalog);
         _reclaimIcon = IconFactory.CreateReclaim(GraphicsDevice);
         _buildingsIcon = IconFactory.CreateBuildings(GraphicsDevice);
+        _resIcons = IconFactory.CreateResourceIcons(GraphicsDevice);
+        _toolIcons = IconFactory.CreateUiIcons(GraphicsDevice);
         _phaseTex = LoadPhaseTexture();
         InitCamera();
     }
@@ -177,6 +187,7 @@ public class MarsGame : Microsoft.Xna.Framework.Game
         _selectedBuilding = null;
         _buildMode = false;
         _buildMenuOpen = false;
+        _speedMenuOpen = false;
         _reclaimMode = false;
         _reclaimTarget = null;
         CloseDialog();
@@ -603,23 +614,6 @@ public class MarsGame : Microsoft.Xna.Framework.Game
         _spriteBatch.DrawString(_font, text, pos, color, 0f, Vector2.Zero, scale, SpriteEffects.None, 0f);
     }
 
-    private void Regenerate(int seed)
-    {
-        _seed = seed;
-        _settings = new MapGenerationSettings { Width = _settings.Width, Height = _settings.Height, Seed = _seed };
-        _map = new MapGenerator(_settings).Generate();
-        _world = ColonyFactory.CreateStartingWorld(_map, _catalog, _sponsor, enableEvents: true);
-        _renderer.Build(_map);
-        _lastMapRevision = _world.MapRevision;
-        _selected = null;
-        _selectedBuilding = null;
-        _reclaimMode = false;
-        _reclaimTarget = null;
-        CloseDialog();
-        ResetTransitionTrackers();
-        InitCamera();
-    }
-
     /// <summary>Μέγιστο zoom-out = ~20 εξάγωνα οριζόντια (προσαρμόζεται στο πλάτος παραθύρου).</summary>
     private void UpdateMinZoom()
     {
@@ -697,11 +691,7 @@ public class MarsGame : Microsoft.Xna.Framework.Game
             base.Update(gameTime);
             return;
         }
-        if (KeyPressed(keys, Keys.U))
-        {
-            _audio.Enabled = _audioSettings.SfxEnabled = !_audio.Enabled;
-            SaveAudio();
-        }
+        if (KeyPressed(keys, Keys.U)) ToggleMute();
 
         _camera.SetViewport(GraphicsDevice.Viewport.Width, GraphicsDevice.Viewport.Height);
         UpdateMinZoom();
@@ -726,25 +716,8 @@ public class MarsGame : Microsoft.Xna.Framework.Game
         if (keys.IsKeyDown(Keys.D) || keys.IsKeyDown(Keys.Right)) move.X += 1;
         if (move != Vector2.Zero) _camera.Position += Vector2.Normalize(move) * panSpeed;
 
-        // Νέος χάρτης (N, με επιβεβαίωση) / εναλλαγή sponsor (G, ξεκινά νέο παιχνίδι)
-        if (KeyPressed(keys, Keys.N))
-            OpenDialog(new[] { "Create a new random map?", "The current colony will be lost." },
-                Btn("New map", new Color(120, 230, 120), () => Regenerate(new Random().Next())),
-                Btn("Cancel", HudDim, () => { }));
-        if (KeyPressed(keys, Keys.G))
-        {
-            _sponsorIndex = (_sponsorIndex + 1) % _sponsorCatalog.All.Count;
-            _sponsor = _sponsorCatalog.All[_sponsorIndex];
-            Regenerate(_seed);
-        }
-
-        // Save (F5) / Load (F9)
-        if (KeyPressed(keys, Keys.F5))
-        {
-            File.WriteAllText(SavePath, SaveSystem.ToJson(_world, _sponsor));
-            _status = "Game saved";
-            _statusTimer = 3.0;
-        }
+        // Save (F5) / Load (F9). Νέος χάρτης & αλλαγή χορηγού γίνονται πλέον μόνο από το μενού.
+        if (KeyPressed(keys, Keys.F5)) SaveGameToFile();
         if (KeyPressed(keys, Keys.F9) && File.Exists(SavePath))
         {
             _world = SaveSystem.Load(File.ReadAllText(SavePath), _catalog, _sponsorCatalog, out _sponsor);
@@ -775,24 +748,13 @@ public class MarsGame : Microsoft.Xna.Framework.Game
         if (_buildIndex >= _buildables.Count) _buildIndex = 0;
 
         // Επιλογή έρευνας: T κυκλώνει τα διαθέσιμα techs ως target
-        if (KeyPressed(keys, Keys.T))
-        {
-            var available = _world.Colony.Tech.Available.ToList();
-            if (available.Count > 0)
-            {
-                int idx = _world.Colony.Tech.CurrentTarget is null
-                    ? -1
-                    : available.FindIndex(t => t.Id == _world.Colony.Tech.CurrentTarget);
-                _world.Colony.Tech.StartResearch(available[(idx + 1) % available.Count].Id);
-                _audio.Blip();
-            }
-        }
+        if (KeyPressed(keys, Keys.T)) CycleResearch();
 
         // Build menu: B ανοίγει/κλείνει την παλέτα κτιρίων
         if (KeyPressed(keys, Keys.B))
         {
             _buildMenuOpen = !_buildMenuOpen;
-            if (_buildMenuOpen) { _buildMode = false; _reclaimMode = false; }
+            if (_buildMenuOpen) { _buildMode = false; _reclaimMode = false; _speedMenuOpen = false; }
         }
 
         // Ανάθεση/αφαίρεση αποίκων στο επιλεγμένο κτίριο (+/-)
@@ -827,8 +789,9 @@ public class MarsGame : Microsoft.Xna.Framework.Game
         {
             _mouseDownPos = new Point(mouse.X, mouse.Y);
 
-            // Προτεραιότητα: επιλογή κτιρίου από την ανοιχτή παλέτα → μπαίνει σε build mode & κλείνει.
+            // Προτεραιότητα: επιλογή από ανοιχτό popup (κτίρια ή ταχύτητα), μετά κουμπιά μπάρας.
             int menuBtn = _buildMenuOpen ? BuildMenuHitIndex(mouse.X, mouse.Y) : -1;
+            int speedBtn = _speedMenuOpen ? SpeedMenuHitIndex(mouse.X, mouse.Y) : -1;
             if (menuBtn >= 0)
             {
                 _buildMode = true;
@@ -838,26 +801,16 @@ public class MarsGame : Microsoft.Xna.Framework.Game
                 _audio.Blip();
                 _uiClick = true;
             }
-            else if (BuildingsButtonHit(mouse.X, mouse.Y))
+            else if (speedBtn >= 0)
             {
-                _buildMenuOpen = !_buildMenuOpen; // toggle η παλέτα
-                if (_buildMenuOpen) { _buildMode = false; _reclaimMode = false; }
+                _world.Clock.Speed = SpeedOptions[speedBtn].speed;
+                _speedMenuOpen = false;
                 _audio.Blip();
                 _uiClick = true;
             }
-            else if (ReclaimButtonHit(mouse.X, mouse.Y))
+            else if (TryToolbarClick(mouse.X, mouse.Y, out var tool))
             {
-                _reclaimMode = !_reclaimMode;
-                _buildMode = false;
-                _buildMenuOpen = false;
-                _audio.Blip();
-                _uiClick = true;
-            }
-            else if (HelpButtonHit(mouse.X, mouse.Y))
-            {
-                _showHelp = true;
-                _buildMenuOpen = false;
-                _audio.Blip();
+                HandleToolClick(tool);
                 _uiClick = true;
             }
         }
@@ -874,6 +827,7 @@ public class MarsGame : Microsoft.Xna.Framework.Game
         if (mouse.RightButton == ButtonState.Pressed && _prevMouse.RightButton == ButtonState.Released)
         {
             if (_buildMenuOpen) _buildMenuOpen = false;
+            else if (_speedMenuOpen) _speedMenuOpen = false;
             else if (_buildMode) _buildMode = false;
             else if (_reclaimMode) _reclaimMode = false;
             else if (_hasHover)
@@ -1155,14 +1109,43 @@ public class MarsGame : Microsoft.Xna.Framework.Game
         return new Rectangle(startX + index * (bs + gap), y, bs, bs);
     }
 
-    private bool BuildingsButtonHit(int mx, int my) =>
-        ToolbarButtonRect(BuildingsSlotIndex, TotalToolbarSlots).Contains(mx, my);
+    /// <summary>Ποιο κουμπί της μπάρας βρίσκεται κάτω από τον δείκτη (αν κάποιο).</summary>
+    private bool TryToolbarClick(int mx, int my, out Tool tool)
+    {
+        var tools = ToolbarTools();
+        for (int i = 0; i < tools.Count; i++)
+            if (ToolbarButtonRect(i, tools.Count).Contains(mx, my)) { tool = tools[i]; return true; }
+        tool = Tool.Help;
+        return false;
+    }
 
-    private bool ReclaimButtonHit(int mx, int my) =>
-        ReclaimUnlocked && ToolbarButtonRect(ReclaimSlotIndex, TotalToolbarSlots).Contains(mx, my);
+    private static readonly (string icon, GameSpeed speed, string tip)[] SpeedOptions =
+    {
+        ("pause", GameSpeed.Paused, "Pause"),
+        ("speed1", GameSpeed.Normal, "x1   Normal"),
+        ("speed2", GameSpeed.Fast, "x2   Fast"),
+        ("speed4", GameSpeed.Ultra, "x4   Ultra"),
+    };
 
-    private bool HelpButtonHit(int mx, int my) =>
-        ToolbarButtonRect(HelpSlotIndex, TotalToolbarSlots).Contains(mx, my);
+    /// <summary>Rect κουμπιού του popup ταχύτητας: οριζόντια σειρά 4, κεντραρισμένη πάνω από το κουμπί «Speed».</summary>
+    private Rectangle SpeedMenuButtonRect(int index)
+    {
+        const int bs = 46, gap = 6;
+        var tools = ToolbarTools();
+        Rectangle speedRect = ToolbarButtonRect(tools.IndexOf(Tool.Speed), tools.Count);
+        int count = SpeedOptions.Length;
+        int rowWidth = count * bs + (count - 1) * gap;
+        int startX = Math.Clamp(speedRect.Center.X - rowWidth / 2, 6, GraphicsDevice.Viewport.Width - rowWidth - 6);
+        int y = speedRect.Y - (bs + gap);
+        return new Rectangle(startX + index * (bs + gap), y, bs, bs);
+    }
+
+    private int SpeedMenuHitIndex(int mx, int my)
+    {
+        for (int i = 0; i < SpeedOptions.Length; i++)
+            if (SpeedMenuButtonRect(i).Contains(mx, my)) return i;
+        return -1;
+    }
 
     /// <summary>Rect ενός κουμπιού της popup παλέτας: 2 σειρές, στοιχισμένες στο κέντρο, πάνω από τη μπάρα.</summary>
     private Rectangle BuildMenuButtonRect(int index)
@@ -1190,54 +1173,179 @@ public class MarsGame : Microsoft.Xna.Framework.Game
     /// <summary>True αν ο δείκτης είναι πάνω σε κουμπί της μπάρας ή της ανοιχτής παλέτας (για απόκρυψη hover hint).</summary>
     private bool IsPointerOverToolbar(int mx, int my)
     {
-        for (int i = 0; i < TotalToolbarSlots; i++)
-            if (ToolbarButtonRect(i, TotalToolbarSlots).Contains(mx, my)) return true;
-        return _buildMenuOpen && BuildMenuHitIndex(mx, my) >= 0;
+        var tools = ToolbarTools();
+        for (int i = 0; i < tools.Count; i++)
+            if (ToolbarButtonRect(i, tools.Count).Contains(mx, my)) return true;
+        if (_buildMenuOpen && BuildMenuHitIndex(mx, my) >= 0) return true;
+        if (_speedMenuOpen && SpeedMenuHitIndex(mx, my) >= 0) return true;
+        return false;
     }
 
     private void DrawToolbar()
     {
-        int slots = TotalToolbarSlots;
         var ms = Mouse.GetState();
+        var tools = ToolbarTools();
 
-        // Αν είναι ανοιχτή, ζωγράφισε πρώτα την popup παλέτα (2 σειρές πάνω από τη μπάρα).
+        // Ανοιχτά popups ζωγραφίζονται πρώτα (πάνω από τη μπάρα).
         if (_buildMenuOpen) DrawBuildMenu(ms);
+        if (_speedMenuOpen) DrawSpeedMenu(ms);
 
-        // Κουμπί «Κτίρια» (toggle παλέτας) — πρώτο στη μπάρα.
+        for (int i = 0; i < tools.Count; i++)
         {
-            var rect = ToolbarButtonRect(BuildingsSlotIndex, slots);
-            bool active = _buildMenuOpen || _buildMode;
-            _spriteBatch.Draw(_pixel, rect, active ? new Color(50, 70, 90, 235) : new Color(18, 20, 28, 215));
-            DrawRectOutline(rect, active ? new Color(120, 190, 240) : new Color(70, 74, 90));
-            _spriteBatch.Draw(_buildingsIcon, new Rectangle(rect.X + 3, rect.Y + 3, rect.Width - 6, rect.Height - 6), Color.White);
+            var tool = tools[i];
+            var rect = ToolbarButtonRect(i, tools.Count);
+            bool active = tool switch
+            {
+                Tool.Buildings => _buildMenuOpen || _buildMode,
+                Tool.Speed => _speedMenuOpen,
+                Tool.Reclaim => _reclaimMode,
+                Tool.Help => _showHelp,
+                _ => false
+            };
+            _spriteBatch.Draw(_pixel, rect, active ? new Color(45, 62, 84, 235) : new Color(18, 20, 28, 215));
+            DrawRectOutline(rect, active ? new Color(140, 195, 245) : new Color(70, 74, 90));
+
+            if (tool == Tool.Help)
+            {
+                var qs = _font.MeasureString("?") * 1.6f;
+                _spriteBatch.DrawString(_font, "?", new Vector2(rect.Center.X - qs.X / 2f, rect.Center.Y - qs.Y / 2f),
+                    new Color(150, 200, 255), 0f, Vector2.Zero, 1.6f, SpriteEffects.None, 0f);
+            }
+            else
+            {
+                _spriteBatch.Draw(ToolIcon(tool), new Rectangle(rect.X + 3, rect.Y + 3, rect.Width - 6, rect.Height - 6), Color.White);
+            }
         }
 
-        // Κουμπί reclaim (μόλις ερευνηθεί η τεχνολογία "reclaim")
-        if (ReclaimUnlocked)
+        // Tooltip για το κουμπί κάτω από τον δείκτη (τα popups έχουν δικά τους tooltips).
+        if (TryToolbarClick(ms.X, ms.Y, out var hovered))
         {
-            var rect = ToolbarButtonRect(ReclaimSlotIndex, slots);
-            _spriteBatch.Draw(_pixel, rect, _reclaimMode ? new Color(80, 60, 30, 235) : new Color(18, 20, 28, 215));
-            DrawRectOutline(rect, _reclaimMode ? new Color(240, 170, 80) : new Color(70, 74, 90));
-            _spriteBatch.Draw(_reclaimIcon, new Rectangle(rect.X + 3, rect.Y + 3, rect.Width - 6, rect.Height - 6), Color.White);
+            int slot = tools.IndexOf(hovered);
+            DrawToolbarTooltip(ToolTooltip(hovered), ToolbarButtonRect(slot, tools.Count).Center.X);
+        }
+    }
+
+    private Texture2D ToolIcon(Tool tool) => tool switch
+    {
+        Tool.Buildings => _buildingsIcon,
+        Tool.Reclaim => _reclaimIcon,
+        Tool.Research => _toolIcons["research"],
+        Tool.Speed => _toolIcons["speed"],
+        Tool.Save => _toolIcons["save"],
+        Tool.Mute => _toolIcons[_audio.Enabled ? "mute_on" : "mute_off"],
+        Tool.Menu => _toolIcons["menu"],
+        _ => _buildingsIcon
+    };
+
+    private string ToolTooltip(Tool tool) => tool switch
+    {
+        Tool.Buildings => "Buildings   (B - browse & place)",
+        Tool.Research => "Research   (T - cycle target tech)",
+        Tool.Speed => "Speed   (pause / x1 / x2 / x4)",
+        Tool.Save => "Save game   (F5)",
+        Tool.Mute => _audio.Enabled ? "Mute sound   (U)" : "Unmute sound   (U)",
+        Tool.Reclaim => "Reclaim   (recycle a building for credits)",
+        Tool.Menu => "Menu   (Esc - back to main menu)",
+        Tool.Help => "Help   (how to play)",
+        _ => ""
+    };
+
+    /// <summary>Εκτελεί την ενέργεια ενός κουμπιού της μπάρας.</summary>
+    private void HandleToolClick(Tool tool)
+    {
+        if (tool != Tool.Mute) _audio.Blip();
+
+        bool wasBuild = _buildMenuOpen, wasSpeed = _speedMenuOpen;
+        _buildMenuOpen = false;
+        _speedMenuOpen = false;
+
+        switch (tool)
+        {
+            case Tool.Buildings:
+                _buildMenuOpen = !wasBuild;
+                if (_buildMenuOpen) { _buildMode = false; _reclaimMode = false; }
+                break;
+            case Tool.Speed:
+                _speedMenuOpen = !wasSpeed;
+                break;
+            case Tool.Research:
+                CycleResearch();
+                break;
+            case Tool.Save:
+                SaveGameToFile();
+                break;
+            case Tool.Mute:
+                ToggleMute();
+                break;
+            case Tool.Reclaim:
+                _reclaimMode = !_reclaimMode;
+                _buildMode = false;
+                break;
+            case Tool.Menu:
+                _state = GameState.Menu;
+                break;
+            case Tool.Help:
+                _showHelp = true;
+                break;
+        }
+    }
+
+    /// <summary>Κυκλώνει την τρέχουσα τεχνολογία-στόχο μέσα στις διαθέσιμες (ό,τι κάνει το πλήκτρο T).</summary>
+    private void CycleResearch()
+    {
+        var available = _world.Colony.Tech.Available.ToList();
+        if (available.Count == 0) return;
+        int idx = _world.Colony.Tech.CurrentTarget is null
+            ? -1
+            : available.FindIndex(t => t.Id == _world.Colony.Tech.CurrentTarget);
+        _world.Colony.Tech.StartResearch(available[(idx + 1) % available.Count].Id);
+        _audio.Blip();
+    }
+
+    private void SaveGameToFile()
+    {
+        File.WriteAllText(SavePath, SaveSystem.ToJson(_world, _sponsor));
+        _status = "Game saved";
+        _statusTimer = 3.0;
+    }
+
+    private void ToggleMute()
+    {
+        _audio.Enabled = _audioSettings.SfxEnabled = !_audio.Enabled;
+        if (_audio.Enabled) _audio.Blip();
+        SaveAudio();
+    }
+
+    /// <summary>popup ταχύτητας: 4 εικονίδια (pause/x1/x2/x4) με hints, πάνω από το κουμπί «Speed».</summary>
+    private void DrawSpeedMenu(MouseState ms)
+    {
+        Rectangle panel = SpeedMenuButtonRect(0);
+        for (int i = 1; i < SpeedOptions.Length; i++)
+            panel = Rectangle.Union(panel, SpeedMenuButtonRect(i));
+        panel.Inflate(8, 8);
+        _spriteBatch.Draw(_pixel, panel, new Color(12, 14, 20, 240));
+        DrawRectOutline(panel, new Color(90, 130, 170));
+
+        for (int i = 0; i < SpeedOptions.Length; i++)
+        {
+            var (ic, speed, _) = SpeedOptions[i];
+            var rect = SpeedMenuButtonRect(i);
+            bool current = _world.Clock.Speed == speed;
+            _spriteBatch.Draw(_pixel, rect, current ? new Color(50, 80, 50, 235) : new Color(18, 20, 28, 235));
+            DrawRectOutline(rect, current ? new Color(120, 230, 120) : new Color(70, 74, 90));
+            _spriteBatch.Draw(_toolIcons[ic], new Rectangle(rect.X + 3, rect.Y + 3, rect.Width - 6, rect.Height - 6), Color.White);
         }
 
-        // Κουμπί βοήθειας "?" (πάντα τελευταίο)
+        int hover = SpeedMenuHitIndex(ms.X, ms.Y);
+        if (hover >= 0)
         {
-            var rect = ToolbarButtonRect(HelpSlotIndex, slots);
-            _spriteBatch.Draw(_pixel, rect, _showHelp ? new Color(30, 50, 80, 235) : new Color(18, 20, 28, 215));
-            DrawRectOutline(rect, _showHelp ? new Color(150, 200, 255) : new Color(70, 74, 90));
-            var qs = _font.MeasureString("?") * 1.6f;
-            _spriteBatch.DrawString(_font, "?", new Vector2(rect.Center.X - qs.X / 2f, rect.Center.Y - qs.Y / 2f),
-                new Color(150, 200, 255), 0f, Vector2.Zero, 1.6f, SpriteEffects.None, 0f);
+            var rect = SpeedMenuButtonRect(hover);
+            var label = SpeedOptions[hover].tip;
+            var size = _font.MeasureString(label);
+            var pos = new Vector2(rect.Center.X - size.X / 2f, rect.Y - size.Y - 6);
+            _spriteBatch.Draw(_pixel, new Rectangle((int)pos.X - 5, (int)pos.Y - 2, (int)size.X + 10, (int)size.Y + 4), new Color(0, 0, 0, 230));
+            _spriteBatch.DrawString(_font, label, pos, HudWhite);
         }
-
-        // Tooltips μπάρας (η παλέτα έχει δικά της tooltips μέσα στο DrawBuildMenu)
-        if (BuildingsButtonHit(ms.X, ms.Y))
-            DrawToolbarTooltip("Buildings   (B — browse & place)", ToolbarButtonRect(BuildingsSlotIndex, slots).Center.X);
-        else if (ReclaimButtonHit(ms.X, ms.Y))
-            DrawToolbarTooltip("Reclaim   (recycle a building for credits)", ToolbarButtonRect(ReclaimSlotIndex, slots).Center.X);
-        else if (HelpButtonHit(ms.X, ms.Y))
-            DrawToolbarTooltip("Help   (how to play)", ToolbarButtonRect(HelpSlotIndex, slots).Center.X);
     }
 
     /// <summary>Ζωγραφίζει την popup παλέτα κτιρίων: πλαίσιο φόντου + 2 σειρές εικονιδίων + tooltip.</summary>
@@ -1325,6 +1433,81 @@ public class MarsGame : Microsoft.Xna.Framework.Game
     private static readonly Color HudDim = new(170, 170, 185);
     private static readonly Color HudWarn = new(255, 95, 80);
 
+    private static readonly (string icon, string label, ResourceKind kind)[] BarResources =
+    {
+        ("energy", "Energy", ResourceKind.Energy),
+        ("water", "Water", ResourceKind.Water),
+        ("oxygen", "Oxygen", ResourceKind.Oxygen),
+        ("food", "Food", ResourceKind.Food),
+        ("materials", "Materials", ResourceKind.Materials),
+        ("silicon", "Silicon", ResourceKind.Silicon),
+        ("credits", "Credits", ResourceKind.Credits),
+    };
+
+    /// <summary>
+    /// Μπάρα πόρων στην κορυφή: μικρό εικονίδιο + τρέχουσα τιμή για κάθε πόρο (+ Crew), σε μία σειρά.
+    /// Με hover πάνω σε ένα chip εμφανίζεται tooltip με το όριο (capacity) και τη μεταβολή/tick.
+    /// </summary>
+    private void DrawResourceBar()
+    {
+        var ledger = _world.Colony.Ledger;
+        const int icon = 20, gap = 16;
+
+        var falling = new Color(240, 110, 90); // κόκκινο όταν ο πόρος μειώνεται
+        var chips = new List<(string icon, string value, string tip, Color color)>();
+        foreach (var (ic, label, kind) in BarResources)
+        {
+            double amt = ledger.Get(kind);
+            string cap = ledger.HasCapacityLimit(kind) ? $" / {ledger.Capacity(kind):0}" : "";
+            double rate = ledger.RatePerTick(kind);
+            Color col = rate < -0.001 ? falling : HudWhite;
+            chips.Add((ic, $"{amt:0}", $"{label}   {amt:0}{cap}   {rate:+0.00;-0.00; 0.00}/t", col));
+        }
+        int crew = _world.Colony.Colonists.Count;
+        int idle = _world.Colony.IdleColonists.Count();
+        chips.Add(("crew", crew.ToString(), $"Crew   {crew} / {_world.Colony.Housing} housing   idle {idle}", HudWhite));
+
+        // Μέτρησε πλάτη ανά chip για οριζόντιο κεντράρισμα.
+        var widths = new float[chips.Count];
+        float total = 0;
+        for (int i = 0; i < chips.Count; i++)
+        {
+            widths[i] = icon + 4 + _font.MeasureString(chips[i].value).X;
+            total += widths[i];
+        }
+        total += gap * (chips.Count - 1);
+
+        float startX = (GraphicsDevice.Viewport.Width - total) / 2f;
+        const float y = 8f;
+        const int barH = icon + 8;
+        _spriteBatch.Draw(_pixel, new Rectangle((int)startX - 10, (int)y - 4, (int)total + 20, barH), new Color(12, 14, 20, 215));
+
+        var ms = Mouse.GetState();
+        string? hoverTip = null;
+        float hoverCenter = 0;
+        float x = startX;
+        for (int i = 0; i < chips.Count; i++)
+        {
+            var (ic, value, tip, color) = chips[i];
+            if (_resIcons.TryGetValue(ic, out var tex))
+                _spriteBatch.Draw(tex, new Rectangle((int)x, (int)y, icon, icon), Color.White);
+            _spriteBatch.DrawString(_font, value, new Vector2(x + icon + 4, y + (icon - _font.LineSpacing) / 2f), color);
+
+            var chipRect = new Rectangle((int)x - 4, (int)y - 4, (int)widths[i] + 8, barH);
+            if (chipRect.Contains(ms.X, ms.Y)) { hoverTip = tip; hoverCenter = x + widths[i] / 2f; }
+            x += widths[i] + gap;
+        }
+
+        if (hoverTip is not null)
+        {
+            var size = _font.MeasureString(hoverTip);
+            float tx = Math.Clamp(hoverCenter - size.X / 2f, 6f, GraphicsDevice.Viewport.Width - size.X - 6f);
+            var pos = new Vector2(tx, y + barH + 2);
+            _spriteBatch.Draw(_pixel, new Rectangle((int)pos.X - 5, (int)pos.Y - 2, (int)size.X + 10, (int)size.Y + 4), new Color(0, 0, 0, 235));
+            _spriteBatch.DrawString(_font, hoverTip, pos, HudWhite);
+        }
+    }
+
     private void DrawHud()
     {
         _spriteBatch.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, SamplerState.PointClamp);
@@ -1332,18 +1515,10 @@ public class MarsGame : Microsoft.Xna.Framework.Game
         var clock = _world.Clock;
         var colony = _world.Colony;
 
+        // Οι πόροι (Energy…Credits, Crew) εμφανίζονται πλέον στη μπάρα εικονιδίων στην κορυφή — δες DrawResourceBar().
         var top = new List<(string text, Color color)>
         {
             ($"Sol {clock.Sol}   {clock.HourOfSol:00}:{clock.MinuteOfHour:00}   [{clock.Speed}]", HudWhite),
-            ("", HudWhite),
-            (ResLine("Energy", ResourceKind.Energy), RateColor(ResourceKind.Energy)),
-            (ResLine("Water", ResourceKind.Water), RateColor(ResourceKind.Water)),
-            (ResLine("Oxygen", ResourceKind.Oxygen), RateColor(ResourceKind.Oxygen)),
-            (ResLine("Food", ResourceKind.Food), RateColor(ResourceKind.Food)),
-            (ResLine("Materials", ResourceKind.Materials), RateColor(ResourceKind.Materials)),
-            (ResLine("Silicon", ResourceKind.Silicon), RateColor(ResourceKind.Silicon)),
-            (ResLine("Credits", ResourceKind.Credits), HudDim),
-            ($"Crew       {colony.Crew}   (idle {colony.IdleColonists.Count()})", HudDim),
         };
         if (colony.LifeSupportFailing) top.Add(("!! LIFE SUPPORT FAILURE !!", HudWarn));
 
@@ -1389,6 +1564,7 @@ public class MarsGame : Microsoft.Xna.Framework.Game
             top.Add(($"crew health {minHealth * 100:0}%", HudWarn));
 
         DrawTextPanel(new Vector2(10, 10), top);
+        DrawResourceBar();
 
         var bottom = new List<(string text, Color color)>();
         if (_hoveredTile is not null)
@@ -1408,7 +1584,7 @@ public class MarsGame : Microsoft.Xna.Framework.Game
         {
             var def = _buildables[_buildIndex];
             bottom.Add(($"BUILD: {def.Name}   cost: {CostString(def)}", new Color(120, 230, 120)));
-            bottom.Add(("click=place   B=next   RMB=cancel", HudDim));
+            bottom.Add(("click=place   RMB=cancel", HudDim));
         }
         else if (_reclaimMode)
         {
@@ -1424,8 +1600,6 @@ public class MarsGame : Microsoft.Xna.Framework.Game
 
         foreach (var note in _world.EventNotifications.AsEnumerable().Reverse().Take(3))
             bottom.Add(("* " + note, HudDim));
-
-        bottom.Add(("Space=pause  1/2/3=speed  click icon=build  T=research  +/-=crew  G=sponsor  F5/F9=save/load  N=new  U=mute  Esc=menu", HudDim));
 
         float panelH = bottom.Count * _font.LineSpacing + 16f;
         DrawTextPanel(new Vector2(10, GraphicsDevice.Viewport.Height - panelH - 64f), bottom);
@@ -1549,25 +1723,6 @@ public class MarsGame : Microsoft.Xna.Framework.Game
                 _spriteBatch.DrawString(_font, text, new Vector2(pos.X + pad, y), color);
             y += lineH;
         }
-    }
-
-    private string ResLine(string label, ResourceKind k)
-    {
-        var l = _world.Colony.Ledger;
-        double amt = l.Get(k);
-        string cap = l.HasCapacityLimit(k) ? $" / {l.Capacity(k):0}" : "";
-        string rate = k == ResourceKind.Credits
-            ? ""
-            : "   " + l.RatePerTick(k).ToString("+0.00;-0.00; 0.00") + "/t";
-        return $"{label,-10}{amt,7:0}{cap}{rate}";
-    }
-
-    private Color RateColor(ResourceKind k)
-    {
-        double r = _world.Colony.Ledger.RatePerTick(k);
-        if (r > 0.001) return new Color(120, 230, 120);
-        if (r < -0.001) return new Color(240, 130, 110);
-        return HudDim;
     }
 
     private static string MetricLine(string label, double value, string unit, double progress) =>

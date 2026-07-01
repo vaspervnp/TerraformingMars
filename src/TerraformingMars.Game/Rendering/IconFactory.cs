@@ -68,6 +68,146 @@ public static class IconFactory
         return buffer;
     }
 
+    /// <summary>Μικρά εικονίδια πόρων για τη μπάρα στην κορυφή (χωρίς πλακέτα — σκέτο σύμβολο σε διαφανές φόντο).</summary>
+    public static Dictionary<string, Texture2D> CreateResourceIcons(GraphicsDevice gd)
+    {
+        var icons = new Dictionary<string, Texture2D>(StringComparer.OrdinalIgnoreCase);
+        foreach (var id in new[] { "energy", "water", "oxygen", "food", "materials", "silicon", "credits", "crew" })
+        {
+            var buffer = new Color[Size * Size]; // default = διαφανές
+            DrawResourceSymbol(buffer, id);
+            var tex = new Texture2D(gd, Size, Size);
+            tex.SetData(buffer);
+            icons[id] = tex;
+        }
+        return icons;
+    }
+
+    private static void DrawResourceSymbol(Color[] b, string id)
+    {
+        switch (id)
+        {
+            case "energy": // κεραυνός
+                var yellow = new Color(255, 210, 60);
+                Tri(b, 38, 6, 20, 36, 34, 34, yellow);
+                Tri(b, 30, 58, 46, 28, 32, 32, yellow);
+                break;
+            case "water": // σταγόνα
+                var blue = new Color(70, 150, 235);
+                Disc(b, 32, 40, 15, blue);
+                Tri(b, 32, 8, 19, 40, 45, 40, blue);
+                break;
+            case "oxygen": // O₂ — δύο δαχτυλίδια
+                var cyan = new Color(120, 215, 235);
+                Ring(b, 26, 29, 13, 4, cyan);
+                Ring(b, 43, 41, 9, 3, cyan);
+                break;
+            case "food": // μήλο + φύλλο
+                Disc(b, 32, 37, 15, new Color(90, 195, 90));
+                Rect(b, 30, 16, 4, 9, new Color(120, 80, 50));
+                Tri(b, 34, 18, 47, 13, 41, 25, new Color(120, 210, 110));
+                break;
+            case "materials": // κιβώτιο
+                var orange = new Color(230, 140, 60);
+                RoundRect(b, 15, 19, 34, 34, 4, orange, 1f);
+                Line(b, 16, 20, 48, 52, 3, new Color(150, 90, 40));
+                Line(b, 48, 20, 16, 52, 3, new Color(150, 90, 40));
+                break;
+            case "silicon": // κρύσταλλος
+                var s1 = new Color(155, 190, 230);
+                var s2 = new Color(120, 150, 205);
+                Tri(b, 23, 44, 32, 11, 41, 44, s1);
+                Tri(b, 32, 11, 41, 44, 47, 29, s2);
+                Tri(b, 23, 44, 17, 29, 32, 11, s2);
+                break;
+            case "credits": // νόμισμα
+                var gold = new Color(240, 195, 70);
+                Disc(b, 32, 32, 16, gold);
+                Ring(b, 32, 32, 16, 2, new Color(180, 140, 40));
+                Ring(b, 32, 32, 8, 2, new Color(180, 140, 40));
+                break;
+            case "crew": // άνθρωπος
+                var wt = new Color(220, 225, 235);
+                Disc(b, 32, 21, 9, wt);
+                RoundRect(b, 19, 33, 26, 23, 9, wt, 1f);
+                break;
+        }
+    }
+
+    /// <summary>Εικονίδια UI της μπάρας εργαλείων (research/clock/save/menu/mute) & του popup ταχύτητας.</summary>
+    public static Dictionary<string, Texture2D> CreateUiIcons(GraphicsDevice gd)
+    {
+        var icons = new Dictionary<string, Texture2D>(StringComparer.OrdinalIgnoreCase);
+        foreach (var id in new[] { "research", "speed", "save", "menu", "mute_on", "mute_off",
+                                   "pause", "speed1", "speed2", "speed4" })
+        {
+            var buffer = new Color[Size * Size];
+            DrawUiSymbol(buffer, id);
+            var tex = new Texture2D(gd, Size, Size);
+            tex.SetData(buffer);
+            icons[id] = tex;
+        }
+        return icons;
+    }
+
+    private static void DrawUiSymbol(Color[] b, string id)
+    {
+        var steel = new Color(210, 215, 225);
+        var play = new Color(130, 230, 150);
+        switch (id)
+        {
+            case "research": // άτομο
+                Ring(b, 32, 32, 17, 3, new Color(190, 150, 255));
+                Ring(b, 32, 32, 10, 2, new Color(150, 120, 220));
+                Disc(b, 32, 32, 5, new Color(220, 200, 255));
+                break;
+            case "speed": // ρολόι
+                Ring(b, 32, 32, 17, 3, steel);
+                Line(b, 32, 32, 32, 19, 3, steel);
+                Line(b, 32, 32, 42, 37, 3, steel);
+                break;
+            case "save": // δισκέτα
+                RoundRect(b, 15, 15, 34, 34, 3, new Color(110, 160, 225), 1f);
+                Rect(b, 23, 15, 18, 11, new Color(55, 85, 135));   // μεταλλικό κλείστρο
+                Rect(b, 34, 17, 4, 7, new Color(205, 215, 230));   // ετικέτα κλείστρου
+                Rect(b, 22, 31, 20, 16, new Color(210, 220, 235)); // ετικέτα
+                break;
+            case "menu": // hamburger
+                Rect(b, 15, 19, 34, 5, steel);
+                Rect(b, 15, 30, 34, 5, steel);
+                Rect(b, 15, 41, 34, 5, steel);
+                break;
+            case "mute_on": // ηχείο + κύματα
+                Rect(b, 12, 27, 8, 10, steel);
+                Tri(b, 20, 32, 33, 17, 33, 47, steel);
+                Ring(b, 8, 32, 32, 3, new Color(150, 200, 245));
+                Ring(b, 8, 32, 40, 3, new Color(150, 200, 245));
+                break;
+            case "mute_off": // ηχείο + X (σίγαση)
+                Rect(b, 12, 27, 8, 10, steel);
+                Tri(b, 20, 32, 33, 17, 33, 47, steel);
+                Line(b, 40, 23, 54, 41, 3, new Color(240, 90, 80));
+                Line(b, 54, 23, 40, 41, 3, new Color(240, 90, 80));
+                break;
+            case "pause":
+                Rect(b, 22, 17, 7, 30, new Color(235, 240, 250));
+                Rect(b, 35, 17, 7, 30, new Color(235, 240, 250));
+                break;
+            case "speed1": // ένα «play»
+                Tri(b, 25, 17, 25, 47, 45, 32, play);
+                break;
+            case "speed2": // διπλό
+                Tri(b, 17, 19, 17, 45, 32, 32, play);
+                Tri(b, 32, 19, 32, 45, 47, 32, play);
+                break;
+            case "speed4": // τριπλό
+                Tri(b, 13, 21, 13, 43, 26, 32, play);
+                Tri(b, 26, 21, 26, 43, 39, 32, play);
+                Tri(b, 39, 21, 39, 43, 52, 32, play);
+                break;
+        }
+    }
+
     public static Color[] BuildReclaimBuffer()
     {
         var buffer = new Color[Size * Size];
