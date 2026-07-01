@@ -1,11 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  SpriteFont για το HUD. Χρησιμοποιεί Consolas (monospaced, διαθέσιμο στα Windows) ώστε
-  οι αριθμοί/πόροι να ευθυγραμμίζονται. Compiled από το MonoGame Content Pipeline (mgcb).
+  SpriteFont για το HUD. Χρησιμοποιεί το DejaVu Sans Mono (monospaced, με Ελληνικά) ώστε
+  οι αριθμοί/πόροι να ευθυγραμμίζονται. Το .ttf είναι bundled στο Content/Fonts/ (relative
+  path στο FontName) ώστε το build να δουλεύει cross-platform χωρίς εξάρτηση από system fonts.
+  License του font: Content/Fonts/DejaVuSansMono.LICENSE.txt. Compiled από το mgcb.
 -->
 <XnaContent xmlns:Graphics="Microsoft.Xna.Framework.Content.Pipeline.Graphics">
   <Asset Type="Graphics:FontDescription">
-    <FontName>Consolas</FontName>
+    <FontName>Fonts/DejaVuSansMono.ttf</FontName>
     <Size>14</Size>
     <Spacing>0</Spacing>
     <UseKerning>true</UseKerning>
