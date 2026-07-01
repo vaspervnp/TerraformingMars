@@ -35,6 +35,9 @@
     <ProjectReference Include="..\TerraformingMars.Core\TerraformingMars.Core.csproj" />
   </ItemGroup>
   <ItemGroup>
+    <None Update="Assets\mars_terraforming.jpg">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Update="Assets\MorningLight.mp3">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>

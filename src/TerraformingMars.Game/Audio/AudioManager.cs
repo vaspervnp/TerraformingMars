@@ -15,6 +15,9 @@ public sealed class AudioManager
     private SoundEffect? _blip, _chime, _alert, _win, _lose;
     public bool Enabled { get; set; } = true;
 
+    /// <summary>Ένταση εφέ 0..1.</summary>
+    public float Volume { get; set; } = 0.8f;
+
     public AudioManager()
     {
         try
@@ -40,7 +43,7 @@ public sealed class AudioManager
     private void Play(SoundEffect? sound)
     {
         if (!Enabled || sound is null) return;
-        try { sound.Play(); } catch { /* ignore audio errors */ }
+        try { sound.Play(Math.Clamp(Volume, 0f, 1f), 0f, 0f); } catch { /* ignore audio errors */ }
     }
 
     /// <summary>Συνθέτει μια ακολουθία νοτών (sine με γραμμικό envelope) σε ένα SoundEffect.</summary>

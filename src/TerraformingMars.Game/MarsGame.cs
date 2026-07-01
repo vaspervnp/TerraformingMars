@@ -69,19 +69,36 @@ public class MarsGame : Microsoft.Xna.Framework.Game
     private enum GameState { Menu, Playing }
     private GameState _state = GameState.Menu;
     private AudioManager _audio = null!;
+    private MusicPlayer _music = null!;
+    private AudioSettings _audioSettings = null!;
+    private List<string> _tracks = null!;
+    private int _trackIndex;
+    private int _menuRow;
     private int _prevResearchedCount;
     private string _lastNotification = "";
     private bool _prevWon;
     private bool _prevLost;
-    private bool _confirmNewMap;
     private bool _uiClick;
+    private bool _hasActiveGame;
     private Dictionary<string, Texture2D> _icons = null!;
+
+    // Modal dialog με κουμπιά (mouse + Enter/Esc). Όσο είναι ανοιχτό, παγώνει η σιμουλασιόν.
+    private sealed class DialogButton
+    {
+        public string Label = "";
+        public Color Color = new(235, 235, 240);
+        public Action OnClick = () => { };
+        public Rectangle Rect;
+    }
+    private readonly List<string> _dialogLines = new();
+    private readonly List<DialogButton> _dialogButtons = new();
+    private Rectangle _dialogPanel;
+    private bool DialogOpen => _dialogButtons.Count > 0;
 
     // Reclaim (ανακύκλωση κτιρίων για credits) — ξεκλειδώνει με την τεχνολογία "reclaim"
     private const string ReclaimTechId = "reclaim";
     private Texture2D _reclaimIcon = null!;
     private bool _reclaimMode;
-    private bool _confirmReclaim;
     private Building? _reclaimTarget;
     private bool ReclaimUnlocked => _world.Colony.Tech.IsResearched(ReclaimTechId);
     private int TotalToolbarSlots => _buildables.Count + (ReclaimUnlocked ? 1 : 0);
@@ -125,6 +142,8 @@ public class MarsGame : Microsoft.Xna.Framework.Game
         _renderer.Build(_map);
         _lastMapRevision = _world.MapRevision;
         _audio = new AudioManager();
+        _music = new MusicPlayer();
+        InitAudio();
         _icons = IconFactory.CreateAll(GraphicsDevice, _catalog);
         _reclaimIcon = IconFactory.CreateReclaim(GraphicsDevice);
         InitCamera();
@@ -140,12 +159,12 @@ public class MarsGame : Microsoft.Xna.Framework.Game
         _selected = null;
         _selectedBuilding = null;
         _buildMode = false;
-        _confirmNewMap = false;
         _reclaimMode = false;
-        _confirmReclaim = false;
         _reclaimTarget = null;
+        CloseDialog();
         ResetTransitionTrackers();
         InitCamera();
+        _hasActiveGame = true;
         _state = GameState.Playing;
     }
 
@@ -176,17 +195,173 @@ public class MarsGame : Microsoft.Xna.Framework.Game
         _prevLost = lost;
     }
 
-    private void UpdateMenu(KeyboardState keys)
+    private const int MenuRowCount = 7;
+
+    /// <summary>Φορτώνει ρυθμίσεις ήχου, απαριθμεί κομμάτια και ξεκινά τη μουσική υποβάθρου.</summary>
+    private void InitAudio()
     {
-        if (KeyPressed(keys, Keys.Escape)) Exit();
-        if (KeyPressed(keys, Keys.Left) || KeyPressed(keys, Keys.A))
-            _sponsorIndex = (_sponsorIndex - 1 + _sponsorCatalog.All.Count) % _sponsorCatalog.All.Count;
-        if (KeyPressed(keys, Keys.Right) || KeyPressed(keys, Keys.D))
-            _sponsorIndex = (_sponsorIndex + 1) % _sponsorCatalog.All.Count;
-        _sponsor = _sponsorCatalog.All[_sponsorIndex];
+        _audioSettings = AudioSettings.Load();
+        _tracks = AudioSettings.AvailableTracks();
+
+        _audio.Enabled = _audioSettings.SfxEnabled;
+        _audio.Volume = _audioSettings.SfxVolume;
+
+        // Αρχικό κομμάτι: το αποθηκευμένο αν υπάρχει· αλλιώς το πρώτο διαθέσιμο αρχείο.
+        _trackIndex = _tracks.FindIndex(t => string.Equals(t, _audioSettings.MusicTrack, StringComparison.OrdinalIgnoreCase));
+        if (_trackIndex < 0) _trackIndex = _tracks.Count > 1 ? 1 : 0; // 0 = "None"
+        _audioSettings.MusicTrack = _tracks[_trackIndex];
+
+        _music.Volume = _audioSettings.MusicVolume;
+        _music.Muted = _audioSettings.MusicMuted;
+        _music.Play(AudioSettings.PathFor(_tracks[_trackIndex]));
+    }
+
+    private void SaveAudio() => _audioSettings.Save();
+    private static float Clamp01(float v) => Math.Clamp(v, 0f, 1f);
+
+    private void UpdateMenu(KeyboardState keys, MouseState mouse)
+    {
+        var actions = MenuActions();
+
+        // Πληκτρολόγιο: Esc = Continue (αν υπάρχει παιχνίδι) αλλιώς Quit· Enter = πρωτεύον κουμπί.
+        if (KeyPressed(keys, Keys.Escape)) { if (_hasActiveGame) _state = GameState.Playing; else Exit(); return; }
+        if (KeyPressed(keys, Keys.Enter)) { actions[0].action(); return; }
+
+        if (KeyPressed(keys, Keys.Up) || KeyPressed(keys, Keys.W))
+            _menuRow = (_menuRow - 1 + MenuRowCount) % MenuRowCount;
+        if (KeyPressed(keys, Keys.Down) || KeyPressed(keys, Keys.S))
+            _menuRow = (_menuRow + 1) % MenuRowCount;
+
+        int dir = 0;
+        if (KeyPressed(keys, Keys.Left) || KeyPressed(keys, Keys.A)) dir = -1;
+        if (KeyPressed(keys, Keys.Right) || KeyPressed(keys, Keys.D)) dir = 1;
+        if (dir != 0) ChangeMenuRow(_menuRow, dir);
 
         if (KeyPressed(keys, Keys.R)) _seed = new Random().Next();
-        if (KeyPressed(keys, Keys.Enter)) StartGame();
+
+        // Ποντίκι: hover εστιάζει γραμμή, κλικ σε βέλη/σώμα/κουμπιά ενεργεί.
+        for (int i = 0; i < MenuRowCount; i++)
+            if (MenuRowRect(i).Contains(mouse.X, mouse.Y)) _menuRow = i;
+
+        bool click = mouse.LeftButton == ButtonState.Released && _prevMouse.LeftButton == ButtonState.Pressed;
+        if (!click) return;
+
+        var p = new Point(mouse.X, mouse.Y);
+        for (int i = 0; i < MenuRowCount; i++)
+        {
+            if (RowHasArrows(i) && MenuArrowRect(i, -1).Contains(p)) { _menuRow = i; ChangeMenuRow(i, -1); return; }
+            if (RowHasArrows(i) && MenuArrowRect(i, 1).Contains(p)) { _menuRow = i; ChangeMenuRow(i, 1); return; }
+            if (MenuRowRect(i).Contains(p)) { _menuRow = i; MenuRowBodyClick(i); return; }
+        }
+        for (int i = 0; i < actions.Count; i++)
+            if (MenuActionRect(i, actions.Count).Contains(p)) { actions[i].action(); return; }
+    }
+
+    /// <summary>Τα κουμπιά ενεργειών: Continue (αν υπάρχει ενεργό παιχνίδι), New/Start Game, Quit.</summary>
+    private List<(string label, Action action, Color color)> MenuActions()
+    {
+        var list = new List<(string, Action, Color)>();
+        if (_hasActiveGame) list.Add(("Continue", () => _state = GameState.Playing, new Color(120, 230, 120)));
+        list.Add((_hasActiveGame ? "New Game" : "Start Game", StartGame, new Color(255, 220, 120)));
+        list.Add(("Quit", Exit, new Color(230, 120, 110)));
+        return list;
+    }
+
+    // Οι γραμμές τιμών (mute, sfx on/off) εναλλάσσονται με κλικ στο σώμα — δεν έχουν βέλη.
+    private static bool RowHasArrows(int i) => i != 4 && i != 5;
+
+    /// <summary>Κλικ στο σώμα μιας γραμμής: cycle/randomize/toggle (οι εντάσεις αλλάζουν μόνο με βέλη).</summary>
+    private void MenuRowBodyClick(int i)
+    {
+        switch (i)
+        {
+            case 0: case 1: case 2: ChangeMenuRow(i, 1); break; // sponsor/seed/music
+            case 4: case 5: ChangeMenuRow(i, 1); break;         // toggles
+        }
+    }
+
+    private const int MenuRowW = 640, MenuRowH = 34, MenuRowGap = 6, MenuArrowW = 46;
+    private int MenuRowsTop() => (int)(GraphicsDevice.Viewport.Height * 0.24f);
+
+    private Rectangle MenuRowRect(int i)
+    {
+        int x = (GraphicsDevice.Viewport.Width - MenuRowW) / 2;
+        return new Rectangle(x, MenuRowsTop() + i * (MenuRowH + MenuRowGap), MenuRowW, MenuRowH);
+    }
+
+    private Rectangle MenuArrowRect(int i, int dir)
+    {
+        var r = MenuRowRect(i);
+        return dir < 0 ? new Rectangle(r.X, r.Y, MenuArrowW, r.Height)
+                       : new Rectangle(r.Right - MenuArrowW, r.Y, MenuArrowW, r.Height);
+    }
+
+    private Rectangle MenuActionRect(int idx, int count)
+    {
+        const int bw = 210, bh = 50, gap = 20;
+        int total = count * bw + (count - 1) * gap;
+        int x = (GraphicsDevice.Viewport.Width - total) / 2;
+        int y = MenuRowRect(MenuRowCount - 1).Bottom + 96;
+        return new Rectangle(x + idx * (bw + gap), y, bw, bh);
+    }
+
+    /// <summary>Μεταβάλλει την τιμή της εστιασμένης γραμμής του μενού (dir = -1/+1).</summary>
+    private void ChangeMenuRow(int row, int dir)
+    {
+        switch (row)
+        {
+            case 0: // Sponsor
+                _sponsorIndex = (_sponsorIndex + dir + _sponsorCatalog.All.Count) % _sponsorCatalog.All.Count;
+                _sponsor = _sponsorCatalog.All[_sponsorIndex];
+                break;
+            case 1: // Seed → νέο τυχαίο
+                _seed = new Random().Next();
+                break;
+            case 2: // Music track
+                if (_tracks.Count > 0)
+                {
+                    _trackIndex = (_trackIndex + dir + _tracks.Count) % _tracks.Count;
+                    _audioSettings.MusicTrack = _tracks[_trackIndex];
+                    _music.Play(AudioSettings.PathFor(_tracks[_trackIndex]));
+                    SaveAudio();
+                }
+                break;
+            case 3: // Music volume
+                _music.Volume = _audioSettings.MusicVolume = Clamp01(_audioSettings.MusicVolume + dir * 0.05f);
+                SaveAudio();
+                break;
+            case 4: // Music mute (Left/Right εναλλάσσει)
+                _music.Muted = _audioSettings.MusicMuted = !_audioSettings.MusicMuted;
+                SaveAudio();
+                break;
+            case 5: // Sound effects on/off
+                _audio.Enabled = _audioSettings.SfxEnabled = !_audioSettings.SfxEnabled;
+                if (_audio.Enabled) _audio.Blip();
+                SaveAudio();
+                break;
+            case 6: // SFX volume (+ preview)
+                _audio.Volume = _audioSettings.SfxVolume = Clamp01(_audioSettings.SfxVolume + dir * 0.05f);
+                _audio.Blip();
+                SaveAudio();
+                break;
+        }
+    }
+
+    private List<string> MenuRows()
+    {
+        string musicName = _tracks.Count > 0
+            ? Path.GetFileNameWithoutExtension(_tracks[_trackIndex])
+            : AudioSettings.NoTrack;
+        return new List<string>
+        {
+            $"Sponsor:  {_sponsor.Name}",
+            $"Seed:  {_seed}",
+            $"Music:  {musicName}",
+            $"Music volume:  {(_audioSettings.MusicMuted ? "muted" : $"{_audioSettings.MusicVolume * 100:0}%")}",
+            $"Music mute:  {(_audioSettings.MusicMuted ? "On" : "Off")}",
+            $"Sound effects:  {(_audioSettings.SfxEnabled ? "On" : "Off")}",
+            $"SFX volume:  {_audioSettings.SfxVolume * 100:0}%",
+        };
     }
 
     private void DrawMenu()
@@ -194,17 +369,58 @@ public class MarsGame : Microsoft.Xna.Framework.Game
         GraphicsDevice.Clear(new Color(0x0b, 0x0b, 0x12));
         _spriteBatch.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, SamplerState.PointClamp);
 
-        float h = GraphicsDevice.Viewport.Height;
-        DrawCentered("TERRAFORMING MARS", h * 0.20f, 2.4f, new Color(230, 120, 80));
+        var ms = Mouse.GetState();
+        DrawCentered("TERRAFORMING MARS", GraphicsDevice.Viewport.Height * 0.09f, 2.4f, new Color(230, 120, 80));
 
-        float y = h * 0.42f;
-        DrawCentered($"<   Sponsor:  {_sponsor.Name}   >", y, 1.3f, HudWhite); y += 40;
-        DrawCentered(_sponsor.Description, y, 1.0f, HudDim); y += 48;
-        DrawCentered($"Seed:  {_seed}", y, 1.2f, HudWhite); y += 64;
-        DrawCentered("Left/Right = sponsor     R = random seed", y, 1.0f, HudDim); y += 30;
-        DrawCentered("Enter = start     Esc = quit", y, 1.0f, HudDim);
+        var rows = MenuRows();
+        for (int i = 0; i < rows.Count; i++)
+        {
+            var r = MenuRowRect(i);
+            bool focused = i == _menuRow;
+            if (focused || r.Contains(ms.X, ms.Y))
+                _spriteBatch.Draw(_pixel, r, new Color(255, 255, 255, focused ? 26 : 14));
+
+            var size = _font.MeasureString(rows[i]) * 1.1f;
+            _spriteBatch.DrawString(_font, rows[i],
+                new Vector2(r.X + (r.Width - size.X) / 2f, r.Y + (r.Height - size.Y) / 2f),
+                focused ? new Color(255, 220, 120) : HudWhite, 0f, Vector2.Zero, 1.1f, SpriteEffects.None, 0f);
+
+            if (RowHasArrows(i))
+            {
+                DrawMenuArrow(MenuArrowRect(i, -1), "<", ms);
+                DrawMenuArrow(MenuArrowRect(i, 1), ">", ms);
+            }
+        }
+
+        DrawCentered(_sponsor.Description, MenuRowRect(MenuRowCount - 1).Bottom + 16, 1.0f, HudDim);
+
+        var actions = MenuActions();
+        for (int i = 0; i < actions.Count; i++)
+        {
+            var r = MenuActionRect(i, actions.Count);
+            bool hover = r.Contains(ms.X, ms.Y);
+            _spriteBatch.Draw(_pixel, r, hover ? new Color(60, 70, 90) : new Color(30, 34, 46));
+            DrawRectOutline(r, actions[i].color);
+            var size = _font.MeasureString(actions[i].label) * 1.2f;
+            _spriteBatch.DrawString(_font, actions[i].label,
+                new Vector2(r.X + (r.Width - size.X) / 2f, r.Y + (r.Height - size.Y) / 2f),
+                actions[i].color, 0f, Vector2.Zero, 1.2f, SpriteEffects.None, 0f);
+        }
+
+        DrawCentered($"Click, or use arrow keys.    Enter = {actions[0].label}    Esc = {(_hasActiveGame ? "Continue" : "Quit")}",
+            MenuActionRect(0, actions.Count).Bottom + 20, 0.9f, HudDim);
 
         _spriteBatch.End();
+    }
+
+    private void DrawMenuArrow(Rectangle r, string glyph, MouseState ms)
+    {
+        bool hover = r.Contains(ms.X, ms.Y);
+        _spriteBatch.Draw(_pixel, r, hover ? new Color(70, 80, 100) : new Color(28, 32, 42));
+        DrawRectOutline(r, new Color(90, 96, 115));
+        var size = _font.MeasureString(glyph) * 1.2f;
+        _spriteBatch.DrawString(_font, glyph, new Vector2(r.X + (r.Width - size.X) / 2f, r.Y + (r.Height - size.Y) / 2f),
+            HudWhite, 0f, Vector2.Zero, 1.2f, SpriteEffects.None, 0f);
     }
 
     private void DrawCentered(string text, float y, float scale, Color color)
@@ -225,8 +441,8 @@ public class MarsGame : Microsoft.Xna.Framework.Game
         _selected = null;
         _selectedBuilding = null;
         _reclaimMode = false;
-        _confirmReclaim = false;
         _reclaimTarget = null;
+        CloseDialog();
         ResetTransitionTrackers();
         InitCamera();
     }
@@ -258,33 +474,24 @@ public class MarsGame : Microsoft.Xna.Framework.Game
 
         if (_state == GameState.Menu)
         {
-            UpdateMenu(keys);
+            UpdateMenu(keys, mouse);
             _prevMouse = mouse;
             _prevKeys = keys;
             base.Update(gameTime);
             return;
         }
 
-        // Επιβεβαίωση νέου χάρτη (modal): Y = ναι, N/Esc = άκυρο
-        if (_confirmNewMap)
+        // Modal dialog με κουμπιά (mouse click ή Enter=πρωτεύον / Esc=άκυρο). Παγώνει τη σιμουλασιόν.
+        if (DialogOpen)
         {
-            if (KeyPressed(keys, Keys.Y)) { Regenerate(new Random().Next()); _confirmNewMap = false; }
-            else if (KeyPressed(keys, Keys.N) || KeyPressed(keys, Keys.Escape)) _confirmNewMap = false;
-            _prevMouse = mouse;
-            _prevKeys = keys;
-            base.Update(gameTime);
-            return;
-        }
-
-        // Επιβεβαίωση ανακύκλωσης κτιρίου (modal): Y = reclaim, N/Esc = άκυρο
-        if (_confirmReclaim)
-        {
-            if (KeyPressed(keys, Keys.Y)) ConfirmReclaim();
-            else if (KeyPressed(keys, Keys.N) || KeyPressed(keys, Keys.Escape))
+            LayoutDialog();
+            if (mouse.LeftButton == ButtonState.Released && _prevMouse.LeftButton == ButtonState.Pressed)
             {
-                _confirmReclaim = false;
-                _reclaimTarget = null;
+                var hit = _dialogButtons.FirstOrDefault(b => b.Rect.Contains(mouse.X, mouse.Y));
+                if (hit is not null) InvokeDialogButton(hit);
             }
+            else if (KeyPressed(keys, Keys.Enter)) InvokeDialogButton(_dialogButtons[0]);
+            else if (KeyPressed(keys, Keys.Escape)) InvokeDialogButton(_dialogButtons[^1]);
             _prevMouse = mouse;
             _prevKeys = keys;
             base.Update(gameTime);
@@ -300,7 +507,11 @@ public class MarsGame : Microsoft.Xna.Framework.Game
             base.Update(gameTime);
             return;
         }
-        if (KeyPressed(keys, Keys.U)) _audio.Enabled = !_audio.Enabled;
+        if (KeyPressed(keys, Keys.U))
+        {
+            _audio.Enabled = _audioSettings.SfxEnabled = !_audio.Enabled;
+            SaveAudio();
+        }
 
         _camera.SetViewport(GraphicsDevice.Viewport.Width, GraphicsDevice.Viewport.Height);
         UpdateMinZoom();
@@ -326,7 +537,10 @@ public class MarsGame : Microsoft.Xna.Framework.Game
         if (move != Vector2.Zero) _camera.Position += Vector2.Normalize(move) * panSpeed;
 
         // Νέος χάρτης (N, με επιβεβαίωση) / εναλλαγή sponsor (G, ξεκινά νέο παιχνίδι)
-        if (KeyPressed(keys, Keys.N)) _confirmNewMap = true;
+        if (KeyPressed(keys, Keys.N))
+            OpenDialog(new[] { "Create a new random map?", "The current colony will be lost." },
+                Btn("New map", new Color(120, 230, 120), () => Regenerate(new Random().Next())),
+                Btn("Cancel", HudDim, () => { }));
         if (KeyPressed(keys, Keys.G))
         {
             _sponsorIndex = (_sponsorIndex + 1) % _sponsorCatalog.All.Count;
@@ -351,8 +565,8 @@ public class MarsGame : Microsoft.Xna.Framework.Game
             _selected = null;
             _selectedBuilding = null;
             _reclaimMode = false;
-            _confirmReclaim = false;
             _reclaimTarget = null;
+            CloseDialog();
             ResetTransitionTrackers();
             InitCamera();
             _status = "Game loaded";
@@ -476,7 +690,7 @@ public class MarsGame : Microsoft.Xna.Framework.Game
         if (result.Success) _audio.Blip();
     }
 
-    /// <summary>Επιλογή κτιρίου για ανακύκλωση: ανοίγει το modal επιβεβαίωσης (ή δείχνει γιατί δεν γίνεται).</summary>
+    /// <summary>Επιλογή κτιρίου για ανακύκλωση: ανοίγει το dialog επιβεβαίωσης (ή δείχνει γιατί δεν γίνεται).</summary>
     private void BeginReclaim(Building building)
     {
         if (!Colony.CanReclaim(building))
@@ -486,10 +700,15 @@ public class MarsGame : Microsoft.Xna.Framework.Game
             return;
         }
         _reclaimTarget = building;
-        _confirmReclaim = true;
+        double refund = _world.Colony.ReclaimValue(building, _world.Clock.TotalTicks);
+        double pct = Colony.ReclaimFraction(building, _world.Clock.TotalTicks) * 100;
+        OpenDialog(
+            new[] { $"Reclaim {building.Definition.Name}?", $"Refund {refund:0} credits ({pct:0}% of cost)" },
+            Btn("Reclaim", new Color(240, 170, 80), ConfirmReclaim),
+            Btn("Cancel", HudDim, () => _reclaimTarget = null));
     }
 
-    /// <summary>Εκτελεί την ανακύκλωση του επιλεγμένου κτιρίου και κλείνει το modal + reclaim mode.</summary>
+    /// <summary>Εκτελεί την ανακύκλωση του επιλεγμένου κτιρίου και κλείνει το reclaim mode.</summary>
     private void ConfirmReclaim()
     {
         if (_reclaimTarget is { } target && _world.Colony.Buildings.Contains(target))
@@ -500,9 +719,95 @@ public class MarsGame : Microsoft.Xna.Framework.Game
             _audio.Blip();
             if (_selectedBuilding == target) { _selectedBuilding = null; _selected = null; }
         }
-        _confirmReclaim = false;
         _reclaimMode = false;
         _reclaimTarget = null;
+    }
+
+    // ----------------------------------------------------------------- Modal dialog
+
+    private DialogButton Btn(string label, Color color, Action onClick) =>
+        new() { Label = label, Color = color, OnClick = onClick };
+
+    private void OpenDialog(IEnumerable<string> lines, params DialogButton[] buttons)
+    {
+        _dialogLines.Clear();
+        _dialogLines.AddRange(lines);
+        _dialogButtons.Clear();
+        _dialogButtons.AddRange(buttons);
+        _audio.Blip();
+    }
+
+    private void CloseDialog()
+    {
+        _dialogLines.Clear();
+        _dialogButtons.Clear();
+    }
+
+    private void InvokeDialogButton(DialogButton button)
+    {
+        var action = button.OnClick;
+        CloseDialog();
+        action();
+    }
+
+    /// <summary>Υπολογίζει το panel και τα ορθογώνια των κουμπιών (κοινό για update hit-test & draw).</summary>
+    private void LayoutDialog()
+    {
+        const float scale = 1.1f;
+        int vw = GraphicsDevice.Viewport.Width, vh = GraphicsDevice.Viewport.Height;
+        float lineH = _font.LineSpacing * scale;
+
+        float maxLineW = 0f;
+        foreach (var l in _dialogLines) maxLineW = MathF.Max(maxLineW, _font.MeasureString(l).X * scale);
+
+        const int btnH = 46, btnPadX = 20, btnGap = 16;
+        int totalBtnW = btnGap * Math.Max(0, _dialogButtons.Count - 1);
+        foreach (var b in _dialogButtons) totalBtnW += (int)(_font.MeasureString(b.Label).X * scale) + btnPadX * 2;
+
+        int panelW = (int)MathF.Max(maxLineW, totalBtnW) + 64;
+        int panelH = (int)(_dialogLines.Count * lineH) + btnH + 76;
+        _dialogPanel = new Rectangle((vw - panelW) / 2, (vh - panelH) / 2, panelW, panelH);
+
+        int bx = _dialogPanel.X + (panelW - totalBtnW) / 2;
+        int by = _dialogPanel.Bottom - btnH - 20;
+        foreach (var b in _dialogButtons)
+        {
+            int bw = (int)(_font.MeasureString(b.Label).X * scale) + btnPadX * 2;
+            b.Rect = new Rectangle(bx, by, bw, btnH);
+            bx += bw + btnGap;
+        }
+    }
+
+    private void DrawDialog()
+    {
+        LayoutDialog();
+        const float scale = 1.1f;
+        int vw = GraphicsDevice.Viewport.Width, vh = GraphicsDevice.Viewport.Height;
+        var ms = Mouse.GetState();
+
+        _spriteBatch.Draw(_pixel, new Rectangle(0, 0, vw, vh), new Color(0, 0, 0, 150)); // dim
+        _spriteBatch.Draw(_pixel, _dialogPanel, new Color(20, 22, 30, 245));
+        DrawRectOutline(_dialogPanel, new Color(120, 130, 150));
+
+        float y = _dialogPanel.Y + 22;
+        foreach (var l in _dialogLines)
+        {
+            var size = _font.MeasureString(l) * scale;
+            _spriteBatch.DrawString(_font, l, new Vector2(_dialogPanel.X + (_dialogPanel.Width - size.X) / 2f, y),
+                HudWhite, 0f, Vector2.Zero, scale, SpriteEffects.None, 0f);
+            y += _font.LineSpacing * scale;
+        }
+
+        foreach (var b in _dialogButtons)
+        {
+            bool hover = b.Rect.Contains(ms.X, ms.Y);
+            _spriteBatch.Draw(_pixel, b.Rect, hover ? new Color(60, 70, 90) : new Color(34, 38, 50));
+            DrawRectOutline(b.Rect, b.Color);
+            var size = _font.MeasureString(b.Label) * scale;
+            _spriteBatch.DrawString(_font, b.Label,
+                new Vector2(b.Rect.X + (b.Rect.Width - size.X) / 2f, b.Rect.Y + (b.Rect.Height - size.Y) / 2f),
+                b.Color, 0f, Vector2.Zero, scale, SpriteEffects.None, 0f);
+        }
     }
 
     private static string CostString(BuildingDefinition def) =>
@@ -815,21 +1120,12 @@ public class MarsGame : Microsoft.Xna.Framework.Game
         if (ToolbarHitIndex(Mouse.GetState().X, Mouse.GetState().Y) < 0)
             DrawHoverHint();
 
-        if (_confirmNewMap)
-            DrawCenterBanner("New random map?    Y = yes    N = no", new Color(255, 210, 90));
-
-        if (_confirmReclaim && _reclaimTarget is { } rt)
-        {
-            double refund = _world.Colony.ReclaimValue(rt, _world.Clock.TotalTicks);
-            double pct = Colony.ReclaimFraction(rt, _world.Clock.TotalTicks) * 100;
-            DrawCenterBanner($"Reclaim {rt.Definition.Name}?   refund {refund:0} credits ({pct:0}%)    Y = yes    N = no",
-                new Color(240, 170, 80));
-        }
-
         if (_world.IsTerraformed)
             DrawCenterBanner("***  PLANET TERRAFORMED  ***", new Color(120, 230, 120));
         else if (_world.IsLost)
             DrawCenterBanner("***  COLONY LOST - press Esc  ***", new Color(255, 90, 80));
+
+        if (DialogOpen) DrawDialog();
 
         _spriteBatch.End();
     }
@@ -975,6 +1271,7 @@ public class MarsGame : Microsoft.Xna.Framework.Game
     {
         if (disposing)
         {
+            _music?.Dispose();
             _renderer?.Dispose();
             _pixel?.Dispose();
             _spriteBatch?.Dispose();
