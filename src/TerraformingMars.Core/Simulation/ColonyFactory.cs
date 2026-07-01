@@ -17,7 +17,7 @@ public static class ColonyFactory
     {
         catalog ??= BuildingCatalog.LoadDefault();
         sponsor ??= SponsorCatalog.LoadDefault().Get("normal");
-        var colony = new Colony();
+        var colony = new Colony { BaseHousing = sponsor.BaseHousing };
         var occupied = new HashSet<Hex>();
 
         Hex spot = FindLandingSpot(map);

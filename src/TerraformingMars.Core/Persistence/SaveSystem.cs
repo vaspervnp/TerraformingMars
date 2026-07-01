@@ -122,6 +122,7 @@ public static class SaveSystem
         }
 
         sponsor = sponsors.Get(save.SponsorId);
+        colony.BaseHousing = sponsor.BaseHousing;
         var systems = new ISimulationSystem[]
         {
             new EventSystem(sponsor, map.Seed),

@@ -19,6 +19,14 @@ public sealed class Colony
     public List<Building> Buildings { get; } = new();
     public List<Colonist> Colonists { get; } = new();
 
+    /// <summary>Βασική στέγαση (από τον χορηγό/δυσκολία) — προστίθεται στη χωρητικότητα των habitat κτιρίων.</summary>
+    public int BaseHousing { get; set; }
+
+    /// <summary>Συνολικό όριο πληθυσμού: βάση χορηγού + HousingCapacity όλων των operational κτιρίων.</summary>
+    public int Housing => BaseHousing + Buildings
+        .Where(b => b.State == BuildingState.Operational)
+        .Sum(b => b.Definition.HousingCapacity);
+
     public bool LifeSupportFailing { get; set; }
     public int LifeSupportFailingTicks { get; internal set; }
     public bool Collapsed { get; internal set; }
@@ -26,6 +34,19 @@ public sealed class Colony
     public IEnumerable<Colonist> IdleColonists => Colonists.Where(c => c.Assignment is null);
 
     public bool IsOccupied(Hex hex) => Buildings.Any(b => b.Location == hex);
+
+    /// <summary>True αν κάποιο από τα 6 γειτονικά hex έχει κτίριο-κατοικία (Category "Habitat"),
+    /// π.χ. την κάψουλα προσγείωσης ή άλλο habitat module — για «κούμπωμα» νέων κατοικιών στο δίκτυο.</summary>
+    public bool HasAdjacentHabitat(Hex hex)
+    {
+        for (int side = 0; side < 6; side++)
+        {
+            Hex n = hex.Neighbor(side);
+            if (Buildings.Any(b => b.Location == n && b.Definition.Category == "Habitat"))
+                return true;
+        }
+        return false;
+    }
 
     /// <summary>Προσθέτει έτοιμο instance κτιρίου· αν είναι ήδη operational, εφαρμόζει την αποθήκευσή του.</summary>
     public void AddBuilding(Building building)
@@ -62,6 +83,8 @@ public sealed class Colony
             return PlacementResult.Fail($"needs {string.Join("/", def.AllowedTerrain)}");
         if (def.RequiresDeposit != ResourceType.None && tile.Deposit.Type != def.RequiresDeposit)
             return PlacementResult.Fail($"needs {def.RequiresDeposit} deposit");
+        if (def.RequiresHabitatLink && !HasAdjacentHabitat(hex))
+            return PlacementResult.Fail("must connect to a habitat");
         if (IsOccupied(hex)) return PlacementResult.Fail("occupied");
 
         // Τα Materials καταναλώνονται σταδιακά κατά την κατασκευή (όχι upfront).

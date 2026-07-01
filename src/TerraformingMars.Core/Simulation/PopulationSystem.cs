@@ -26,11 +26,7 @@ public sealed class PopulationSystem : ISimulationSystem
     {
         var colony = world.Colony;
 
-        int housing = colony.Buildings
-            .Where(b => b.State == BuildingState.Operational)
-            .Sum(b => b.Definition.HousingCapacity);
-
-        if (colony.Colonists.Count >= housing) return;
+        if (colony.Colonists.Count >= colony.Housing) return;
 
         double food = colony.Ledger.Get(ResourceKind.Food);
         if (food < FoodReservePerColonist * (colony.Colonists.Count + 1)) return;

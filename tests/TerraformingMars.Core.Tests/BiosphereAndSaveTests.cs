@@ -76,13 +76,13 @@ public class PopulationTests
     public void Population_Grows_With_Housing_And_Food()
     {
         var map = new MapGenerator(new MapGenerationSettings { Width = 24, Height = 24, Seed = 5 }).Generate();
-        var world = ColonyFactory.CreateStartingWorld(map); // capsule housing 6, crew 4
+        var world = ColonyFactory.CreateStartingWorld(map); // normal → BaseHousing 12, crew 4
         int start = world.Colony.Colonists.Count;
 
         for (int i = 0; i < 1000; i++) world.Tick();
 
         Assert.True(world.Colony.Colonists.Count > start);
-        Assert.True(world.Colony.Colonists.Count <= 6); // όριο housing κάψουλας
+        Assert.True(world.Colony.Colonists.Count <= world.Colony.Housing); // όριο στέγασης
     }
 }
 

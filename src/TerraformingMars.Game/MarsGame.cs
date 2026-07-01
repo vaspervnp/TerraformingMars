@@ -1296,8 +1296,7 @@ public class MarsGame : Microsoft.Xna.Framework.Game
         top.Add((MetricLine("Water", planet.WaterCoverage * 100, "%", planet.Progress(PlanetMetric.Water)),
             MetricColor(planet.Progress(PlanetMetric.Water))));
         top.Add(($"Biomass  {planet.Biomass * 100,6:0.0} %", new Color(90, 200, 90)));
-        int housing = _world.Colony.Buildings.Where(b => b.State == BuildingState.Operational).Sum(b => b.Definition.HousingCapacity);
-        top.Add(($"Population {_world.Colony.Colonists.Count}/{housing}", HudDim));
+        top.Add(($"Population {_world.Colony.Colonists.Count}/{_world.Colony.Housing}", HudDim));
 
         // Sponsor & alerts (Φάση 6)
         top.Add(("", HudWhite));

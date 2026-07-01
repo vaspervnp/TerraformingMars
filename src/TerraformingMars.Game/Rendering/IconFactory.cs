@@ -196,6 +196,13 @@ public static class IconFactory
                 Rect(b, 38, 30, 8, 18, steel);
                 Disc(b, 42, 22, 6, new Color(150, 210, 245));
                 break;
+            case "habitat_module":
+                Disc(b, 32, 33, 15, new Color(150, 205, 240));              // θόλος
+                Rect(b, 17, 33, 30, 15, new Color(200, 206, 216));          // σώμα κατοικίας
+                Rect(b, 28, 38, 8, 10, dark);                               // πόρτα
+                Rect(b, 21, 37, 5, 5, new Color(150, 205, 240));            // παράθυρα
+                Rect(b, 38, 37, 5, 5, new Color(150, 205, 240));
+                break;
             default:
                 Disc(b, 32, 32, 12, CategoryColor(category));
                 break;

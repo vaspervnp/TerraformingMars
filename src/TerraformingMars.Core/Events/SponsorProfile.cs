@@ -11,6 +11,10 @@ public sealed class SponsorProfile
     public string Description { get; init; } = "";
 
     public double StartingResourceMultiplier { get; init; } = 1.0;
+
+    /// <summary>Βασική χωρητικότητα στέγασης (όριο αρχικού πληθυσμού) — κλιμακώνεται με τη δυσκολία.</summary>
+    public int BaseHousing { get; init; } = 12;
+
     public double EventChancePerTick { get; init; } = 0.0008;
     public double DustStormSolarFactor { get; init; } = 0.2;
 

@@ -6,9 +6,19 @@
     "Buildable": false,
     "BuildTimeTicks": 0,
     "MaxWorkers": 0,
-    "HousingCapacity": 6,
     "Storage": { "Energy": 5000, "Water": 2000, "Oxygen": 2000, "Food": 1500 },
     "Production": { "Energy": -1.0 }
+  },
+  {
+    "Id": "habitat_module",
+    "Name": "Habitat Module",
+    "Category": "Habitat",
+    "RequiresHabitatLink": true,
+    "HousingCapacity": 6,
+    "BuildTimeTicks": 110,
+    "MaxWorkers": 0,
+    "Cost": { "Materials": 70, "Credits": 5000 },
+    "Production": { "Energy": -0.5 }
   },
   {
     "Id": "solar_panel",

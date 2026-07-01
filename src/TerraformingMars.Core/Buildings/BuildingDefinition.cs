@@ -62,5 +62,9 @@ public sealed class BuildingDefinition
 
     /// <summary>Πόσους αποίκους μπορεί να στεγάσει (όριο πληθυσμού).</summary>
     public int HousingCapacity { get; init; } = 0;
+
+    /// <summary>Αν true, τοποθετείται μόνο δίπλα σε υπάρχον κτίριο-κατοικία (Category "Habitat") —
+    /// ώστε οι νέες κατοικίες να παραμένουν συνδεδεμένες με το δίκτυο της κάψουλας προσγείωσης.</summary>
+    public bool RequiresHabitatLink { get; init; } = false;
 }
 
