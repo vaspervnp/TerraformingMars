@@ -139,7 +139,8 @@ public static class IconFactory
     {
         var icons = new Dictionary<string, Texture2D>(StringComparer.OrdinalIgnoreCase);
         foreach (var id in new[] { "research", "speed", "save", "menu", "mute_on", "mute_off",
-                                   "pause", "speed1", "speed2", "speed4" })
+                                   "pause", "speed1", "speed2", "speed4",
+                                   "sol", "sponsor", "temperature", "pressure", "planet", "biomass" })
         {
             var buffer = new Color[Size * Size];
             DrawUiSymbol(buffer, id);
@@ -204,6 +205,46 @@ public static class IconFactory
                 Tri(b, 13, 21, 13, 43, 26, 32, play);
                 Tri(b, 26, 21, 26, 43, 39, 32, play);
                 Tri(b, 39, 21, 39, 43, 52, 32, play);
+                break;
+            case "sol": // ήλιος (Martian sol)
+                var sun = new Color(255, 200, 80);
+                Disc(b, 32, 32, 10, sun);
+                Line(b, 32, 8, 32, 17, 3, sun); Line(b, 32, 47, 32, 56, 3, sun);
+                Line(b, 8, 32, 17, 32, 3, sun); Line(b, 47, 32, 56, 32, 3, sun);
+                Line(b, 15, 15, 21, 21, 3, sun); Line(b, 43, 43, 49, 49, 3, sun);
+                Line(b, 49, 15, 43, 21, 3, sun); Line(b, 21, 43, 15, 49, 3, sun);
+                break;
+            case "sponsor": // σημαία σε ιστό
+                Rect(b, 19, 11, 3, 42, new Color(200, 205, 215));
+                Tri(b, 22, 13, 22, 31, 47, 22, new Color(120, 180, 240));
+                break;
+            case "temperature": // θερμόμετρο
+                var tg = new Color(210, 215, 225);
+                var tr = new Color(230, 90, 80);
+                RoundRect(b, 28, 9, 8, 30, 4, tg, 1f);
+                Disc(b, 32, 47, 9, tg);
+                Disc(b, 32, 47, 6, tr);
+                Rect(b, 30, 23, 4, 24, tr);
+                break;
+            case "pressure": // μανόμετρο
+                var pg = new Color(210, 215, 225);
+                Ring(b, 32, 34, 16, 3, pg);
+                Line(b, 32, 34, 43, 24, 3, new Color(230, 90, 80));
+                Disc(b, 32, 34, 3, pg);
+                break;
+            case "planet": // ο Άρης (συνολικό terraforming)
+                var mars = new Color(200, 110, 70);
+                Disc(b, 32, 32, 16, mars);
+                Disc(b, 26, 27, 4, new Color(170, 85, 55));
+                Disc(b, 38, 37, 5, new Color(180, 95, 60));
+                Disc(b, 34, 22, 3, new Color(220, 145, 100));
+                break;
+            case "biomass": // φύλλο (βλάστηση)
+                var lg = new Color(95, 205, 95);
+                var ld = new Color(65, 150, 65);
+                Tri(b, 16, 48, 48, 16, 44, 44, lg);
+                Tri(b, 16, 48, 20, 20, 48, 16, lg);
+                Line(b, 16, 48, 46, 18, 2, ld);
                 break;
         }
     }

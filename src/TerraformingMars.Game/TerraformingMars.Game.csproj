@@ -29,7 +29,6 @@
   <ItemGroup>
     <PackageReference Include="MonoGame.Framework.DesktopGL" Version="3.8.*" />
     <PackageReference Include="MonoGame.Content.Builder.Task" Version="3.8.*" />
-    <PackageReference Include="NAudio" Version="2.2.1" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\TerraformingMars.Core\TerraformingMars.Core.csproj" />
@@ -41,11 +40,29 @@
     <None Update="Assets\mars_terraforming.jpg">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
-    <None Update="Assets\MorningLight.mp3">
+    <None Update="Assets\MorningLight.ogg">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
-    <None Update="Assets\Tranquility.mp3">
+    <None Update="Assets\Tranquility.ogg">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
   </ItemGroup>
+
+  <!--
+    Linux: το libopenal.so που έρχεται με το MonoGame.Framework.DesktopGL είναι χτισμένο για
+    GLIBC 2.38 και ΔΕΝ φορτώνει σε παλαιότερα συστήματα (π.χ. Debian 12 = glibc 2.36), οπότε
+    ο ήχος πέφτει σε "NoAudioHardwareException". Αντικαθιστούμε το bundled με το system libopenal.
+  -->
+  <Target Name="ReplaceIncompatibleOpenAL" AfterTargets="Build"
+          Condition="$([MSBuild]::IsOSPlatform('Linux'))">
+    <ItemGroup>
+      <_SystemOpenAL Include="/usr/lib/x86_64-linux-gnu/libopenal.so.1" Condition="Exists('/usr/lib/x86_64-linux-gnu/libopenal.so.1')" />
+      <_SystemOpenAL Include="/lib/x86_64-linux-gnu/libopenal.so.1" Condition="'@(_SystemOpenAL)' == '' And Exists('/lib/x86_64-linux-gnu/libopenal.so.1')" />
+      <_SystemOpenAL Include="/usr/lib/libopenal.so.1" Condition="'@(_SystemOpenAL)' == '' And Exists('/usr/lib/libopenal.so.1')" />
+    </ItemGroup>
+    <Copy Condition="'@(_SystemOpenAL)' != '' And Exists('$(OutDir)runtimes/linux-x64/native/libopenal.so')"
+          SourceFiles="@(_SystemOpenAL)"
+          DestinationFiles="$(OutDir)runtimes/linux-x64/native/libopenal.so"
+          OverwriteReadOnlyFiles="true" SkipUnchangedFiles="false" />
+  </Target>
 </Project>

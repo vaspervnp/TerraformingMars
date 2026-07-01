@@ -1,18 +1,18 @@
 using System;
 using System.IO;
-using NAudio.Wave;
+using Microsoft.Xna.Framework.Media;
 
 namespace TerraformingMars.Game.Audio;
 
 /// <summary>
-/// Αναπαραγωγή μουσικής υποβάθρου (loop) μέσω NAudio. Διαβάζει οποιοδήποτε αρχείο υποστηρίζει
-/// το <see cref="AudioFileReader"/> (mp3/wav/aiff, και wma/m4a μέσω Media Foundation στα Windows).
+/// Αναπαραγωγή μουσικής υποβάθρου (loop) μέσω του cross-platform <see cref="MediaPlayer"/> του
+/// MonoGame. Παίζει <b>OGG Vorbis</b> (αποκωδικοποιείται με NVorbis, μέσω OpenAL) ώστε να δουλεύει
+/// σε Linux/mac/Windows — σε αντίθεση με το NAudio που ήθελε Windows Media Foundation για MP3.
 /// Όλα σε try/catch ώστε να υποβαθμίζεται σιωπηλά αν δεν υπάρχει audio device / codec.
 /// </summary>
 public sealed class MusicPlayer : IDisposable
 {
-    private IWavePlayer? _output;
-    private AudioFileReader? _reader;
+    private Song? _song;
     private string? _currentPath;
     private float _volume = 0.6f;
     private bool _muted;
@@ -41,11 +41,10 @@ public sealed class MusicPlayer : IDisposable
 
         try
         {
-            _reader = new AudioFileReader(path);
-            _output = new WaveOutEvent();
-            _output.Init(new LoopStream(_reader));
+            _song = Song.FromUri(Path.GetFileNameWithoutExtension(path), new Uri(path, UriKind.Absolute));
+            MediaPlayer.IsRepeating = true;
             ApplyVolume();
-            _output.Play();
+            MediaPlayer.Play(_song);
             _currentPath = path;
         }
         catch
@@ -56,46 +55,16 @@ public sealed class MusicPlayer : IDisposable
 
     public void Stop()
     {
-        try { _output?.Stop(); } catch { /* ignore */ }
-        _output?.Dispose();
-        _reader?.Dispose();
-        _output = null;
-        _reader = null;
+        try { MediaPlayer.Stop(); } catch { /* ignore */ }
+        _song?.Dispose();
+        _song = null;
         _currentPath = null;
     }
 
     private void ApplyVolume()
     {
-        if (_reader is null) return;
-        try { _reader.Volume = _muted ? 0f : _volume; } catch { /* ignore */ }
+        try { MediaPlayer.Volume = _muted ? 0f : _volume; } catch { /* ignore */ }
     }
 
     public void Dispose() => Stop();
-
-    /// <summary>Τυλίγει ένα <see cref="WaveStream"/> ώστε να επαναλαμβάνεται ατέρμονα.</summary>
-    private sealed class LoopStream : WaveStream
-    {
-        private readonly WaveStream _source;
-        public LoopStream(WaveStream source) => _source = source;
-
-        public override WaveFormat WaveFormat => _source.WaveFormat;
-        public override long Length => _source.Length;
-        public override long Position { get => _source.Position; set => _source.Position = value; }
-
-        public override int Read(byte[] buffer, int offset, int count)
-        {
-            int total = 0;
-            while (total < count)
-            {
-                int read = _source.Read(buffer, offset + total, count - total);
-                if (read == 0)
-                {
-                    if (_source.Position == 0) break; // κενό αρχείο → αποφυγή ατέρμονου βρόχου
-                    _source.Position = 0;             // φτάσαμε στο τέλος → από την αρχή
-                }
-                total += read;
-            }
-            return total;
-        }
-    }
 }
