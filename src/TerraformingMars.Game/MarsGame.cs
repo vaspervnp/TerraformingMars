@@ -201,6 +201,40 @@ public class MarsGame : Microsoft.Xna.Framework.Game
         _state = GameState.Playing;
     }
 
+    /// <summary>Φορτώνει το αποθηκευμένο παιχνίδι (αν υπάρχει) και μπαίνει σε Playing. Χρήση από μενού & F9.</summary>
+    private void LoadGame()
+    {
+        if (!File.Exists(SavePath)) return;
+        try
+        {
+            _world = SaveSystem.Load(File.ReadAllText(SavePath), _catalog, _sponsorCatalog, out _sponsor);
+            _map = _world.Map;
+            _sponsorIndex = Math.Max(0, _sponsorCatalog.All.ToList().FindIndex(s => s.Id == _sponsor.Id));
+            _renderer.Build(_map);
+            _lastMapRevision = _world.MapRevision;
+            _selected = null;
+            _selectedBuilding = null;
+            _buildMode = false;
+            _buildMenuOpen = false;
+            _speedMenuOpen = false;
+            _researchMenuOpen = false;
+            _reclaimMode = false;
+            _reclaimTarget = null;
+            CloseDialog();
+            ResetTransitionTrackers();
+            InitCamera();
+            _hasActiveGame = true;
+            _state = GameState.Playing;
+            _status = "Game loaded";
+            _statusTimer = 3.0;
+        }
+        catch
+        {
+            _status = "Load failed (corrupt save?)";
+            _statusTimer = 3.0;
+        }
+    }
+
     private void ResetTransitionTrackers()
     {
         _prevResearchedCount = _world.Colony.Tech.Researched.Count;
@@ -295,6 +329,7 @@ public class MarsGame : Microsoft.Xna.Framework.Game
     {
         var list = new List<(string, Action, Color)>();
         if (_hasActiveGame) list.Add(("Continue", () => _state = GameState.Playing, new Color(120, 230, 120)));
+        if (File.Exists(SavePath)) list.Add(("Load Game", LoadGame, new Color(150, 210, 255)));
         list.Add((_hasActiveGame ? "New Game" : "Start Game", StartGame, new Color(255, 220, 120)));
         list.Add(("Help", () => _showHelp = true, new Color(150, 200, 255)));
         list.Add(("Quit", Exit, new Color(230, 120, 110)));
@@ -722,23 +757,7 @@ public class MarsGame : Microsoft.Xna.Framework.Game
 
         // Save (F5) / Load (F9). Νέος χάρτης & αλλαγή χορηγού γίνονται πλέον μόνο από το μενού.
         if (KeyPressed(keys, Keys.F5)) SaveGameToFile();
-        if (KeyPressed(keys, Keys.F9) && File.Exists(SavePath))
-        {
-            _world = SaveSystem.Load(File.ReadAllText(SavePath), _catalog, _sponsorCatalog, out _sponsor);
-            _map = _world.Map;
-            _sponsorIndex = Math.Max(0, _sponsorCatalog.All.ToList().FindIndex(s => s.Id == _sponsor.Id));
-            _renderer.Build(_map);
-            _lastMapRevision = _world.MapRevision;
-            _selected = null;
-            _selectedBuilding = null;
-            _reclaimMode = false;
-            _reclaimTarget = null;
-            CloseDialog();
-            ResetTransitionTrackers();
-            InitCamera();
-            _status = "Game loaded";
-            _statusTimer = 3.0;
-        }
+        if (KeyPressed(keys, Keys.F9)) LoadGame();
 
         // Έλεγχος ταχύτητας σιμουλασιόν
         if (KeyPressed(keys, Keys.Space))
