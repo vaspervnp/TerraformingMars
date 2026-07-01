@@ -1266,6 +1266,7 @@ public class MarsGame : Microsoft.Xna.Framework.Game
             (ResLine("Oxygen", ResourceKind.Oxygen), RateColor(ResourceKind.Oxygen)),
             (ResLine("Food", ResourceKind.Food), RateColor(ResourceKind.Food)),
             (ResLine("Materials", ResourceKind.Materials), RateColor(ResourceKind.Materials)),
+            (ResLine("Silicon", ResourceKind.Silicon), RateColor(ResourceKind.Silicon)),
             (ResLine("Credits", ResourceKind.Credits), HudDim),
             ($"Crew       {colony.Crew}   (idle {colony.IdleColonists.Count()})", HudDim),
         };

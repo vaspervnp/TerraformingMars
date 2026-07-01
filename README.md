@@ -34,6 +34,11 @@ tests/TerraformingMars.Core.Tests — xUnit (77 tests)
 brownout), ηλιακές εκλάμψεις, και βλάβες life-support — αλλιώς το πλήρωμα πεθαίνει. **Νίκη** όταν
 και οι 4 πλανητικές μετρικές φτάσουν τους στόχους.
 
+**Οικονομία:** τα Credits ξεκινούν ως εφάπαξ κεφάλαιο από τον χορηγό. Για επιπλέον έσοδα, ερεύνησε
+*Silicon Extraction* → χτίσε **Silicon Mine** πάνω σε κοιτάσματα πυριτίου, μετά *Mass Driver Export* →
+**Export Terminal** που εκτοξεύει το πλεόνασμα πυριτίου στη Γη (35 credits/μονάδα) — για να
+χρηματοδοτήσεις τα ακριβά πλανητικά megaprojects.
+
 ## Build & Run
 ```bash
 dotnet test                                    # unit tests

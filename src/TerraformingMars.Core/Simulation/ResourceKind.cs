@@ -12,6 +12,7 @@ public enum ResourceKind
     Oxygen,
     Food,
     Materials,
+    Silicon,  // εξορυγμένο πυρίτιο — εξαγώγιμο εμπόρευμα (πωλείται σε Credits από το MarketSystem)
     Credits,
     Research  // ροή προς την τρέχουσα έρευνα (δεν αποθηκεύεται στο ledger· το χειρίζεται το ResearchSystem)
 }

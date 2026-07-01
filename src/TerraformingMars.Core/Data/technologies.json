@@ -39,6 +39,24 @@
     "Unlocks": []
   },
   {
+    "Id": "silicon_extraction",
+    "Name": "Silicon Extraction",
+    "Description": "Εξόρυξη πυριτίου από φλέβες — πρώτη ύλη για ηλεκτρονικά & εξαγωγές.",
+    "Phase": 2,
+    "Cost": 220,
+    "Prerequisites": [],
+    "Unlocks": [ "silicon_mine" ]
+  },
+  {
+    "Id": "mass_driver",
+    "Name": "Mass Driver Export",
+    "Description": "Ηλεκτρομαγνητικός εκτοξευτήρας — πουλά πλεόνασμα πυριτίου στη Γη για credits.",
+    "Phase": 2,
+    "Cost": 350,
+    "Prerequisites": [ "silicon_extraction" ],
+    "Unlocks": [ "export_terminal" ]
+  },
+  {
     "Id": "greenhouse_gas_production",
     "Name": "GHG Factories",
     "Description": "Εργοστάσια υπερφθορανθράκων — ισχυρά αέρια θερμοκηπίου.",

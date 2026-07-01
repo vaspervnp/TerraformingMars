@@ -30,6 +30,9 @@ public sealed class BuildingDefinition
     /// <summary>Μονάδες κοιτάσματος που εξορύσσονται/tick (>0 ⇒ ορυχείο· η παραγωγή σταματά όταν εξαντληθεί).</summary>
     public double ExtractionPerTick { get; init; } = 0.0;
 
+    /// <summary>Μονάδες αποθηκευμένου Silicon που πωλούνται σε Credits/tick (>0 ⇒ export terminal· το χειρίζεται το <see cref="Simulation.MarketSystem"/>).</summary>
+    public double ExportPerTick { get; init; } = 0.0;
+
     /// <summary>Τεχνολογία που απαιτείται για να ξεκλειδωθεί (κενό = διαθέσιμο από την αρχή).</summary>
     public string RequiredTech { get; init; } = "";
 

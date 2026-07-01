@@ -127,6 +127,7 @@ public static class SaveSystem
             new EventSystem(sponsor, map.Seed),
             new ConstructionSystem(),
             new ProductionSystem(),
+            new MarketSystem(),
             new ResearchSystem(),
             new PlanetSystem(),
             new BiosphereSystem(),

@@ -83,6 +83,7 @@ public static class ColonyFactory
         if (enableEvents) systems.Add(new EventSystem(sponsor, map.Seed));
         systems.Add(new ConstructionSystem());
         systems.Add(new ProductionSystem());
+        systems.Add(new MarketSystem());
         systems.Add(new ResearchSystem());
         systems.Add(new PlanetSystem());
         systems.Add(new BiosphereSystem());

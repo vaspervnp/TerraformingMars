@@ -129,6 +129,17 @@ public static class IconFactory
                 Rect(b, 20, 36, 24, 10, steel);
                 Tri(b, 20, 36, 26, 28, 44, 36, new Color(210, 216, 228));
                 break;
+            case "silicon_mine":
+                Rect(b, 20, 40, 24, 8, steel);                              // στοά ορυχείου
+                Tri(b, 24, 40, 30, 20, 36, 40, new Color(150, 185, 225));   // κρύσταλλος πυριτίου
+                Tri(b, 30, 20, 36, 40, 42, 30, new Color(120, 155, 205));
+                break;
+            case "export_terminal":
+                Line(b, 14, 50, 44, 20, 5, steel);                          // ράγα mass driver
+                Line(b, 30, 35, 50, 15, 4, new Color(255, 200, 90));        // ίχνος εκτόξευσης
+                Tri(b, 50, 12, 44, 24, 54, 22, new Color(255, 220, 120));   // εκτοξευόμενο φορτίο
+                Disc(b, 49, 18, 3, new Color(255, 235, 150));
+                break;
             case "regolith_printer":
                 RoundRect(b, 16, 18, 32, 18, 4, new Color(220, 130, 60), 1f);
                 Rect(b, 29, 36, 6, 7, dark);

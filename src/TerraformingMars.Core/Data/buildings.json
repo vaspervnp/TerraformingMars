@@ -108,6 +108,31 @@
     "Production": { "Materials": 1.2, "Energy": -0.5 }
   },
   {
+    "Id": "silicon_mine",
+    "Name": "Silicon Mine",
+    "Category": "Industry",
+    "RequiredTech": "silicon_extraction",
+    "RequiresDeposit": "Silicon",
+    "ExtractionPerTick": 1.5,
+    "BuildTimeTicks": 90,
+    "MaxWorkers": 1,
+    "OptimalSpecialty": "Geologist",
+    "Cost": { "Materials": 45, "Credits": 3000 },
+    "Production": { "Silicon": 1.0, "Energy": -0.5 }
+  },
+  {
+    "Id": "export_terminal",
+    "Name": "Export Terminal",
+    "Category": "Industry",
+    "RequiredTech": "mass_driver",
+    "BuildTimeTicks": 110,
+    "MaxWorkers": 1,
+    "OptimalSpecialty": "Engineer",
+    "ExportPerTick": 3.0,
+    "Cost": { "Materials": 60, "Credits": 4000 },
+    "Production": { "Energy": -0.6 }
+  },
+  {
     "Id": "ghg_factory",
     "Name": "GHG Factory",
     "Category": "Planetary",
