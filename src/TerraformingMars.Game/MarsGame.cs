@@ -65,6 +65,7 @@ public class MarsGame : Microsoft.Xna.Framework.Game
     private bool _buildMenuOpen;   // popup παλέτα κτιρίων (2 σειρές πάνω από τη μπάρα)
     private bool _speedMenuOpen;   // popup ταχύτητας (pause / x1 / x2 / x4)
     private bool _researchMenuOpen; // popup διαθέσιμων ερευνών
+    private Rectangle _crewPlusRect, _crewMinusRect; // κουμπιά επάνδρωσης (+/-) στο panel κτηρίου
     private string _status = "";
     private double _statusTimer;
     private Point _mouseDownPos;
@@ -800,7 +801,11 @@ public class MarsGame : Microsoft.Xna.Framework.Game
             int menuBtn = _buildMenuOpen ? BuildMenuHitIndex(mouse.X, mouse.Y) : -1;
             int speedBtn = _speedMenuOpen ? SpeedMenuHitIndex(mouse.X, mouse.Y) : -1;
             int researchBtn = _researchMenuOpen ? ResearchMenuHitIndex(mouse.X, mouse.Y) : -1;
-            if (menuBtn >= 0)
+            if (CrewButtonClick(mouse.X, mouse.Y))
+            {
+                // κουμπιά επάνδρωσης (+/-) στο panel του επιλεγμένου κτηρίου
+            }
+            else if (menuBtn >= 0)
             {
                 _buildMode = true;
                 _buildIndex = menuBtn;
@@ -1006,6 +1011,15 @@ public class MarsGame : Microsoft.Xna.Framework.Game
     {
         if (building.Workers.Count > 0)
             _world.Colony.Unassign(building.Workers[^1]);
+    }
+
+    /// <summary>Χειρίζεται κλικ στα κουμπιά επάνδρωσης (+/-) του επιλεγμένου κτηρίου. True αν καταναλώθηκε.</summary>
+    private bool CrewButtonClick(int mx, int my)
+    {
+        if (_selectedBuilding is not { } b || b.Definition.MaxWorkers <= 0) return false;
+        if (_crewPlusRect.Contains(mx, my)) { AssignCrew(b); _audio.Blip(); _uiClick = true; return true; }
+        if (_crewMinusRect.Contains(mx, my)) { RemoveCrew(b); _audio.Blip(); _uiClick = true; return true; }
+        return false;
     }
 
     protected override void Draw(GameTime gameTime)
@@ -1779,6 +1793,8 @@ public class MarsGame : Microsoft.Xna.Framework.Game
 
         if (_selectedBuilding is not null)
             DrawBuildingPanel();
+        else
+            _crewPlusRect = _crewMinusRect = Rectangle.Empty;
 
         DrawToolbar();
 
@@ -1848,13 +1864,14 @@ public class MarsGame : Microsoft.Xna.Framework.Game
             if (b.DepositDepleted) lines.Add(("DEPLETED - idle", HudWarn));
         }
 
-        if (d.MaxWorkers > 0)
+        bool showCrew = d.MaxWorkers > 0;
+        if (showCrew)
         {
             lines.Add(($"workers {b.Workers.Count}/{d.MaxWorkers}   eff {b.WorkerEfficiency():0.00}", HudWhite));
             foreach (var w in b.Workers)
                 lines.Add(($"  {w.Name} [{w.Specialty}]", HudDim));
             lines.Add(($"optimal: {d.OptimalSpecialty}", HudDim));
-            lines.Add(("[+] assign   [-] remove", new Color(120, 230, 120)));
+            lines.Add(("crew:", new Color(120, 230, 120)));   // δίπλα ζωγραφίζονται τα κουμπιά [-] [+]
         }
         else
         {
@@ -1862,7 +1879,32 @@ public class MarsGame : Microsoft.Xna.Framework.Game
         }
 
         float width = PanelWidth(lines);
-        DrawTextPanel(new Vector2(GraphicsDevice.Viewport.Width - width - 10f, 10f), lines);
+        if (showCrew) width = MathF.Max(width, _font.MeasureString("crew: ").X + 70f); // χώρος για τα κουμπιά
+        var pos = new Vector2(GraphicsDevice.Viewport.Width - width - 10f, 10f);
+        DrawTextPanel(pos, lines);
+
+        _crewPlusRect = _crewMinusRect = Rectangle.Empty;
+        if (showCrew)
+        {
+            float lineH = _font.LineSpacing;
+            int bs = (int)lineH + 2;
+            int by = (int)(pos.Y + 8f + (lines.Count - 1) * lineH) - 1; // γραμμή "crew:"
+            int bx = (int)(pos.X + 8f + _font.MeasureString("crew: ").X);
+            _crewMinusRect = new Rectangle(bx, by, bs, bs);
+            _crewPlusRect = new Rectangle(bx + bs + 6, by, bs, bs);
+            DrawCrewButton(_crewMinusRect, "-", b.Workers.Count > 0);
+            DrawCrewButton(_crewPlusRect, "+", b.Workers.Count < d.MaxWorkers && _world.Colony.IdleColonists.Any());
+        }
+    }
+
+    private void DrawCrewButton(Rectangle rect, string glyph, bool enabled)
+    {
+        var ms = Mouse.GetState();
+        bool hover = enabled && rect.Contains(ms.X, ms.Y);
+        _spriteBatch.Draw(_pixel, rect, hover ? new Color(50, 80, 50, 240) : new Color(24, 28, 36, 240));
+        DrawRectOutline(rect, enabled ? new Color(120, 200, 140) : new Color(70, 74, 90));
+        var sz = _font.MeasureString(glyph);
+        _spriteBatch.DrawString(_font, glyph, new Vector2(rect.Center.X - sz.X / 2f, rect.Center.Y - sz.Y / 2f), enabled ? HudWhite : HudDim);
     }
 
     private float PanelWidth(IReadOnlyList<(string text, Color color)> lines)
