@@ -52,7 +52,8 @@ public static class SaveSystem
             {
                 Id = b.Definition.Id, Q = b.Location.Q, R = b.Location.R, State = b.State.ToString(),
                 BuildProgress = b.BuildProgress, MaterialsPaid = b.MaterialsPaid, Stalled = b.Stalled,
-                DepositDepleted = b.DepositDepleted, RepairTicksRemaining = b.RepairTicksRemaining
+                DepositDepleted = b.DepositDepleted, RepairTicksRemaining = b.RepairTicksRemaining,
+                CreatedTick = b.CreatedTick
             }).ToList(),
             Colonists = colony.Colonists.Select(c => new ColonistSave
             {
@@ -102,7 +103,8 @@ public static class SaveSystem
                 MaterialsPaid = bs.MaterialsPaid,
                 Stalled = bs.Stalled,
                 DepositDepleted = bs.DepositDepleted,
-                RepairTicksRemaining = bs.RepairTicksRemaining
+                RepairTicksRemaining = bs.RepairTicksRemaining,
+                CreatedTick = bs.CreatedTick
             };
             colony.Buildings.Add(b);
         }

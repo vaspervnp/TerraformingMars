@@ -51,6 +51,7 @@ public sealed class BuildingSave
     public bool Stalled { get; set; }
     public bool DepositDepleted { get; set; }
     public int RepairTicksRemaining { get; set; }
+    public long CreatedTick { get; set; }
 }
 
 public sealed class ColonistSave

@@ -77,6 +77,15 @@ public class MarsGame : Microsoft.Xna.Framework.Game
     private bool _uiClick;
     private Dictionary<string, Texture2D> _icons = null!;
 
+    // Reclaim (ανακύκλωση κτιρίων για credits) — ξεκλειδώνει με την τεχνολογία "reclaim"
+    private const string ReclaimTechId = "reclaim";
+    private Texture2D _reclaimIcon = null!;
+    private bool _reclaimMode;
+    private bool _confirmReclaim;
+    private Building? _reclaimTarget;
+    private bool ReclaimUnlocked => _world.Colony.Tech.IsResearched(ReclaimTechId);
+    private int TotalToolbarSlots => _buildables.Count + (ReclaimUnlocked ? 1 : 0);
+
     public MarsGame()
     {
         _graphics = new GraphicsDeviceManager(this)
@@ -117,6 +126,7 @@ public class MarsGame : Microsoft.Xna.Framework.Game
         _lastMapRevision = _world.MapRevision;
         _audio = new AudioManager();
         _icons = IconFactory.CreateAll(GraphicsDevice, _catalog);
+        _reclaimIcon = IconFactory.CreateReclaim(GraphicsDevice);
         InitCamera();
     }
 
@@ -131,6 +141,9 @@ public class MarsGame : Microsoft.Xna.Framework.Game
         _selectedBuilding = null;
         _buildMode = false;
         _confirmNewMap = false;
+        _reclaimMode = false;
+        _confirmReclaim = false;
+        _reclaimTarget = null;
         ResetTransitionTrackers();
         InitCamera();
         _state = GameState.Playing;
@@ -211,6 +224,9 @@ public class MarsGame : Microsoft.Xna.Framework.Game
         _lastMapRevision = _world.MapRevision;
         _selected = null;
         _selectedBuilding = null;
+        _reclaimMode = false;
+        _confirmReclaim = false;
+        _reclaimTarget = null;
         ResetTransitionTrackers();
         InitCamera();
     }
@@ -254,6 +270,21 @@ public class MarsGame : Microsoft.Xna.Framework.Game
         {
             if (KeyPressed(keys, Keys.Y)) { Regenerate(new Random().Next()); _confirmNewMap = false; }
             else if (KeyPressed(keys, Keys.N) || KeyPressed(keys, Keys.Escape)) _confirmNewMap = false;
+            _prevMouse = mouse;
+            _prevKeys = keys;
+            base.Update(gameTime);
+            return;
+        }
+
+        // Επιβεβαίωση ανακύκλωσης κτιρίου (modal): Y = reclaim, N/Esc = άκυρο
+        if (_confirmReclaim)
+        {
+            if (KeyPressed(keys, Keys.Y)) ConfirmReclaim();
+            else if (KeyPressed(keys, Keys.N) || KeyPressed(keys, Keys.Escape))
+            {
+                _confirmReclaim = false;
+                _reclaimTarget = null;
+            }
             _prevMouse = mouse;
             _prevKeys = keys;
             base.Update(gameTime);
@@ -319,6 +350,9 @@ public class MarsGame : Microsoft.Xna.Framework.Game
             _lastMapRevision = _world.MapRevision;
             _selected = null;
             _selectedBuilding = null;
+            _reclaimMode = false;
+            _confirmReclaim = false;
+            _reclaimTarget = null;
             ResetTransitionTrackers();
             InitCamera();
             _status = "Game loaded";
@@ -393,6 +427,14 @@ public class MarsGame : Microsoft.Xna.Framework.Game
             {
                 if (_buildMode && _buildIndex == btn) _buildMode = false; // ξανα-κλικ = κλείσιμο
                 else { _buildMode = true; _buildIndex = btn; }
+                _reclaimMode = false;
+                _audio.Blip();
+                _uiClick = true;
+            }
+            else if (ReclaimButtonHit(mouse.X, mouse.Y))
+            {
+                _reclaimMode = !_reclaimMode;
+                _buildMode = false;
                 _audio.Blip();
                 _uiClick = true;
             }
@@ -402,6 +444,7 @@ public class MarsGame : Microsoft.Xna.Framework.Game
             int dx = mouse.X - _mouseDownPos.X, dy = mouse.Y - _mouseDownPos.Y;
             bool isClick = dx * dx + dy * dy < 36; // < 6px ⇒ κλικ (όχι drag/pan)
             if (!_uiClick && isClick && _buildMode && _hasHover) TryPlaceSelected();
+            else if (!_uiClick && isClick && _reclaimMode && _hoveredBuilding is { } target) BeginReclaim(target);
             _uiClick = false;
         }
 
@@ -409,6 +452,7 @@ public class MarsGame : Microsoft.Xna.Framework.Game
         if (mouse.RightButton == ButtonState.Pressed && _prevMouse.RightButton == ButtonState.Released)
         {
             if (_buildMode) _buildMode = false;
+            else if (_reclaimMode) _reclaimMode = false;
             else if (_hasHover)
             {
                 _selected = _hoveredTile;
@@ -426,10 +470,39 @@ public class MarsGame : Microsoft.Xna.Framework.Game
     private void TryPlaceSelected()
     {
         var def = _buildables[_buildIndex];
-        var result = _world.Colony.TryPlaceBuilding(def, _hoverHex, _map);
+        var result = _world.Colony.TryPlaceBuilding(def, _hoverHex, _map, _world.Clock.TotalTicks);
         _status = result.Success ? $"Built {def.Name}" : $"Cannot place {def.Name}: {result.Error}";
         _statusTimer = 3.0;
         if (result.Success) _audio.Blip();
+    }
+
+    /// <summary>Επιλογή κτιρίου για ανακύκλωση: ανοίγει το modal επιβεβαίωσης (ή δείχνει γιατί δεν γίνεται).</summary>
+    private void BeginReclaim(Building building)
+    {
+        if (!Colony.CanReclaim(building))
+        {
+            _status = $"Cannot reclaim {building.Definition.Name}";
+            _statusTimer = 3.0;
+            return;
+        }
+        _reclaimTarget = building;
+        _confirmReclaim = true;
+    }
+
+    /// <summary>Εκτελεί την ανακύκλωση του επιλεγμένου κτιρίου και κλείνει το modal + reclaim mode.</summary>
+    private void ConfirmReclaim()
+    {
+        if (_reclaimTarget is { } target && _world.Colony.Buildings.Contains(target))
+        {
+            double refund = _world.Colony.Reclaim(target, _world.Clock.TotalTicks);
+            _status = $"Reclaimed {target.Definition.Name}  (+{refund:0} credits)";
+            _statusTimer = 3.0;
+            _audio.Blip();
+            if (_selectedBuilding == target) { _selectedBuilding = null; _selected = null; }
+        }
+        _confirmReclaim = false;
+        _reclaimMode = false;
+        _reclaimTarget = null;
     }
 
     private static string CostString(BuildingDefinition def) =>
@@ -475,6 +548,11 @@ public class MarsGame : Microsoft.Xna.Framework.Game
         {
             bool canPlace = _world.Colony.CanPlace(_buildables[_buildIndex], _hoverHex, _map).Success;
             _renderer.DrawHighlight(_hoverHex, canPlace ? new Color(80, 230, 120) : new Color(230, 80, 80), view, projection);
+        }
+        else if (_reclaimMode && _hasHover)
+        {
+            bool canReclaim = _hoveredBuilding is { } hb && Colony.CanReclaim(hb);
+            _renderer.DrawHighlight(_hoverHex, canReclaim ? new Color(240, 150, 60) : new Color(120, 120, 130), view, projection);
         }
         else if (_hasHover)
         {
@@ -527,21 +605,24 @@ public class MarsGame : Microsoft.Xna.Framework.Game
 
     private int ToolbarHitIndex(int mx, int my)
     {
+        int slots = TotalToolbarSlots;
         for (int i = 0; i < _buildables.Count; i++)
-            if (ToolbarButtonRect(i, _buildables.Count).Contains(mx, my)) return i;
+            if (ToolbarButtonRect(i, slots).Contains(mx, my)) return i;
         return -1;
     }
 
+    private bool ReclaimButtonHit(int mx, int my) =>
+        ReclaimUnlocked && ToolbarButtonRect(_buildables.Count, TotalToolbarSlots).Contains(mx, my);
+
     private void DrawToolbar()
     {
-        int count = _buildables.Count;
+        int slots = TotalToolbarSlots;
         var ms = Mouse.GetState();
-        int hover = ToolbarHitIndex(ms.X, ms.Y);
 
-        for (int i = 0; i < count; i++)
+        for (int i = 0; i < _buildables.Count; i++)
         {
             var def = _buildables[i];
-            var rect = ToolbarButtonRect(i, count);
+            var rect = ToolbarButtonRect(i, slots);
             bool selected = _buildMode && _buildIndex == i;
 
             _spriteBatch.Draw(_pixel, rect, selected ? new Color(50, 80, 50, 235) : new Color(18, 20, 28, 215));
@@ -551,16 +632,34 @@ public class MarsGame : Microsoft.Xna.Framework.Game
                 _spriteBatch.Draw(tex, new Rectangle(rect.X + 3, rect.Y + 3, rect.Width - 6, rect.Height - 6), Color.White);
         }
 
+        // Κουμπί reclaim μετά τα κτίρια (μόλις ερευνηθεί η τεχνολογία "reclaim")
+        if (ReclaimUnlocked)
+        {
+            var rect = ToolbarButtonRect(_buildables.Count, slots);
+            _spriteBatch.Draw(_pixel, rect, _reclaimMode ? new Color(80, 60, 30, 235) : new Color(18, 20, 28, 215));
+            DrawRectOutline(rect, _reclaimMode ? new Color(240, 170, 80) : new Color(70, 74, 90));
+            _spriteBatch.Draw(_reclaimIcon, new Rectangle(rect.X + 3, rect.Y + 3, rect.Width - 6, rect.Height - 6), Color.White);
+        }
+
+        int hover = ToolbarHitIndex(ms.X, ms.Y);
         if (hover >= 0)
         {
             var def = _buildables[hover];
-            string label = $"{def.Name}   ({CostString(def)})";
-            var size = _font.MeasureString(label);
-            var pos = new Vector2(ToolbarButtonRect(hover, count).Center.X - size.X / 2f,
-                GraphicsDevice.Viewport.Height - 46 - 8 - 24);
-            _spriteBatch.Draw(_pixel, new Rectangle((int)pos.X - 5, (int)pos.Y - 2, (int)size.X + 10, (int)size.Y + 4), new Color(0, 0, 0, 220));
-            _spriteBatch.DrawString(_font, label, pos, HudWhite);
+            DrawToolbarTooltip($"{def.Name}   ({CostString(def)})", ToolbarButtonRect(hover, slots).Center.X);
         }
+        else if (ReclaimButtonHit(ms.X, ms.Y))
+        {
+            DrawToolbarTooltip("Reclaim   (recycle a building for credits)",
+                ToolbarButtonRect(_buildables.Count, slots).Center.X);
+        }
+    }
+
+    private void DrawToolbarTooltip(string label, int centerX)
+    {
+        var size = _font.MeasureString(label);
+        var pos = new Vector2(centerX - size.X / 2f, GraphicsDevice.Viewport.Height - 46 - 8 - 24);
+        _spriteBatch.Draw(_pixel, new Rectangle((int)pos.X - 5, (int)pos.Y - 2, (int)size.X + 10, (int)size.Y + 4), new Color(0, 0, 0, 220));
+        _spriteBatch.DrawString(_font, label, pos, HudWhite);
     }
 
     private void DrawRectOutline(Rectangle r, Color c)
@@ -688,6 +787,11 @@ public class MarsGame : Microsoft.Xna.Framework.Game
             bottom.Add(($"BUILD: {def.Name}   cost: {CostString(def)}", new Color(120, 230, 120)));
             bottom.Add(("click=place   B=next   RMB=cancel", HudDim));
         }
+        else if (_reclaimMode)
+        {
+            bottom.Add(("RECLAIM: click a building to recycle it for credits", new Color(240, 170, 80)));
+            bottom.Add(("RMB=cancel", HudDim));
+        }
         else
         {
             bottom.Add(($"B=build menu   buildings: {_world.Colony.Buildings.Count}", HudDim));
@@ -713,6 +817,14 @@ public class MarsGame : Microsoft.Xna.Framework.Game
 
         if (_confirmNewMap)
             DrawCenterBanner("New random map?    Y = yes    N = no", new Color(255, 210, 90));
+
+        if (_confirmReclaim && _reclaimTarget is { } rt)
+        {
+            double refund = _world.Colony.ReclaimValue(rt, _world.Clock.TotalTicks);
+            double pct = Colony.ReclaimFraction(rt, _world.Clock.TotalTicks) * 100;
+            DrawCenterBanner($"Reclaim {rt.Definition.Name}?   refund {refund:0} credits ({pct:0}%)    Y = yes    N = no",
+                new Color(240, 170, 80));
+        }
 
         if (_world.IsTerraformed)
             DrawCenterBanner("***  PLANET TERRAFORMED  ***", new Color(120, 230, 120));

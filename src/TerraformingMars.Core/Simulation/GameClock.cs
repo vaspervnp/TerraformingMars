@@ -15,6 +15,9 @@ public sealed class GameClock
 
     private const double MinutesPerSol = 24 * 60;
 
+    /// <summary>Ticks που αντιστοιχούν σε ένα Sol (144).</summary>
+    public const double TicksPerSol = MinutesPerSol / InGameMinutesPerTick;
+
     public GameSpeed Speed { get; set; } = GameSpeed.Normal;
     public long TotalTicks { get; private set; }
 

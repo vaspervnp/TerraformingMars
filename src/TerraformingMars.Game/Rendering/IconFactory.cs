@@ -36,6 +36,43 @@ public static class IconFactory
         return buffer;
     }
 
+    /// <summary>Εικονίδιο ανακύκλωσης (κουμπί reclaim): τρία πράσινα βέλη σε τριγωνικό κύκλο.</summary>
+    public static Texture2D CreateReclaim(GraphicsDevice gd)
+    {
+        var tex = new Texture2D(gd, Size, Size);
+        tex.SetData(BuildReclaimBuffer());
+        return tex;
+    }
+
+    public static Color[] BuildReclaimBuffer()
+    {
+        var buffer = new Color[Size * Size];
+        DrawPlate(buffer, new Color(90, 200, 90));
+
+        var green = new Color(95, 215, 105);
+        // Κορυφές τριγώνου (δεξιόστροφα) και τρία βέλη που «κυνηγιούνται».
+        (float x, float y) top = (32, 15), br = (49, 44), bl = (15, 44);
+        Arrow(buffer, top.x, top.y, br.x, br.y, green);
+        Arrow(buffer, br.x, br.y, bl.x, bl.y, green);
+        Arrow(buffer, bl.x, bl.y, top.x, top.y, green);
+        return buffer;
+    }
+
+    /// <summary>Παχιά γραμμή με τριγωνική μύτη στο τέλος (x1,y1) — για το εικονίδιο ανακύκλωσης.</summary>
+    private static void Arrow(Color[] b, float x0, float y0, float x1, float y1, Color c, float th = 4f, float head = 8f)
+    {
+        Line(b, x0, y0, x1, y1, th, c);
+        float dx = x1 - x0, dy = y1 - y0;
+        float len = MathF.Sqrt(dx * dx + dy * dy);
+        if (len < 1e-3f) return;
+        float ux = dx / len, uy = dy / len;   // κατεύθυνση
+        float px = -uy, py = ux;               // κάθετη
+        float baseX = x1 - ux * head, baseY = y1 - uy * head;
+        Tri(b, x1, y1,
+            baseX + px * head * 0.6f, baseY + py * head * 0.6f,
+            baseX - px * head * 0.6f, baseY - py * head * 0.6f, c);
+    }
+
     private static Color CategoryColor(string category) => category switch
     {
         "Power" => new Color(255, 210, 70),

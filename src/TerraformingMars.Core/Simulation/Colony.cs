@@ -73,8 +73,9 @@ public sealed class Colony
         return PlacementResult.Ok(null!);
     }
 
-    /// <summary>Τοποθετεί κτίριο: πληρώνει το upfront κόστος (Credits) και ξεκινά κατασκευή.</summary>
-    public PlacementResult TryPlaceBuilding(BuildingDefinition def, Hex hex, HexMap map)
+    /// <summary>Τοποθετεί κτίριο: πληρώνει το upfront κόστος (Credits) και ξεκινά κατασκευή.
+    /// Το <paramref name="currentTick"/> καταγράφεται για τον χρονικά-φθίνοντα υπολογισμό reclaim.</summary>
+    public PlacementResult TryPlaceBuilding(BuildingDefinition def, Hex hex, HexMap map, long currentTick = 0)
     {
         var check = CanPlace(def, hex, map);
         if (!check.Success) return check;
@@ -83,9 +84,55 @@ public sealed class Colony
             if (kind != ResourceKind.Materials)
                 Ledger.TryConsume(kind, amount);
 
-        var building = new Building(def, hex);
+        var building = new Building(def, hex) { CreatedTick = currentTick };
         AddBuilding(building);
         return PlacementResult.Ok(building);
+    }
+
+    /// <summary>
+    /// Ποσοστό επιστροφής credits για ανακύκλωση κτιρίου: ξεκινά στο 90% και χάνει 2%
+    /// ανά Sol που έχει περάσει από την τοποθέτηση, με κατώφλι 20%.
+    /// </summary>
+    public static double ReclaimFraction(Building building, long currentTick)
+    {
+        double sols = Math.Max(0, currentTick - building.CreatedTick) / GameClock.TicksPerSol;
+        return Math.Clamp(0.90 - 0.02 * sols, 0.20, 0.90);
+    }
+
+    /// <summary>Credits που θα επιστραφούν αν ανακυκλωθεί τώρα το κτίριο (ποσοστό × κόστος σε Credits).</summary>
+    public double ReclaimValue(Building building, long currentTick)
+    {
+        double creditCost = building.Definition.Cost.GetValueOrDefault(ResourceKind.Credits);
+        return creditCost * ReclaimFraction(building, currentTick);
+    }
+
+    /// <summary>True αν το κτίριο μπορεί να ανακυκλωθεί (buildable — π.χ. όχι η κάψουλα προσεδάφισης).</summary>
+    public static bool CanReclaim(Building building) => building.Definition.Buildable;
+
+    /// <summary>
+    /// Ανακυκλώνει κτίριο: επιστρέφει το χρονικά-φθίνον ποσοστό του κόστους σε Credits,
+    /// αποδεσμεύει το προσωπικό, αφαιρεί τη χωρητικότητα αποθήκευσης και το κτίριο από τον χάρτη.
+    /// Επιστρέφει τα credits που δόθηκαν, ή 0 αν δεν ήταν δυνατή η ανακύκλωση.
+    /// </summary>
+    public double Reclaim(Building building, long currentTick)
+    {
+        if (!CanReclaim(building) || !Buildings.Contains(building)) return 0.0;
+
+        foreach (var worker in building.Workers.ToList())
+            Unassign(worker);
+
+        // Αφαίρεση χωρητικότητας που είχε προσθέσει το κτίριο (μόνο αν λειτουργούσε).
+        if (building.State == BuildingState.Operational)
+            foreach (var (kind, cap) in building.Definition.Storage)
+            {
+                Ledger.AddCapacity(kind, -cap);
+                Ledger.Set(kind, Ledger.Get(kind)); // re-clamp στη μειωμένη χωρητικότητα
+            }
+
+        double refund = ReclaimValue(building, currentTick);
+        Ledger.Add(ResourceKind.Credits, refund);
+        Buildings.Remove(building);
+        return refund;
     }
 
     /// <summary>Αναθέτει άποικο σε κτίριο (αν υπάρχει ελεύθερη θέση). Τον αφαιρεί από προηγούμενη θέση.</summary>

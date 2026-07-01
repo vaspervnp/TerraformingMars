@@ -34,7 +34,7 @@ public sealed class Building
     public int RepairTicksRemaining { get; internal set; }
 
     /// <summary>Tick κατά το οποίο τοποθετήθηκε (για υπολογισμό επιστροφής στο reclaim).</summary>
-    public long CreatedTick { get; internal set; }
+    public long CreatedTick { get; init; }
 
     public List<Colonist> Workers { get; } = new();
 

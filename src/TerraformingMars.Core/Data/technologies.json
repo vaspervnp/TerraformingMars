@@ -3,6 +3,15 @@
 [
   // ---------- Phase 2: Βιομηχανική Επέκταση ----------
   {
+    "Id": "reclaim",
+    "Name": "Reclaim",
+    "Description": "Recycling protocols — dismantle buildings to recover part of their credit cost.",
+    "Phase": 2,
+    "Cost": 150,
+    "Prerequisites": [],
+    "Unlocks": []
+  },
+  {
     "Id": "nuclear_fission",
     "Name": "Nuclear Fission",
     "Description": "Πυρηνικοί αντιδραστήρες — ενέργεια ανεξάρτητη από τον ήλιο (αμμοθύελλες).",
