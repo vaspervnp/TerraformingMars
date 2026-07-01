@@ -44,6 +44,30 @@ public static class IconFactory
         return tex;
     }
 
+    /// <summary>Εικονίδιο μενού κτιρίων (toggle της παλέτας): μικρό «skyline» τριών κτιρίων.</summary>
+    public static Texture2D CreateBuildings(GraphicsDevice gd)
+    {
+        var tex = new Texture2D(gd, Size, Size);
+        tex.SetData(BuildBuildingsBuffer());
+        return tex;
+    }
+
+    public static Color[] BuildBuildingsBuffer()
+    {
+        var buffer = new Color[Size * Size];
+        DrawPlate(buffer, new Color(120, 170, 230));
+
+        var wall = new Color(205, 211, 221);
+        var win = new Color(120, 180, 235);
+        Rect(buffer, 13, 32, 12, 18, wall);      // αριστερό κτίριο
+        Rect(buffer, 26, 20, 13, 30, wall);      // κεντρικός πύργος
+        Rect(buffer, 40, 28, 12, 22, wall);      // δεξί κτίριο
+        Rect(buffer, 16, 36, 6, 5, win); Rect(buffer, 16, 44, 6, 4, win);
+        Rect(buffer, 29, 24, 7, 6, win); Rect(buffer, 29, 33, 7, 6, win); Rect(buffer, 29, 42, 7, 6, win);
+        Rect(buffer, 43, 32, 6, 5, win); Rect(buffer, 43, 40, 6, 5, win);
+        return buffer;
+    }
+
     public static Color[] BuildReclaimBuffer()
     {
         var buffer = new Color[Size * Size];

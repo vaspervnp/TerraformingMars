@@ -61,6 +61,7 @@ public class MarsGame : Microsoft.Xna.Framework.Game
     private List<BuildingDefinition> _buildables = null!;
     private int _buildIndex;
     private bool _buildMode;
+    private bool _buildMenuOpen;   // popup παλέτα κτιρίων (2 σειρές πάνω από τη μπάρα)
     private string _status = "";
     private double _statusTimer;
     private Point _mouseDownPos;
@@ -103,10 +104,15 @@ public class MarsGame : Microsoft.Xna.Framework.Game
     // Reclaim (ανακύκλωση κτιρίων για credits) — ξεκλειδώνει με την τεχνολογία "reclaim"
     private const string ReclaimTechId = "reclaim";
     private Texture2D _reclaimIcon = null!;
+    private Texture2D _buildingsIcon = null!;
     private bool _reclaimMode;
     private Building? _reclaimTarget;
     private bool ReclaimUnlocked => _world.Colony.Tech.IsResearched(ReclaimTechId);
-    private int HelpSlotIndex => _buildables.Count + (ReclaimUnlocked ? 1 : 0); // το help είναι πάντα τελευταίο
+
+    // Σταθερή μπάρα: [Κτίρια] [Reclaim;] [Βοήθεια]. Τα κτίρια ανοίγουν popup παλέτα (2 σειρές).
+    private const int BuildingsSlotIndex = 0;
+    private int ReclaimSlotIndex => ReclaimUnlocked ? 1 : -1;
+    private int HelpSlotIndex => ReclaimUnlocked ? 2 : 1;      // το help είναι πάντα τελευταίο
     private int TotalToolbarSlots => HelpSlotIndex + 1;
 
     // Οθόνη βοήθειας (modal· ανοίγει από τη μπάρα ή το μενού)
@@ -155,6 +161,7 @@ public class MarsGame : Microsoft.Xna.Framework.Game
         InitAudio();
         _icons = IconFactory.CreateAll(GraphicsDevice, _catalog);
         _reclaimIcon = IconFactory.CreateReclaim(GraphicsDevice);
+        _buildingsIcon = IconFactory.CreateBuildings(GraphicsDevice);
         _phaseTex = LoadPhaseTexture();
         InitCamera();
     }
@@ -169,6 +176,7 @@ public class MarsGame : Microsoft.Xna.Framework.Game
         _selected = null;
         _selectedBuilding = null;
         _buildMode = false;
+        _buildMenuOpen = false;
         _reclaimMode = false;
         _reclaimTarget = null;
         CloseDialog();
@@ -780,11 +788,11 @@ public class MarsGame : Microsoft.Xna.Framework.Game
             }
         }
 
-        // Build mode: B μπαίνει/κυκλώνει τύπους κτιρίων
+        // Build menu: B ανοίγει/κλείνει την παλέτα κτιρίων
         if (KeyPressed(keys, Keys.B))
         {
-            if (!_buildMode) { _buildMode = true; _buildIndex = 0; }
-            else _buildIndex = (_buildIndex + 1) % _buildables.Count;
+            _buildMenuOpen = !_buildMenuOpen;
+            if (_buildMenuOpen) { _buildMode = false; _reclaimMode = false; }
         }
 
         // Ανάθεση/αφαίρεση αποίκων στο επιλεγμένο κτίριο (+/-)
@@ -818,12 +826,22 @@ public class MarsGame : Microsoft.Xna.Framework.Game
         if (mouse.LeftButton == ButtonState.Pressed && _prevMouse.LeftButton == ButtonState.Released)
         {
             _mouseDownPos = new Point(mouse.X, mouse.Y);
-            int btn = ToolbarHitIndex(mouse.X, mouse.Y);
-            if (btn >= 0)
+
+            // Προτεραιότητα: επιλογή κτιρίου από την ανοιχτή παλέτα → μπαίνει σε build mode & κλείνει.
+            int menuBtn = _buildMenuOpen ? BuildMenuHitIndex(mouse.X, mouse.Y) : -1;
+            if (menuBtn >= 0)
             {
-                if (_buildMode && _buildIndex == btn) _buildMode = false; // ξανα-κλικ = κλείσιμο
-                else { _buildMode = true; _buildIndex = btn; }
+                _buildMode = true;
+                _buildIndex = menuBtn;
+                _buildMenuOpen = false;
                 _reclaimMode = false;
+                _audio.Blip();
+                _uiClick = true;
+            }
+            else if (BuildingsButtonHit(mouse.X, mouse.Y))
+            {
+                _buildMenuOpen = !_buildMenuOpen; // toggle η παλέτα
+                if (_buildMenuOpen) { _buildMode = false; _reclaimMode = false; }
                 _audio.Blip();
                 _uiClick = true;
             }
@@ -831,12 +849,14 @@ public class MarsGame : Microsoft.Xna.Framework.Game
             {
                 _reclaimMode = !_reclaimMode;
                 _buildMode = false;
+                _buildMenuOpen = false;
                 _audio.Blip();
                 _uiClick = true;
             }
             else if (HelpButtonHit(mouse.X, mouse.Y))
             {
                 _showHelp = true;
+                _buildMenuOpen = false;
                 _audio.Blip();
                 _uiClick = true;
             }
@@ -853,7 +873,8 @@ public class MarsGame : Microsoft.Xna.Framework.Game
         // Δεξί κλικ: ακυρώνει το build mode, αλλιώς επιλέγει tile/κτίριο
         if (mouse.RightButton == ButtonState.Pressed && _prevMouse.RightButton == ButtonState.Released)
         {
-            if (_buildMode) _buildMode = false;
+            if (_buildMenuOpen) _buildMenuOpen = false;
+            else if (_buildMode) _buildMode = false;
             else if (_reclaimMode) _reclaimMode = false;
             else if (_hasHover)
             {
@@ -1134,42 +1155,67 @@ public class MarsGame : Microsoft.Xna.Framework.Game
         return new Rectangle(startX + index * (bs + gap), y, bs, bs);
     }
 
-    private int ToolbarHitIndex(int mx, int my)
-    {
-        int slots = TotalToolbarSlots;
-        for (int i = 0; i < _buildables.Count; i++)
-            if (ToolbarButtonRect(i, slots).Contains(mx, my)) return i;
-        return -1;
-    }
+    private bool BuildingsButtonHit(int mx, int my) =>
+        ToolbarButtonRect(BuildingsSlotIndex, TotalToolbarSlots).Contains(mx, my);
 
     private bool ReclaimButtonHit(int mx, int my) =>
-        ReclaimUnlocked && ToolbarButtonRect(_buildables.Count, TotalToolbarSlots).Contains(mx, my);
+        ReclaimUnlocked && ToolbarButtonRect(ReclaimSlotIndex, TotalToolbarSlots).Contains(mx, my);
 
     private bool HelpButtonHit(int mx, int my) =>
         ToolbarButtonRect(HelpSlotIndex, TotalToolbarSlots).Contains(mx, my);
+
+    /// <summary>Rect ενός κουμπιού της popup παλέτας: 2 σειρές, στοιχισμένες στο κέντρο, πάνω από τη μπάρα.</summary>
+    private Rectangle BuildMenuButtonRect(int index)
+    {
+        const int bs = 46, gap = 6, bottom = 8;
+        int n = _buildables.Count;
+        int cols = Math.Max(1, (int)Math.Ceiling(n / 2.0));
+        bool bottomRow = index >= cols;
+        int col = bottomRow ? index - cols : index;
+        int rowCount = bottomRow ? n - cols : Math.Min(n, cols);
+        int rowWidth = rowCount * bs + (rowCount - 1) * gap;
+        int startX = (GraphicsDevice.Viewport.Width - rowWidth) / 2;
+        int toolbarY = GraphicsDevice.Viewport.Height - bs - bottom;
+        int y = toolbarY - (bottomRow ? 1 : 2) * (bs + gap); // κάτω σειρά ακριβώς πάνω από τη μπάρα, πάνω σειρά πιο ψηλά
+        return new Rectangle(startX + col * (bs + gap), y, bs, bs);
+    }
+
+    private int BuildMenuHitIndex(int mx, int my)
+    {
+        for (int i = 0; i < _buildables.Count; i++)
+            if (BuildMenuButtonRect(i).Contains(mx, my)) return i;
+        return -1;
+    }
+
+    /// <summary>True αν ο δείκτης είναι πάνω σε κουμπί της μπάρας ή της ανοιχτής παλέτας (για απόκρυψη hover hint).</summary>
+    private bool IsPointerOverToolbar(int mx, int my)
+    {
+        for (int i = 0; i < TotalToolbarSlots; i++)
+            if (ToolbarButtonRect(i, TotalToolbarSlots).Contains(mx, my)) return true;
+        return _buildMenuOpen && BuildMenuHitIndex(mx, my) >= 0;
+    }
 
     private void DrawToolbar()
     {
         int slots = TotalToolbarSlots;
         var ms = Mouse.GetState();
 
-        for (int i = 0; i < _buildables.Count; i++)
+        // Αν είναι ανοιχτή, ζωγράφισε πρώτα την popup παλέτα (2 σειρές πάνω από τη μπάρα).
+        if (_buildMenuOpen) DrawBuildMenu(ms);
+
+        // Κουμπί «Κτίρια» (toggle παλέτας) — πρώτο στη μπάρα.
         {
-            var def = _buildables[i];
-            var rect = ToolbarButtonRect(i, slots);
-            bool selected = _buildMode && _buildIndex == i;
-
-            _spriteBatch.Draw(_pixel, rect, selected ? new Color(50, 80, 50, 235) : new Color(18, 20, 28, 215));
-            DrawRectOutline(rect, selected ? new Color(120, 230, 120) : new Color(70, 74, 90));
-
-            if (_icons.TryGetValue(def.Id, out var tex))
-                _spriteBatch.Draw(tex, new Rectangle(rect.X + 3, rect.Y + 3, rect.Width - 6, rect.Height - 6), Color.White);
+            var rect = ToolbarButtonRect(BuildingsSlotIndex, slots);
+            bool active = _buildMenuOpen || _buildMode;
+            _spriteBatch.Draw(_pixel, rect, active ? new Color(50, 70, 90, 235) : new Color(18, 20, 28, 215));
+            DrawRectOutline(rect, active ? new Color(120, 190, 240) : new Color(70, 74, 90));
+            _spriteBatch.Draw(_buildingsIcon, new Rectangle(rect.X + 3, rect.Y + 3, rect.Width - 6, rect.Height - 6), Color.White);
         }
 
-        // Κουμπί reclaim μετά τα κτίρια (μόλις ερευνηθεί η τεχνολογία "reclaim")
+        // Κουμπί reclaim (μόλις ερευνηθεί η τεχνολογία "reclaim")
         if (ReclaimUnlocked)
         {
-            var rect = ToolbarButtonRect(_buildables.Count, slots);
+            var rect = ToolbarButtonRect(ReclaimSlotIndex, slots);
             _spriteBatch.Draw(_pixel, rect, _reclaimMode ? new Color(80, 60, 30, 235) : new Color(18, 20, 28, 215));
             DrawRectOutline(rect, _reclaimMode ? new Color(240, 170, 80) : new Color(70, 74, 90));
             _spriteBatch.Draw(_reclaimIcon, new Rectangle(rect.X + 3, rect.Y + 3, rect.Width - 6, rect.Height - 6), Color.White);
@@ -1185,20 +1231,49 @@ public class MarsGame : Microsoft.Xna.Framework.Game
                 new Color(150, 200, 255), 0f, Vector2.Zero, 1.6f, SpriteEffects.None, 0f);
         }
 
-        int hover = ToolbarHitIndex(ms.X, ms.Y);
+        // Tooltips μπάρας (η παλέτα έχει δικά της tooltips μέσα στο DrawBuildMenu)
+        if (BuildingsButtonHit(ms.X, ms.Y))
+            DrawToolbarTooltip("Buildings   (B — browse & place)", ToolbarButtonRect(BuildingsSlotIndex, slots).Center.X);
+        else if (ReclaimButtonHit(ms.X, ms.Y))
+            DrawToolbarTooltip("Reclaim   (recycle a building for credits)", ToolbarButtonRect(ReclaimSlotIndex, slots).Center.X);
+        else if (HelpButtonHit(ms.X, ms.Y))
+            DrawToolbarTooltip("Help   (how to play)", ToolbarButtonRect(HelpSlotIndex, slots).Center.X);
+    }
+
+    /// <summary>Ζωγραφίζει την popup παλέτα κτιρίων: πλαίσιο φόντου + 2 σειρές εικονιδίων + tooltip.</summary>
+    private void DrawBuildMenu(MouseState ms)
+    {
+        if (_buildables.Count == 0) return;
+
+        // Πλαίσιο φόντου γύρω από όλα τα κουμπιά.
+        Rectangle panel = BuildMenuButtonRect(0);
+        for (int i = 1; i < _buildables.Count; i++)
+            panel = Rectangle.Union(panel, BuildMenuButtonRect(i));
+        panel.Inflate(8, 8);
+        _spriteBatch.Draw(_pixel, panel, new Color(12, 14, 20, 240));
+        DrawRectOutline(panel, new Color(90, 130, 170));
+
+        for (int i = 0; i < _buildables.Count; i++)
+        {
+            var def = _buildables[i];
+            var rect = BuildMenuButtonRect(i);
+            bool selected = _buildMode && _buildIndex == i;
+            _spriteBatch.Draw(_pixel, rect, selected ? new Color(50, 80, 50, 235) : new Color(18, 20, 28, 235));
+            DrawRectOutline(rect, selected ? new Color(120, 230, 120) : new Color(70, 74, 90));
+            if (_icons.TryGetValue(def.Id, out var tex))
+                _spriteBatch.Draw(tex, new Rectangle(rect.X + 3, rect.Y + 3, rect.Width - 6, rect.Height - 6), Color.White);
+        }
+
+        int hover = BuildMenuHitIndex(ms.X, ms.Y);
         if (hover >= 0)
         {
             var def = _buildables[hover];
-            DrawToolbarTooltip($"{def.Name}   ({CostString(def)})", ToolbarButtonRect(hover, slots).Center.X);
-        }
-        else if (ReclaimButtonHit(ms.X, ms.Y))
-        {
-            DrawToolbarTooltip("Reclaim   (recycle a building for credits)",
-                ToolbarButtonRect(_buildables.Count, slots).Center.X);
-        }
-        else if (HelpButtonHit(ms.X, ms.Y))
-        {
-            DrawToolbarTooltip("Help   (how to play)", ToolbarButtonRect(HelpSlotIndex, slots).Center.X);
+            var rect = BuildMenuButtonRect(hover);
+            var label = $"{def.Name}   ({CostString(def)})";
+            var size = _font.MeasureString(label);
+            var pos = new Vector2(rect.Center.X - size.X / 2f, rect.Y - size.Y - 6);
+            _spriteBatch.Draw(_pixel, new Rectangle((int)pos.X - 5, (int)pos.Y - 2, (int)size.X + 10, (int)size.Y + 4), new Color(0, 0, 0, 230));
+            _spriteBatch.DrawString(_font, label, pos, HudWhite);
         }
     }
 
@@ -1360,7 +1435,7 @@ public class MarsGame : Microsoft.Xna.Framework.Game
 
         DrawToolbar();
 
-        if (ToolbarHitIndex(Mouse.GetState().X, Mouse.GetState().Y) < 0)
+        if (!IsPointerOverToolbar(Mouse.GetState().X, Mouse.GetState().Y))
             DrawHoverHint();
 
         if (_world.IsTerraformed)
