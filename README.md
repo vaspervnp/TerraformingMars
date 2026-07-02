@@ -23,8 +23,9 @@ src/TerraformingMars.Core   — domain & simulation (engine-agnostic)
     Events/      EventType, SponsorProfile (difficulty), SponsorCatalog
     Persistence/ SaveSystem, SaveGame (JSON save/load)
     Data/        buildings.json, technologies.json, sponsors.json
-src/TerraformingMars.Game   — MonoGame (Camera2D, HexMapRenderer, AudioManager, MarsGame)
-tests/TerraformingMars.Core.Tests — xUnit (77 tests)
+src/TerraformingMars.Game   — MonoGame (Camera2D, HexMapRenderer, IconFactory,
+                              AudioManager + MusicPlayer, MarsGame)
+tests/TerraformingMars.Core.Tests — xUnit (99 tests)
 ```
 
 ## Gameplay
@@ -50,25 +51,42 @@ dotnet test                                    # unit tests
 dotnet run --project src/TerraformingMars.Game # ο viewer
 ```
 
-### Controls
-**Μενού:** Left/Right = χορηγός · R = τυχαίο seed · Enter = έναρξη · Esc = έξοδος
+> **Linux:** για ήχο χρειάζεται το system OpenAL — `sudo apt install libopenal1` (το build το
+> χρησιμοποιεί αυτόματα, καθώς το bundled libopenal του MonoGame θέλει νεότερο glibc). Η μουσική
+> είναι OGG (cross-platform μέσω `MediaPlayer`) και το HUD font είναι bundled DejaVu Sans Mono.
 
-**Παιχνίδι:**
-| Πλήκτρο | Δράση |
+## Controls
+Το UI είναι κυρίως με το **ποντίκι**: μια μπάρα εργαλείων κάτω + μικρά εικονίδια κατάστασης στις γωνίες.
+
+**Μενού:** κλικ στα κουμπιά — *Continue* (αν τρέχει παιχνίδι) · **Load Game** (αν υπάρχει save) ·
+*New/Start Game* · *Help* · *Quit* — ή βελάκια + Enter. Ρυθμίσεις (χορηγός, seed, μουσική, εντάσεις)
+με κλικ/βελάκια· **R** = τυχαίο seed.
+
+**Μπάρα εργαλείων (κάτω):**
+| Κουμπί | Δράση |
 |---|---|
-| drag (αριστερό/μεσαίο) | pan |
-| ροδέλα | zoom (γύρω από κέρσορα) |
-| WASD / βελάκια | κίνηση κάμερας (max zoom-out = 20 εξάγωνα) |
-| Space · 1 / 2 / 3 | pause · ταχύτητα ×1 / ×2 / ×4 |
-| κλικ σε εικονίδιο (κάτω μπάρα) | επιλογή κτιρίου · μετά κλικ σε hex = τοποθέτηση |
-| δεξί κλικ | επιλογή hex/κτιρίου (ή ακύρωση build) |
-| + / − | ανάθεση / αφαίρεση αποίκου στο επιλεγμένο κτίριο |
-| T | επιλογή/κύκλος έρευνας |
-| G | αλλαγή χορηγού (νέο παιχνίδι) |
-| N | νέος τυχαίος χάρτης (με επιβεβαίωση Y/N) |
-| F5 / F9 | save / load |
-| U | mute/unmute |
-| Esc | πίσω στο μενού |
+| Κτίρια | ανοίγει την παλέτα (2 σειρές) → διάλεξε κτίριο → κλικ σε hex = τοποθέτηση |
+| Έρευνα | ανοίγει λίστα διαθέσιμων τεχνολογιών → κλικ = επιλογή |
+| Ταχύτητα (ρολόι) | popup: pause / ×1 / ×2 / ×4 |
+| Save (δισκέτα) | αποθήκευση |
+| Mute (ηχείο) | mute/unmute ήχου |
+| Reclaim | (αφού ερευνηθεί) ανακύκλωση κτιρίου για credits |
+| Menu · ? | πίσω στο μενού · βοήθεια |
 
-Όλη η κατάσταση (Sol/ώρα, πόροι & rates, πλανητικές μετρικές & terraforming %, alerts γεγονότων,
-επιλεγμένο κτίριο/tile) εμφανίζεται σε on-screen HUD panels.
+**Ποντίκι & πλήκτρα:**
+| | Δράση |
+|---|---|
+| drag (αριστερό/μεσαίο) · ροδέλα | pan · zoom |
+| WASD / βελάκια | κίνηση κάμερας (max zoom-out = 20 εξάγωνα) |
+| δεξί κλικ | επιλογή hex/κτιρίου (ή ακύρωση build/popup) |
+| **[−] / [+]** στο panel κτιρίου, ή πλήκτρα **+ / −** | ανάθεση/αφαίρεση αποίκου |
+| Space · 1 / 2 / 3 | pause · ταχύτητα ×1 / ×2 / ×4 |
+| B · T | παλέτα κτιρίων · λίστα έρευνας |
+| F5 · F9 | save · load |
+| U · Esc | mute · πίσω στο μενού |
+
+**HUD:** πάνω-αριστερά **Sol & χορηγός** (εικονίδια με hint)· πάνω-κέντρο η **μπάρα πόρων**
+(Energy/Water/Oxygen/Food/Materials/Silicon/Credits/Crew — η τιμή κοκκινίζει όταν πέφτει, hover =
+όριο & μεταβολή/tick)· κάτω-αριστερά οι **4 στόχοι + terraforming % + biomass** (πρόοδος %, hover =
+τιμή/στόχος)· κάτω-δεξιά η **πρόοδος έρευνας** (γκρι όταν καμία)· κάτω-αριστερά panel με tile/κτίριο,
+alerts & γεγονότα.

@@ -570,33 +570,40 @@ public class MarsGame : Microsoft.Xna.Framework.Game
     private static readonly string[] HelpText =
     {
         "GOAL",
-        "Terraform Mars: raise Temperature, Pressure, Oxygen and Water to their targets.",
-        "Reach 100% on all four planet metrics to win - and keep your crew alive.",
+        "Raise Temperature, Pressure, Oxygen and Water to their target levels.",
+        "Win when all four goals (bottom-left) hit 100% - keep your crew alive.",
         "",
         "BUILD",
-        "Click an icon in the bottom toolbar, then click a hex to place a building.",
-        "Buildings cost Credits up front and use Materials while under construction.",
-        "Mines need a matching deposit (H2O / Fe / Si / Rg), shown as coloured diamonds.",
+        "Click the buildings icon (bottom bar), pick a building, then a hex.",
+        "Costs Credits up front, plus Materials while it is being built.",
+        "Mines need a matching deposit (H2O / Fe / Si / Rg) - coloured diamonds.",
         "",
-        "CREW & RESOURCES",
-        "Select a building and press +/- to assign or remove crew (staffed = more output).",
-        "Watch Energy, Water, Oxygen, Food and Materials - shortages stall the colony.",
+        "CREW",
+        "Right-click a building to select it. Then use [-] / [+] (or +/- keys)",
+        "to assign or remove colonists - staffed buildings produce more.",
         "",
         "RESEARCH & RECLAIM",
-        "Press T to choose a technology; finishing it unlocks new buildings.",
-        "Research 'Reclaim' to recycle a building for some Credits back (refund shrinks",
-        "over time). Click the recycle icon, then the building.",
+        "Click the research icon (or T) and pick a technology to research.",
+        "Research 'Reclaim' to recycle a building for some Credits back.",
+        "",
+        "TIME, SAVE & LOAD",
+        "Clock icon: pause / x1 / x2 / x4  (or Space, 1 / 2 / 3).",
+        "Save: F5 or the disk icon.   Load: F9, or 'Load Game' from the menu.",
         "",
         "CONTROLS",
-        "Move: WASD / arrows / drag     Zoom: mouse wheel",
-        "Speed: Space = pause, 1 / 2 / 3 = normal / fast / ultra",
-        "Save / Load: F5 / F9     New map: N     Mute SFX: U     Menu: Esc",
+        "Move: WASD / arrows / drag   Zoom: wheel   Select: right-click   Mute: U",
+        "Resource numbers (top) turn red when falling.   Menu / back: Esc.",
     };
 
     private Rectangle HelpPanelRect()
     {
         int vw = GraphicsDevice.Viewport.Width, vh = GraphicsDevice.Viewport.Height;
-        int w = Math.Min(vw - 80, 880), h = Math.Min(vh - 60, 680);
+        // Πλάτος προσαρμοσμένο στη μεγαλύτερη γραμμή (26px περιθώριο δεξιά+αριστερά), με cap στο παράθυρο.
+        float maxLine = _font.MeasureString("HOW TO PLAY").X * 1.5f;
+        foreach (var line in HelpText)
+            maxLine = MathF.Max(maxLine, _font.MeasureString(line).X);
+        int w = Math.Min(vw - 40, (int)maxLine + 52);
+        int h = Math.Min(vh - 60, 680);
         return new Rectangle((vw - w) / 2, (vh - h) / 2, w, h);
     }
 
