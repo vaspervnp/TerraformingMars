@@ -584,7 +584,7 @@ public class MarsGame : Microsoft.Xna.Framework.Game
         "",
         "RESEARCH & RECLAIM",
         "Click the research icon (or T) and pick a technology to research.",
-        "Research 'Reclaim' to recycle a building for some Credits back.",
+        "Research 'Reclaim' to recycle a building for some Credits and Materials back.",
         "",
         "TIME, SAVE & LOAD",
         "Clock icon: pause / x1 / x2 / x4  (or Space, 1 / 2 / 3).",
@@ -911,10 +911,15 @@ public class MarsGame : Microsoft.Xna.Framework.Game
             return;
         }
         _reclaimTarget = building;
-        double refund = _world.Colony.ReclaimValue(building, _world.Clock.TotalTicks);
-        double pct = Colony.ReclaimFraction(building, _world.Clock.TotalTicks) * 100;
+        long now = _world.Clock.TotalTicks;
+        double credits = _world.Colony.ReclaimValue(building, now);
+        double materials = _world.Colony.ReclaimMaterialsValue(building, now);
+        double pct = Colony.ReclaimFraction(building, now) * 100;
+        string refundLine = materials >= 1
+            ? $"Refund {credits:0} credits + {materials:0} materials ({pct:0}% of cost)"
+            : $"Refund {credits:0} credits ({pct:0}% of cost)";
         OpenDialog(
-            new[] { $"Reclaim {building.Definition.Name}?", $"Refund {refund:0} credits ({pct:0}% of cost)" },
+            new[] { $"Reclaim {building.Definition.Name}?", refundLine },
             Btn("Reclaim", new Color(240, 170, 80), ConfirmReclaim),
             Btn("Cancel", HudDim, () => _reclaimTarget = null));
     }
@@ -924,8 +929,10 @@ public class MarsGame : Microsoft.Xna.Framework.Game
     {
         if (_reclaimTarget is { } target && _world.Colony.Buildings.Contains(target))
         {
-            double refund = _world.Colony.Reclaim(target, _world.Clock.TotalTicks);
-            _status = $"Reclaimed {target.Definition.Name}  (+{refund:0} credits)";
+            var (credits, materials) = _world.Colony.Reclaim(target, _world.Clock.TotalTicks);
+            _status = materials >= 1
+                ? $"Reclaimed {target.Definition.Name}  (+{credits:0} credits, +{materials:0} materials)"
+                : $"Reclaimed {target.Definition.Name}  (+{credits:0} credits)";
             _statusTimer = 3.0;
             _audio.Blip();
             if (_selectedBuilding == target) { _selectedBuilding = null; _selected = null; }

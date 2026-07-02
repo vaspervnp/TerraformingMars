@@ -71,11 +71,57 @@ public class ReclaimTests
         colony.AddBuilding(battery);
         double credits0 = colony.Ledger.Get(ResourceKind.Credits);
 
-        double refund = colony.Reclaim(battery, 0); // battery credit cost 1500 → 90% = 1350
+        var (credits, materials) = colony.Reclaim(battery, 0); // battery credit cost 1500 → 90% = 1350
 
-        Assert.Equal(1350, refund, 3);
+        Assert.Equal(1350, credits, 3);
+        Assert.Equal(0, materials, 3); // ξεκίνησε operational χωρίς επενδυμένα υλικά σε αυτό το test
         Assert.Equal(credits0 + 1350, colony.Ledger.Get(ResourceKind.Credits), 3);
         Assert.Empty(colony.Buildings);
+    }
+
+    [Fact]
+    public void Reclaim_Also_Refunds_A_Fraction_Of_The_Materials_Invested()
+    {
+        var map = new MapGenerator(new MapGenerationSettings { Width = 24, Height = 24, Seed = 11 }).Generate();
+        var colony = new Colony();
+        colony.Ledger.Set(ResourceKind.Credits, 100_000);
+        colony.Ledger.Set(ResourceKind.Materials, 1000);
+        var def = Catalog.Get("solar_panel"); // materials cost 40, credits 2000
+        var flat = map.Tiles.First(t => t.Terrain == TerrainType.Flatland && t.IsBuildable);
+
+        var building = colony.TryPlaceBuilding(def, flat.Coord, map).Building!;
+        var world = new World(map, colony, new ISimulationSystem[] { new ConstructionSystem() });
+        for (int i = 0; i < def.BuildTimeTicks; i++) world.Tick(); // πλήρης κατασκευή → όλα τα 40 υλικά επενδεδυμένα
+        Assert.Equal(BuildingState.Operational, building.State);
+
+        double materialsBefore = colony.Ledger.Get(ResourceKind.Materials);
+        var (credits, materials) = colony.Reclaim(building, 0); // fraction = 0.90
+
+        Assert.Equal(2000 * 0.90, credits, 3);
+        Assert.Equal(40 * 0.90, materials, 3);                                       // 40 υλικά × 90%
+        Assert.Equal(materialsBefore + 40 * 0.90, colony.Ledger.Get(ResourceKind.Materials), 3);
+    }
+
+    [Fact]
+    public void Reclaim_Of_Half_Built_Building_Refunds_Only_The_Materials_Actually_Invested()
+    {
+        var map = new MapGenerator(new MapGenerationSettings { Width = 24, Height = 24, Seed = 11 }).Generate();
+        var colony = new Colony();
+        colony.Ledger.Set(ResourceKind.Credits, 100_000);
+        colony.Ledger.Set(ResourceKind.Materials, 1000);
+        var def = Catalog.Get("solar_panel"); // materials cost 40, BuildTime 60
+        var flat = map.Tiles.First(t => t.Terrain == TerrainType.Flatland && t.IsBuildable);
+
+        var building = colony.TryPlaceBuilding(def, flat.Coord, map).Building!;
+        var world = new World(map, colony, new ISimulationSystem[] { new ConstructionSystem() });
+        for (int i = 0; i < def.BuildTimeTicks / 2; i++) world.Tick(); // μισοχτισμένο → ~20 υλικά επενδεδυμένα
+        Assert.Equal(BuildingState.UnderConstruction, building.State);
+
+        var (_, materials) = colony.Reclaim(building, 0); // fraction = 0.90
+
+        // Επιστρέφει ποσοστό μόνο των υλικών που όντως μπήκαν (MaterialsPaid), όχι ολόκληρου του κόστους.
+        Assert.Equal(building.MaterialsPaid * 0.90, materials, 3);
+        Assert.True(materials < 40 * 0.90); // λιγότερα από ένα πλήρες κτίριο — κανένα «τύπωμα» υλικών
     }
 
     [Fact]
@@ -117,7 +163,7 @@ public class ReclaimTests
         colony.AddBuilding(capsule);
 
         Assert.False(Colony.CanReclaim(capsule));
-        Assert.Equal(0.0, colony.Reclaim(capsule, 0));
+        Assert.Equal((0.0, 0.0), colony.Reclaim(capsule, 0));
         Assert.Single(colony.Buildings); // still there
     }
 

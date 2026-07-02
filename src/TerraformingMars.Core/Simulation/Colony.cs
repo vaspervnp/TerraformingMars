@@ -129,17 +129,26 @@ public sealed class Colony
         return creditCost * ReclaimFraction(building, currentTick);
     }
 
+    /// <summary>
+    /// Materials (regolith) που θα επιστραφούν αν ανακυκλωθεί τώρα το κτίριο: το ίδιο χρονικά-φθίνον
+    /// ποσοστό, επί των υλικών που έχουν <b>πραγματικά</b> επενδυθεί στο εργοτάξιο (<see cref="Building.MaterialsPaid"/>).
+    /// Ένα ημιτελές κτίριο έχει πληρώσει λιγότερα υλικά, οπότε επιστρέφει λιγότερα (κανένα «τύπωμα» υλικών).
+    /// </summary>
+    public double ReclaimMaterialsValue(Building building, long currentTick)
+        => building.MaterialsPaid * ReclaimFraction(building, currentTick);
+
     /// <summary>True αν το κτίριο μπορεί να ανακυκλωθεί (buildable — π.χ. όχι η κάψουλα προσεδάφισης).</summary>
     public static bool CanReclaim(Building building) => building.Definition.Buildable;
 
     /// <summary>
-    /// Ανακυκλώνει κτίριο: επιστρέφει το χρονικά-φθίνον ποσοστό του κόστους σε Credits,
-    /// αποδεσμεύει το προσωπικό, αφαιρεί τη χωρητικότητα αποθήκευσης και το κτίριο από τον χάρτη.
-    /// Επιστρέφει τα credits που δόθηκαν, ή 0 αν δεν ήταν δυνατή η ανακύκλωση.
+    /// Ανακυκλώνει κτίριο: επιστρέφει το χρονικά-φθίνον ποσοστό τόσο των Credits όσο και των
+    /// Materials (regolith) που επενδύθηκαν, αποδεσμεύει το προσωπικό, αφαιρεί τη χωρητικότητα
+    /// αποθήκευσης και το κτίριο από τον χάρτη.
+    /// Επιστρέφει τα (Credits, Materials) που δόθηκαν, ή (0, 0) αν δεν ήταν δυνατή η ανακύκλωση.
     /// </summary>
-    public double Reclaim(Building building, long currentTick)
+    public (double Credits, double Materials) Reclaim(Building building, long currentTick)
     {
-        if (!CanReclaim(building) || !Buildings.Contains(building)) return 0.0;
+        if (!CanReclaim(building) || !Buildings.Contains(building)) return (0.0, 0.0);
 
         foreach (var worker in building.Workers.ToList())
             Unassign(worker);
@@ -152,10 +161,12 @@ public sealed class Colony
                 Ledger.Set(kind, Ledger.Get(kind)); // re-clamp στη μειωμένη χωρητικότητα
             }
 
-        double refund = ReclaimValue(building, currentTick);
-        Ledger.Add(ResourceKind.Credits, refund);
+        double creditRefund = ReclaimValue(building, currentTick);
+        double materialRefund = ReclaimMaterialsValue(building, currentTick);
+        Ledger.Add(ResourceKind.Credits, creditRefund);
+        Ledger.Add(ResourceKind.Materials, materialRefund);
         Buildings.Remove(building);
-        return refund;
+        return (creditRefund, materialRefund);
     }
 
     /// <summary>Αναθέτει άποικο σε κτίριο (αν υπάρχει ελεύθερη θέση). Τον αφαιρεί από προηγούμενη θέση.</summary>
