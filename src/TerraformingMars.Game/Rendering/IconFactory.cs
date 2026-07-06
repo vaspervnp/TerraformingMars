@@ -138,7 +138,7 @@ public static class IconFactory
     public static Dictionary<string, Texture2D> CreateUiIcons(GraphicsDevice gd)
     {
         var icons = new Dictionary<string, Texture2D>(StringComparer.OrdinalIgnoreCase);
-        foreach (var id in new[] { "research", "speed", "save", "menu", "mute_on", "mute_off",
+        foreach (var id in new[] { "research", "speed", "save", "menu", "mute_on", "mute_off", "center",
                                    "pause", "speed1", "speed2", "speed4",
                                    "sol", "sponsor", "temperature", "pressure", "planet", "biomass" })
         {
@@ -189,6 +189,15 @@ public static class IconFactory
                 Tri(b, 20, 32, 33, 17, 33, 47, steel);
                 Line(b, 40, 23, 54, 41, 3, new Color(240, 90, 80));
                 Line(b, 54, 23, 40, 41, 3, new Color(240, 90, 80));
+                break;
+            case "center": // στόχαστρο (κεντράρισμα στο landing module)
+                var cross = new Color(150, 200, 245);
+                Ring(b, 32, 32, 14, 3, cross);
+                Disc(b, 32, 32, 3, cross);
+                Line(b, 32, 6, 32, 15, 3, cross);   // πάνω
+                Line(b, 32, 49, 32, 58, 3, cross);  // κάτω
+                Line(b, 6, 32, 15, 32, 3, cross);   // αριστερά
+                Line(b, 49, 32, 58, 32, 3, cross);  // δεξιά
                 break;
             case "pause":
                 Rect(b, 22, 17, 7, 30, new Color(235, 240, 250));

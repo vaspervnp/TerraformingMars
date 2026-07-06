@@ -70,6 +70,15 @@ public class MarsGame : Microsoft.Xna.Framework.Game
     private double _statusTimer;
     private Point _mouseDownPos;
 
+    // Μετακίνηση & απομνημόνευση θέσης του panel κτηρίου (drag + JSON persistence).
+    private UiSettings _uiSettings = null!;
+    private Rectangle _buildingPanelRect;   // ορατό κουτί του panel (για hit-test του drag)
+    private Vector2 _buildingPanelPos;       // τρέχουσα θέση (πάνω-αριστερά)
+    private bool _buildingPanelPosSet;       // αν έχει «κλειδώσει» θέση· αλλιώς προεπιλογή πάνω-δεξιά
+    private bool _draggingPanel;             // σέρνεται αυτή τη στιγμή το panel;
+    private Point _panelDragOffset;          // απόσταση κέρσορα από τη γωνία του panel τη στιγμή που ξεκίνησε το drag
+    private bool _panelMoved;                // μετακινήθηκε πραγματικά μέσα σε αυτό το drag (για αποθήκευση);
+
     // Polish: μενού, audio, ανίχνευση μεταβάσεων (win/lose/research/events)
     private enum GameState { Menu, Playing }
     private GameState _state = GameState.Menu;
@@ -109,6 +118,7 @@ public class MarsGame : Microsoft.Xna.Framework.Game
 
     // Reclaim (ανακύκλωση κτιρίων για credits) — ξεκλειδώνει με την τεχνολογία "reclaim"
     private const string ReclaimTechId = "reclaim";
+    private const string LandingModuleId = "landing_capsule"; // το αρχικό κτήριο (landing module)
     private Texture2D _reclaimIcon = null!;
     private Texture2D _buildingsIcon = null!;
     private bool _reclaimMode;
@@ -116,10 +126,10 @@ public class MarsGame : Microsoft.Xna.Framework.Game
     private bool ReclaimUnlocked => _world.Colony.Tech.IsResearched(ReclaimTechId);
 
     // Μπάρα εργαλείων: δυναμική λίστα κουμπιών (το Reclaim εμφανίζεται μόνο όταν ξεκλειδωθεί).
-    private enum Tool { Buildings, Research, Speed, Save, Mute, Reclaim, Menu, Help }
+    private enum Tool { Buildings, Research, Speed, Save, Mute, Center, Reclaim, Menu, Help }
     private List<Tool> ToolbarTools()
     {
-        var list = new List<Tool> { Tool.Buildings, Tool.Research, Tool.Speed, Tool.Save, Tool.Mute };
+        var list = new List<Tool> { Tool.Buildings, Tool.Research, Tool.Speed, Tool.Save, Tool.Mute, Tool.Center };
         if (ReclaimUnlocked) list.Add(Tool.Reclaim);
         list.Add(Tool.Menu);
         list.Add(Tool.Help);
@@ -170,6 +180,7 @@ public class MarsGame : Microsoft.Xna.Framework.Game
         _audio = new AudioManager();
         _music = new MusicPlayer();
         InitAudio();
+        _uiSettings = UiSettings.Load();
         _icons = IconFactory.CreateAll(GraphicsDevice, _catalog);
         _reclaimIcon = IconFactory.CreateReclaim(GraphicsDevice);
         _buildingsIcon = IconFactory.CreateBuildings(GraphicsDevice);
@@ -592,6 +603,7 @@ public class MarsGame : Microsoft.Xna.Framework.Game
         "",
         "CONTROLS",
         "Move: WASD / arrows / drag   Zoom: wheel   Select: right-click   Mute: U",
+        "Center on landing module: H, or the crosshair icon in the bottom bar.",
         "Resource numbers (top) turn red when falling.   Menu / back: Esc.",
     };
 
@@ -680,6 +692,16 @@ public class MarsGame : Microsoft.Xna.Framework.Game
         _camera.Position = new Vector2((float)x, (float)y);
     }
 
+    /// <summary>Κεντράρει την κάμερα στο landing module (αρχική κάψουλα)· διατηρεί το τρέχον zoom.</summary>
+    private void CenterOnLandingModule()
+    {
+        var landing = _world.Colony.Buildings.FirstOrDefault(b => b.Definition.Id == LandingModuleId)
+                      ?? _world.Colony.Buildings.FirstOrDefault();
+        if (landing is null) return;
+        var (x, y) = _renderer.Layout.HexToPixel(landing.Location);
+        _camera.Position = new Vector2((float)x, (float)y);
+    }
+
     protected override void Update(GameTime gameTime)
     {
         var mouse = Mouse.GetState();
@@ -742,10 +764,13 @@ public class MarsGame : Microsoft.Xna.Framework.Game
         _camera.SetViewport(GraphicsDevice.Viewport.Width, GraphicsDevice.Viewport.Height);
         UpdateMinZoom();
 
-        // Pan με drag (αριστερό ή μεσαίο κουμπί)
+        // Μετακίνηση του panel κτηρίου με drag (κρατάει & θυμάται τη θέση του).
+        UpdateBuildingPanelDrag(mouse);
+
+        // Pan με drag (αριστερό ή μεσαίο κουμπί) — όχι όσο σέρνουμε το panel κτηρίου.
         bool dragging = mouse.LeftButton == ButtonState.Pressed || mouse.MiddleButton == ButtonState.Pressed;
         bool wasDragging = _prevMouse.LeftButton == ButtonState.Pressed || _prevMouse.MiddleButton == ButtonState.Pressed;
-        if (dragging && wasDragging)
+        if (dragging && wasDragging && !_draggingPanel)
             _camera.Pan(new Vector2(mouse.X - _prevMouse.X, mouse.Y - _prevMouse.Y));
 
         // Zoom με wheel, γύρω από τον κέρσορα
@@ -761,6 +786,9 @@ public class MarsGame : Microsoft.Xna.Framework.Game
         if (keys.IsKeyDown(Keys.A) || keys.IsKeyDown(Keys.Left)) move.X -= 1;
         if (keys.IsKeyDown(Keys.D) || keys.IsKeyDown(Keys.Right)) move.X += 1;
         if (move != Vector2.Zero) _camera.Position += Vector2.Normalize(move) * panSpeed;
+
+        // H: κεντράρισμα κάμερας στο landing module (αρχική κάψουλα)
+        if (KeyPressed(keys, Keys.H)) { CenterOnLandingModule(); _audio.Blip(); }
 
         // Save (F5) / Load (F9). Νέος χάρτης & αλλαγή χορηγού γίνονται πλέον μόνο από το μενού.
         if (KeyPressed(keys, Keys.F5)) SaveGameToFile();
@@ -1055,6 +1083,49 @@ public class MarsGame : Microsoft.Xna.Framework.Game
         return false;
     }
 
+    /// <summary>
+    /// Σέρνει το panel του επιλεγμένου κτηρίου με το αριστερό κουμπί και αποθηκεύει τη νέα του θέση
+    /// όταν αφεθεί. Το drag ξεκινά μόνο πάνω στο ορατό κουτί του panel (όχι στα κουμπιά +/-).
+    /// </summary>
+    private void UpdateBuildingPanelDrag(MouseState mouse)
+    {
+        bool leftDown = mouse.LeftButton == ButtonState.Pressed;
+        bool leftPressedNow = leftDown && _prevMouse.LeftButton == ButtonState.Released;
+
+        if (!_draggingPanel && leftPressedNow && _selectedBuilding is not null
+            && _buildingPanelRect.Contains(mouse.X, mouse.Y)
+            && !_crewPlusRect.Contains(mouse.X, mouse.Y)
+            && !_crewMinusRect.Contains(mouse.X, mouse.Y))
+        {
+            _draggingPanel = true;
+            _panelMoved = false;
+            _panelDragOffset = new Point(mouse.X - _buildingPanelRect.X, mouse.Y - _buildingPanelRect.Y);
+            _uiClick = true; // απόφυγε να εκληφθεί ως κλικ στον χάρτη
+        }
+
+        if (!_draggingPanel) return;
+
+        if (leftDown && _selectedBuilding is not null)
+        {
+            int vpW = GraphicsDevice.Viewport.Width, vpH = GraphicsDevice.Viewport.Height;
+            int nx = Math.Clamp(mouse.X - _panelDragOffset.X, 0, Math.Max(0, vpW - _buildingPanelRect.Width));
+            int ny = Math.Clamp(mouse.Y - _panelDragOffset.Y, 0, Math.Max(0, vpH - _buildingPanelRect.Height));
+            if (nx != (int)_buildingPanelPos.X || ny != (int)_buildingPanelPos.Y) _panelMoved = true;
+            _buildingPanelPos = new Vector2(nx, ny);
+            _buildingPanelPosSet = true;
+        }
+        else
+        {
+            _draggingPanel = false;
+            if (_panelMoved)
+            {
+                _uiSettings.BuildingPanelX = (int)_buildingPanelPos.X;
+                _uiSettings.BuildingPanelY = (int)_buildingPanelPos.Y;
+                _uiSettings.Save();
+            }
+        }
+    }
+
     protected override void Draw(GameTime gameTime)
     {
         if (_state == GameState.Menu)
@@ -1300,6 +1371,7 @@ public class MarsGame : Microsoft.Xna.Framework.Game
         Tool.Speed => _toolIcons["speed"],
         Tool.Save => _toolIcons["save"],
         Tool.Mute => _toolIcons[_audio.Enabled ? "mute_on" : "mute_off"],
+        Tool.Center => _toolIcons["center"],
         Tool.Menu => _toolIcons["menu"],
         _ => _buildingsIcon
     };
@@ -1314,6 +1386,7 @@ public class MarsGame : Microsoft.Xna.Framework.Game
         Tool.Save => "Save game   (F5)",
         Tool.Mute => _audio.Enabled ? "Mute sound   (U)" : "Unmute sound   (U)",
         Tool.Reclaim => "Reclaim   (recycle a building for credits)",
+        Tool.Center => "Center on landing module   (H)",
         Tool.Menu => "Menu   (Esc - back to main menu)",
         Tool.Help => "Help   (how to play)",
         _ => ""
@@ -1350,6 +1423,9 @@ public class MarsGame : Microsoft.Xna.Framework.Game
             case Tool.Reclaim:
                 _reclaimMode = !_reclaimMode;
                 _buildMode = false;
+                break;
+            case Tool.Center:
+                CenterOnLandingModule();
                 break;
             case Tool.Menu:
                 _state = GameState.Menu;
@@ -1827,7 +1903,10 @@ public class MarsGame : Microsoft.Xna.Framework.Game
         if (_selectedBuilding is not null)
             DrawBuildingPanel();
         else
+        {
             _crewPlusRect = _crewMinusRect = Rectangle.Empty;
+            _buildingPanelRect = Rectangle.Empty;
+        }
 
         DrawToolbar();
 
@@ -1913,8 +1992,32 @@ public class MarsGame : Microsoft.Xna.Framework.Game
 
         float width = PanelWidth(lines);
         if (showCrew) width = MathF.Max(width, _font.MeasureString("crew: ").X + 70f); // χώρος για τα κουμπιά
-        var pos = new Vector2(GraphicsDevice.Viewport.Width - width - 10f, 10f);
+        float panelH = lines.Count * _font.LineSpacing + 16f;
+        int vpW = GraphicsDevice.Viewport.Width, vpH = GraphicsDevice.Viewport.Height;
+
+        // Θέση: αποθηκευμένη/σερνόμενη αν υπάρχει· αλλιώς προεπιλογή πάνω-δεξιά.
+        Vector2 pos;
+        if (_buildingPanelPosSet)
+            pos = _buildingPanelPos;
+        else if (_uiSettings.BuildingPanelX is int sx && _uiSettings.BuildingPanelY is int sy)
+            pos = new Vector2(sx, sy);
+        else
+            pos = new Vector2(vpW - width - 10f, 10f);
+
+        // Περιορισμός μέσα στην οθόνη (το viewport μπορεί να έχει αλλάξει από την τελευταία φορά).
+        // Χρησιμοποιούμε το πλήρες πλάτος (μαζί με τον χώρο των κουμπιών) ώστε να μένουν ορατά.
+        pos.X = Math.Clamp(pos.X, 0f, MathF.Max(0f, vpW - width));
+        pos.Y = Math.Clamp(pos.Y, 0f, MathF.Max(0f, vpH - panelH));
+
+        // Αν η θέση έχει «κλειδώσει» (αποθηκευμένη ή από drag), κράτα την συγχρονισμένη με το ορθογώνιο.
+        if (_buildingPanelPosSet || _uiSettings.BuildingPanelX is not null)
+        {
+            _buildingPanelPos = pos;
+            _buildingPanelPosSet = true;
+        }
+
         DrawTextPanel(pos, lines);
+        _buildingPanelRect = new Rectangle((int)pos.X, (int)pos.Y, (int)width, (int)panelH);
 
         _crewPlusRect = _crewMinusRect = Rectangle.Empty;
         if (showCrew)
