@@ -65,6 +65,8 @@ public class MarsGame : Microsoft.Xna.Framework.Game
     private bool _buildMenuOpen;   // popup παλέτα κτιρίων (2 σειρές πάνω από τη μπάρα)
     private bool _speedMenuOpen;   // popup ταχύτητας (pause / x1 / x2 / x4)
     private bool _researchMenuOpen; // popup διαθέσιμων ερευνών
+    private bool _buildHelp;       // help mode στην παλέτα κτιρίων (δείχνει περιγραφή στο hover)
+    private bool _researchHelp;    // help mode στην παλέτα έρευνας
     private Rectangle _crewPlusRect, _crewMinusRect; // κουμπιά επάνδρωσης (+/-) στο panel κτηρίου
     private string _status = "";
     private double _statusTimer;
@@ -100,6 +102,7 @@ public class MarsGame : Microsoft.Xna.Framework.Game
     private bool _uiClick;
     private bool _hasActiveGame;
     private Dictionary<string, Texture2D> _icons = null!;
+    private Dictionary<string, Texture2D> _techIcons = null!;
     private Dictionary<string, Texture2D> _resIcons = null!;
     private Dictionary<string, Texture2D> _toolIcons = null!;
 
@@ -206,6 +209,7 @@ public class MarsGame : Microsoft.Xna.Framework.Game
         _icons = IconFactory.CreateAll(GraphicsDevice, _catalog);
         _reclaimIcon = IconFactory.CreateReclaim(GraphicsDevice);
         _buildingsIcon = IconFactory.CreateBuildings(GraphicsDevice);
+        _techIcons = IconFactory.CreateTechIcons(GraphicsDevice, _world.Colony.Tech.Catalog, _icons, _reclaimIcon);
         _resIcons = IconFactory.CreateResourceIcons(GraphicsDevice);
         _toolIcons = IconFactory.CreateUiIcons(GraphicsDevice);
         _phaseTex = LoadPhaseTexture();
@@ -956,6 +960,19 @@ public class MarsGame : Microsoft.Xna.Framework.Game
             {
                 _uiClick = true;              // κλικ πάνω στην κάρτα: μην τοποθετηθεί κτίριο από κάτω
             }
+            else if (_buildMenuOpen && PaletteHelpRect(_buildables.Count).Contains(mouse.X, mouse.Y))
+            {
+                _buildHelp = !_buildHelp;     // «?» help toggle της παλέτας κτιρίων
+                _audio.Blip();
+                _uiClick = true;
+            }
+            else if (_researchMenuOpen && ResearchOptions().Count > 0
+                     && PaletteHelpRect(ResearchOptions().Count).Contains(mouse.X, mouse.Y))
+            {
+                _researchHelp = !_researchHelp; // «?» help toggle της παλέτας έρευνας
+                _audio.Blip();
+                _uiClick = true;
+            }
             else if (CrewButtonClick(mouse.X, mouse.Y))
             {
                 // κουμπιά επάνδρωσης (+/-) στο panel του επιλεγμένου κτηρίου
@@ -1497,21 +1514,40 @@ public class MarsGame : Microsoft.Xna.Framework.Game
         return -1;
     }
 
-    /// <summary>Rect ενός κουμπιού της popup παλέτας: 2 σειρές, στοιχισμένες στο κέντρο, πάνω από τη μπάρα.</summary>
-    private Rectangle BuildMenuButtonRect(int index)
+    /// <summary>Rect ενός κουμπιού μιας popup παλέτας (κτίρια/έρευνα): 2 σειρές, κεντραρισμένες, πάνω από τη μπάρα.</summary>
+    private Rectangle PaletteButtonRect(int index, int count)
     {
         const int bs = 46, gap = 6, bottom = 8;
-        int n = _buildables.Count;
-        int cols = Math.Max(1, (int)Math.Ceiling(n / 2.0));
+        int cols = Math.Max(1, (int)Math.Ceiling(count / 2.0));
         bool bottomRow = index >= cols;
         int col = bottomRow ? index - cols : index;
-        int rowCount = bottomRow ? n - cols : Math.Min(n, cols);
+        int rowCount = bottomRow ? count - cols : Math.Min(count, cols);
         int rowWidth = rowCount * bs + (rowCount - 1) * gap;
         int startX = (GraphicsDevice.Viewport.Width - rowWidth) / 2;
         int toolbarY = GraphicsDevice.Viewport.Height - bs - bottom;
         int y = toolbarY - (bottomRow ? 1 : 2) * (bs + gap); // κάτω σειρά ακριβώς πάνω από τη μπάρα, πάνω σειρά πιο ψηλά
         return new Rectangle(startX + col * (bs + gap), y, bs, bs);
     }
+
+    /// <summary>Πλαίσιο φόντου μιας παλέτας: η ένωση όλων των κουμπιών της, με λίγο περιθώριο.</summary>
+    private Rectangle PalettePanel(int count)
+    {
+        if (count <= 0) return Rectangle.Empty;
+        Rectangle panel = PaletteButtonRect(0, count);
+        for (int i = 1; i < count; i++) panel = Rectangle.Union(panel, PaletteButtonRect(i, count));
+        panel.Inflate(8, 8);
+        return panel;
+    }
+
+    /// <summary>Το «?» κουμπί βοήθειας μιας παλέτας: μικρό tab στην πάνω-δεξιά γωνία του πλαισίου.</summary>
+    private Rectangle PaletteHelpRect(int count)
+    {
+        var panel = PalettePanel(count);
+        const int hs = 28;
+        return new Rectangle(panel.Right - hs, panel.Y - hs - 3, hs, hs);
+    }
+
+    private Rectangle BuildMenuButtonRect(int index) => PaletteButtonRect(index, _buildables.Count);
 
     private int BuildMenuHitIndex(int mx, int my)
     {
@@ -1526,9 +1562,13 @@ public class MarsGame : Microsoft.Xna.Framework.Game
         var tools = ToolbarTools();
         for (int i = 0; i < tools.Count; i++)
             if (ToolbarButtonRect(i, tools.Count).Contains(mx, my)) return true;
-        if (_buildMenuOpen && BuildMenuHitIndex(mx, my) >= 0) return true;
+        if (_buildMenuOpen && (BuildMenuHitIndex(mx, my) >= 0 || PaletteHelpRect(_buildables.Count).Contains(mx, my))) return true;
         if (_speedMenuOpen && SpeedMenuHitIndex(mx, my) >= 0) return true;
-        if (_researchMenuOpen && ResearchMenuHitIndex(mx, my) >= 0) return true;
+        if (_researchMenuOpen)
+        {
+            int techCount = ResearchOptions().Count;
+            if (ResearchMenuHitIndex(mx, my) >= 0 || (techCount > 0 && PaletteHelpRect(techCount).Contains(mx, my))) return true;
+        }
         return false;
     }
 
@@ -1661,75 +1701,66 @@ public class MarsGame : Microsoft.Xna.Framework.Game
         }
     }
 
-    // -------- popup επιλογής έρευνας (πάνω από το κουμπί Research, όπως κτίρια/ταχύτητα) --------
-    private const int ResearchRowH = 26;
+    // -------- popup επιλογής έρευνας: πλέγμα εικονιδίων (όπως τα κτίρια), πάνω από τη μπάρα --------
 
     private List<TechDefinition> ResearchOptions() => _world.Colony.Tech.Available.ToList();
 
-    private Rectangle ResearchMenuPanel(List<TechDefinition> techs)
-    {
-        var tools = ToolbarTools();
-        Rectangle btn = ToolbarButtonRect(tools.IndexOf(Tool.Research), tools.Count);
-        float maxW = 150f;
-        foreach (var t in techs)
-            maxW = MathF.Max(maxW, _font.MeasureString($"{t.Name}    {t.Cost} RP").X);
-        int panelW = (int)maxW + 20;
-        int panelH = Math.Max(1, techs.Count) * ResearchRowH + 8;
-        int x = Math.Clamp(btn.Center.X - panelW / 2, 6, GraphicsDevice.Viewport.Width - panelW - 6);
-        int y = btn.Y - 6 - panelH;
-        return new Rectangle(x, y, panelW, panelH);
-    }
-
-    private Rectangle ResearchMenuRowRect(int index, List<TechDefinition> techs)
-    {
-        var panel = ResearchMenuPanel(techs);
-        return new Rectangle(panel.X + 4, panel.Y + 4 + index * ResearchRowH, panel.Width - 8, ResearchRowH - 2);
-    }
+    private Rectangle ResearchMenuButtonRect(int index, int count) => PaletteButtonRect(index, count);
 
     private int ResearchMenuHitIndex(int mx, int my)
     {
         var techs = ResearchOptions();
         for (int i = 0; i < techs.Count; i++)
-            if (ResearchMenuRowRect(i, techs).Contains(mx, my)) return i;
+            if (ResearchMenuButtonRect(i, techs.Count).Contains(mx, my)) return i;
         return -1;
     }
 
-    /// <summary>popup διαθέσιμων ερευνών: λίστα ονομάτων + κόστος· κλικ ξεκινά την έρευνα. Hint = περιγραφή.</summary>
+    /// <summary>popup διαθέσιμων ερευνών: πλέγμα εικονιδίων + «?» help· κλικ ξεκινά την έρευνα. Hover = όνομα/κόστος (ή περιγραφή σε help mode).</summary>
     private void DrawResearchMenu(MouseState ms)
     {
         var techs = ResearchOptions();
-        var panel = ResearchMenuPanel(techs);
-        _spriteBatch.Draw(_pixel, panel, new Color(12, 14, 20, 242));
-        DrawRectOutline(panel, new Color(90, 130, 170));
-
         if (techs.Count == 0)
         {
+            const int bs = 46, gap = 6, bottom = 8;
+            int toolbarY = GraphicsDevice.Viewport.Height - bs - bottom;
             var msg = "no research available";
             var sz = _font.MeasureString(msg);
-            _spriteBatch.DrawString(_font, msg, new Vector2(panel.Center.X - sz.X / 2f, panel.Center.Y - sz.Y / 2f), HudDim);
+            int pw = (int)sz.X + 24;
+            var empty = new Rectangle((GraphicsDevice.Viewport.Width - pw) / 2, toolbarY - (bs + gap), pw, bs);
+            _spriteBatch.Draw(_pixel, empty, new Color(12, 14, 20, 242));
+            DrawRectOutline(empty, new Color(90, 130, 170));
+            _spriteBatch.DrawString(_font, msg, new Vector2(empty.Center.X - sz.X / 2f, empty.Center.Y - sz.Y / 2f), HudDim);
             return;
         }
+
+        Rectangle panel = PalettePanel(techs.Count);
+        _spriteBatch.Draw(_pixel, panel, new Color(12, 14, 20, 240));
+        DrawRectOutline(panel, new Color(90, 130, 170));
 
         string? current = _world.Colony.Tech.CurrentTarget;
         for (int i = 0; i < techs.Count; i++)
         {
             var t = techs[i];
-            var rect = ResearchMenuRowRect(i, techs);
+            var rect = ResearchMenuButtonRect(i, techs.Count);
             bool isCurrent = t.Id == current;
-            bool hover = rect.Contains(ms.X, ms.Y);
-            if (isCurrent) _spriteBatch.Draw(_pixel, rect, new Color(50, 80, 50, 235));
-            else if (hover) _spriteBatch.Draw(_pixel, rect, new Color(40, 46, 62, 235));
-
-            float ty = rect.Y + (rect.Height - _font.LineSpacing) / 2f;
-            _spriteBatch.DrawString(_font, t.Name, new Vector2(rect.X + 6, ty), isCurrent ? new Color(120, 230, 120) : new Color(205, 195, 240));
-            string cost = $"{t.Cost} RP";
-            var cs = _font.MeasureString(cost);
-            _spriteBatch.DrawString(_font, cost, new Vector2(rect.Right - cs.X - 6, ty), HudDim);
+            _spriteBatch.Draw(_pixel, rect, isCurrent ? new Color(50, 80, 50, 235) : new Color(18, 20, 28, 235));
+            DrawRectOutline(rect, isCurrent ? new Color(120, 230, 120) : new Color(70, 74, 90));
+            if (_techIcons.TryGetValue(t.Id, out var tex))
+                _spriteBatch.Draw(tex, new Rectangle(rect.X + 3, rect.Y + 3, rect.Width - 6, rect.Height - 6), Color.White);
         }
 
-        int h = ResearchMenuHitIndex(ms.X, ms.Y);
-        if (h >= 0)
-            DrawTip($"{techs[h].Name}: {techs[h].Description}", panel.Center.X, panel.Y, above: true);
+        var help = PaletteHelpRect(techs.Count);
+        DrawHelpToggle(help, _researchHelp, ms);
+
+        int hover = ResearchMenuHitIndex(ms.X, ms.Y);
+        if (hover >= 0)
+        {
+            var t = techs[hover];
+            string text = _researchHelp ? $"{t.Name}: {t.Description}" : $"{t.Name}   {t.Cost} RP";
+            DrawPaletteTooltip(text, ResearchMenuButtonRect(hover, techs.Count));
+        }
+        else if (help.Contains(ms.X, ms.Y))
+            DrawPaletteTooltip(_researchHelp ? "Help: ON - hover a tech for details" : "Help: what each tech does", help);
     }
 
     private void SaveGameToFile()
@@ -1778,16 +1809,12 @@ public class MarsGame : Microsoft.Xna.Framework.Game
         }
     }
 
-    /// <summary>Ζωγραφίζει την popup παλέτα κτιρίων: πλαίσιο φόντου + 2 σειρές εικονιδίων + tooltip.</summary>
+    /// <summary>Ζωγραφίζει την popup παλέτα κτιρίων: πλαίσιο φόντου + 2 σειρές εικονιδίων + «?» help + tooltip.</summary>
     private void DrawBuildMenu(MouseState ms)
     {
         if (_buildables.Count == 0) return;
 
-        // Πλαίσιο φόντου γύρω από όλα τα κουμπιά.
-        Rectangle panel = BuildMenuButtonRect(0);
-        for (int i = 1; i < _buildables.Count; i++)
-            panel = Rectangle.Union(panel, BuildMenuButtonRect(i));
-        panel.Inflate(8, 8);
+        Rectangle panel = PalettePanel(_buildables.Count);
         _spriteBatch.Draw(_pixel, panel, new Color(12, 14, 20, 240));
         DrawRectOutline(panel, new Color(90, 130, 170));
 
@@ -1802,17 +1829,39 @@ public class MarsGame : Microsoft.Xna.Framework.Game
                 _spriteBatch.Draw(tex, new Rectangle(rect.X + 3, rect.Y + 3, rect.Width - 6, rect.Height - 6), Color.White);
         }
 
+        var help = PaletteHelpRect(_buildables.Count);
+        DrawHelpToggle(help, _buildHelp, ms);
+
         int hover = BuildMenuHitIndex(ms.X, ms.Y);
         if (hover >= 0)
         {
             var def = _buildables[hover];
-            var rect = BuildMenuButtonRect(hover);
-            var label = $"{def.Name}   ({CostString(def)})";
-            var size = _font.MeasureString(label);
-            var pos = new Vector2(rect.Center.X - size.X / 2f, rect.Y - size.Y - 6);
-            _spriteBatch.Draw(_pixel, new Rectangle((int)pos.X - 5, (int)pos.Y - 2, (int)size.X + 10, (int)size.Y + 4), new Color(0, 0, 0, 230));
-            _spriteBatch.DrawString(_font, label, pos, HudWhite);
+            string text = _buildHelp ? $"{def.Name}: {def.Description}" : $"{def.Name}   ({CostString(def)})";
+            DrawPaletteTooltip(text, BuildMenuButtonRect(hover));
         }
+        else if (help.Contains(ms.X, ms.Y))
+            DrawPaletteTooltip(_buildHelp ? "Help: ON - hover a building for details" : "Help: what each building does", help);
+    }
+
+    /// <summary>Κουμπί «?» (toggle) help μιας παλέτας — τονίζεται όταν το help mode είναι ενεργό.</summary>
+    private void DrawHelpToggle(Rectangle rect, bool active, MouseState ms)
+    {
+        bool hover = rect.Contains(ms.X, ms.Y);
+        _spriteBatch.Draw(_pixel, rect, active ? new Color(45, 62, 84, 240) : (hover ? new Color(30, 36, 48, 240) : new Color(18, 20, 28, 235)));
+        DrawRectOutline(rect, active ? new Color(140, 195, 245) : new Color(90, 130, 170));
+        var qs = _font.MeasureString("?") * 1.2f;
+        _spriteBatch.DrawString(_font, "?", new Vector2(rect.Center.X - qs.X / 2f, rect.Center.Y - qs.Y / 2f),
+            active ? new Color(150, 200, 255) : HudWhite, 0f, Vector2.Zero, 1.2f, SpriteEffects.None, 0f);
+    }
+
+    /// <summary>Tooltip πάνω από ένα κουμπί παλέτας, κεντραρισμένο & περιορισμένο μέσα στην οθόνη.</summary>
+    private void DrawPaletteTooltip(string text, Rectangle itemRect)
+    {
+        var size = _font.MeasureString(text);
+        float x = Math.Clamp(itemRect.Center.X - size.X / 2f, 6f, GraphicsDevice.Viewport.Width - size.X - 6f);
+        float y = itemRect.Y - size.Y - 6f;
+        _spriteBatch.Draw(_pixel, new Rectangle((int)x - 5, (int)y - 2, (int)size.X + 10, (int)size.Y + 4), new Color(0, 0, 0, 235));
+        _spriteBatch.DrawString(_font, text, new Vector2(x, y), HudWhite);
     }
 
     private void DrawToolbarTooltip(string label, int centerX)

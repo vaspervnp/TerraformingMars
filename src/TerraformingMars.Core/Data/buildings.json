@@ -2,6 +2,7 @@
   {
     "Id": "landing_capsule",
     "Name": "Landing Capsule",
+    "Description": "Your initial base and the main storage hub for every resource.",
     "Category": "Habitat",
     "Buildable": false,
     "BuildTimeTicks": 0,
@@ -12,6 +13,7 @@
   {
     "Id": "habitat_module",
     "Name": "Habitat Module",
+    "Description": "Pressurised housing that adds population capacity. Must be built next to a habitat.",
     "Category": "Habitat",
     "RequiresHabitatLink": true,
     "HousingCapacity": 6,
@@ -23,6 +25,7 @@
   {
     "Id": "solar_panel",
     "Name": "Solar Panel Array",
+    "Description": "Generates energy from sunlight. Output drops sharply during dust storms.",
     "Category": "Power",
     "BuildTimeTicks": 60,
     "MaxWorkers": 0,
@@ -34,6 +37,7 @@
   {
     "Id": "battery",
     "Name": "Battery Bank",
+    "Description": "Stores surplus energy for the night and for emergencies.",
     "Category": "Power",
     "BuildTimeTicks": 50,
     "MaxWorkers": 0,
@@ -43,6 +47,7 @@
   {
     "Id": "o2_recycler",
     "Name": "Oxygen Recycler",
+    "Description": "Produces breathable oxygen for the colony. Runs best with an Engineer.",
     "Category": "LifeSupport",
     "BuildTimeTicks": 80,
     "MaxWorkers": 1,
@@ -53,6 +58,7 @@
   {
     "Id": "ice_drill",
     "Name": "Subsurface Ice Drill",
+    "Description": "Extracts water from subsurface ice. Must sit on an ice deposit.",
     "Category": "LifeSupport",
     "BuildTimeTicks": 90,
     "MaxWorkers": 1,
@@ -65,6 +71,7 @@
   {
     "Id": "hydroponics",
     "Name": "Hydroponics Bay",
+    "Description": "Grows food for the crew. Runs best with a Botanist.",
     "Category": "Food",
     "BuildTimeTicks": 100,
     "MaxWorkers": 1,
@@ -75,6 +82,7 @@
   {
     "Id": "regolith_printer",
     "Name": "Regolith Processor",
+    "Description": "Turns regolith into building materials. Must sit on a regolith deposit.",
     "Category": "Industry",
     "BuildTimeTicks": 80,
     "MaxWorkers": 0,
@@ -86,6 +94,7 @@
   {
     "Id": "research_lab",
     "Name": "Research Lab",
+    "Description": "Generates research points to unlock new technologies. Runs best with a Climatologist.",
     "Category": "Research",
     "BuildTimeTicks": 100,
     "MaxWorkers": 1,
@@ -96,6 +105,7 @@
   {
     "Id": "fission_reactor",
     "Name": "Fission Reactor",
+    "Description": "High, steady power that does not depend on sunlight.",
     "Category": "Power",
     "RequiredTech": "nuclear_fission",
     "BuildTimeTicks": 150,
@@ -107,6 +117,7 @@
   {
     "Id": "iron_mine",
     "Name": "Iron Mine",
+    "Description": "Mines iron into building materials. Must sit on an iron deposit.",
     "Category": "Industry",
     "RequiredTech": "heavy_metallurgy",
     "RequiresDeposit": "Iron",
@@ -120,6 +131,7 @@
   {
     "Id": "silicon_mine",
     "Name": "Silicon Mine",
+    "Description": "Mines silicon for electronics and export. Must sit on a silicon deposit.",
     "Category": "Industry",
     "RequiredTech": "silicon_extraction",
     "RequiresDeposit": "Silicon",
@@ -133,6 +145,7 @@
   {
     "Id": "export_terminal",
     "Name": "Export Terminal",
+    "Description": "Sells surplus silicon to Earth for a steady stream of credits.",
     "Category": "Industry",
     "RequiredTech": "mass_driver",
     "BuildTimeTicks": 110,
@@ -145,6 +158,7 @@
   {
     "Id": "ghg_factory",
     "Name": "GHG Factory",
+    "Description": "Pumps out greenhouse gases to raise temperature and pressure.",
     "Category": "Planetary",
     "RequiredTech": "greenhouse_gas_production",
     "BuildTimeTicks": 140,
@@ -157,6 +171,7 @@
   {
     "Id": "orbital_mirror",
     "Name": "Orbital Mirror Control",
+    "Description": "Focuses sunlight onto the surface to warm the planet.",
     "Category": "Planetary",
     "RequiredTech": "orbital_mirrors",
     "BuildTimeTicks": 160,
@@ -169,6 +184,7 @@
   {
     "Id": "magnetosphere_station",
     "Name": "L1 Magnetosphere Station",
+    "Description": "An artificial magnetosphere that shields the atmosphere from loss and radiation.",
     "Category": "Planetary",
     "RequiredTech": "artificial_magnetosphere",
     "BuildTimeTicks": 200,
@@ -180,6 +196,7 @@
   {
     "Id": "comet_redirector",
     "Name": "Comet Redirector",
+    "Description": "Redirects comets to impact the planet, adding water and pressure.",
     "Category": "Planetary",
     "RequiredTech": "comet_redirection",
     "BuildTimeTicks": 180,
@@ -192,6 +209,7 @@
   {
     "Id": "cyanobacteria_farm",
     "Name": "Cyanobacteria Farm",
+    "Description": "Hardy microbes that release oxygen and slowly spread vegetation.",
     "Category": "Biosphere",
     "RequiredTech": "cyanobacteria",
     "BuildTimeTicks": 120,
@@ -205,6 +223,7 @@
   {
     "Id": "gm_forest",
     "Name": "GM Forest",
+    "Description": "Cold-resistant engineered trees with strong oxygen output and fast vegetation spread.",
     "Category": "Biosphere",
     "RequiredTech": "gm_trees",
     "BuildTimeTicks": 150,
@@ -218,6 +237,7 @@
   {
     "Id": "fauna_reserve",
     "Name": "Wildlife Reserve",
+    "Description": "A wildlife habitat that adds oxygen, food, and spreading vegetation.",
     "Category": "Biosphere",
     "RequiredTech": "gm_trees",
     "BuildTimeTicks": 140,
@@ -231,6 +251,7 @@
   {
     "Id": "domeless_city",
     "Name": "Domeless City",
+    "Description": "A vast open-air city providing huge housing once the air is breathable.",
     "Category": "Habitat",
     "RequiredTech": "domeless_cities",
     "BuildTimeTicks": 250,

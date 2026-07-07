@@ -12,6 +12,10 @@ public sealed class BuildingDefinition
 {
     public string Id { get; init; } = "";
     public string Name { get; init; } = "";
+
+    /// <summary>Σύντομη περιγραφή (Αγγλικά) — εμφανίζεται στο help της παλέτας κτιρίων.</summary>
+    public string Description { get; init; } = "";
+
     public string Category { get; init; } = "General";
 
     /// <summary>Αν false, δεν τοποθετείται από τον παίκτη (π.χ. κάψουλα προσεδάφισης).</summary>

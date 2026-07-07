@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using TerraformingMars.Core.Buildings;
+using TerraformingMars.Core.Research;
 
 namespace TerraformingMars.Game.Rendering;
 
@@ -49,6 +50,56 @@ public static class IconFactory
     {
         var tex = new Texture2D(gd, Size, Size);
         tex.SetData(BuildBuildingsBuffer());
+        return tex;
+    }
+
+    /// <summary>
+    /// Εικονίδια για την παλέτα έρευνας: κάθε τεχνολογία δανείζεται το εικονίδιο του κτιρίου που
+    /// ξεκλειδώνει (πιο κατατοπιστικό)· όσες δεν ξεκλειδώνουν κτίριο παίρνουν ειδικό εικονίδιο.
+    /// </summary>
+    public static Dictionary<string, Texture2D> CreateTechIcons(
+        GraphicsDevice gd, TechCatalog techs, IReadOnlyDictionary<string, Texture2D> buildingIcons, Texture2D reclaimIcon)
+    {
+        var icons = new Dictionary<string, Texture2D>(StringComparer.OrdinalIgnoreCase);
+        foreach (var t in techs.All)
+        {
+            Texture2D? tex = null;
+            foreach (var buildingId in t.Unlocks)
+                if (buildingIcons.TryGetValue(buildingId, out var bt)) { tex = bt; break; }
+
+            tex ??= t.Id.Equals("reclaim", StringComparison.OrdinalIgnoreCase)
+                ? reclaimIcon
+                : BuildTechOnlyIcon(gd, t.Id);
+            icons[t.Id] = tex;
+        }
+        return icons;
+    }
+
+    /// <summary>Εικονίδιο για τεχνολογία που δεν ξεκλειδώνει κτίριο (rover networks / γενική έρευνα).</summary>
+    private static Texture2D BuildTechOnlyIcon(GraphicsDevice gd, string id)
+    {
+        var b = new Color[Size * Size];
+        DrawPlate(b, new Color(180, 140, 255)); // πλακέτα «Research»
+        switch (id)
+        {
+            case "rover_networks":
+                var body = new Color(210, 216, 228);
+                RoundRect(b, 15, 30, 34, 14, 4, body, 1f);              // σασί
+                Rect(b, 22, 22, 19, 9, new Color(150, 185, 235));       // καμπίνα
+                Disc(b, 22, 46, 6, new Color(60, 66, 78));              // τροχοί
+                Disc(b, 32, 46, 6, new Color(60, 66, 78));
+                Disc(b, 42, 46, 6, new Color(60, 66, 78));
+                Line(b, 47, 30, 51, 16, 2, body);                       // κεραία
+                Disc(b, 51, 15, 2, new Color(255, 230, 120));
+                break;
+            default: // άτομο (γενική έρευνα)
+                Ring(b, 32, 32, 16, 3, new Color(190, 150, 255));
+                Ring(b, 32, 32, 9, 2, new Color(150, 120, 220));
+                Disc(b, 32, 32, 4, new Color(220, 200, 255));
+                break;
+        }
+        var tex = new Texture2D(gd, Size, Size);
+        tex.SetData(b);
         return tex;
     }
 

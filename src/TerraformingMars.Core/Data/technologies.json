@@ -14,7 +14,7 @@
   {
     "Id": "nuclear_fission",
     "Name": "Nuclear Fission",
-    "Description": "Πυρηνικοί αντιδραστήρες — ενέργεια ανεξάρτητη από τον ήλιο (αμμοθύελλες).",
+    "Description": "Nuclear reactors — power independent of the sun (and dust storms).",
     "Phase": 2,
     "Cost": 300,
     "Prerequisites": [],
@@ -23,7 +23,7 @@
   {
     "Id": "heavy_metallurgy",
     "Name": "Heavy Metallurgy",
-    "Description": "Εξόρυξη & επεξεργασία βαρέων μετάλλων για δομικά υλικά.",
+    "Description": "Mining and processing of heavy metals for structural materials.",
     "Phase": 2,
     "Cost": 250,
     "Prerequisites": [],
@@ -32,7 +32,7 @@
   {
     "Id": "rover_networks",
     "Name": "Rover Networks",
-    "Description": "Δίκτυα αυτόνομων rovers για επέκταση & logistics.",
+    "Description": "Autonomous rover networks for expansion and logistics.",
     "Phase": 2,
     "Cost": 200,
     "Prerequisites": [],
@@ -41,7 +41,7 @@
   {
     "Id": "silicon_extraction",
     "Name": "Silicon Extraction",
-    "Description": "Εξόρυξη πυριτίου από φλέβες — πρώτη ύλη για ηλεκτρονικά & εξαγωγές.",
+    "Description": "Extract silicon from veins — feedstock for electronics and exports.",
     "Phase": 2,
     "Cost": 220,
     "Prerequisites": [],
@@ -50,7 +50,7 @@
   {
     "Id": "mass_driver",
     "Name": "Mass Driver Export",
-    "Description": "Ηλεκτρομαγνητικός εκτοξευτήρας — πουλά πλεόνασμα πυριτίου στη Γη για credits.",
+    "Description": "Electromagnetic launcher — sells surplus silicon to Earth for credits.",
     "Phase": 2,
     "Cost": 350,
     "Prerequisites": [ "silicon_extraction" ],
@@ -59,7 +59,7 @@
   {
     "Id": "greenhouse_gas_production",
     "Name": "GHG Factories",
-    "Description": "Εργοστάσια υπερφθορανθράκων — ισχυρά αέρια θερμοκηπίου.",
+    "Description": "Perfluorocarbon factories — powerful greenhouse gases.",
     "Phase": 2,
     "Cost": 400,
     "Prerequisites": [ "nuclear_fission" ],
@@ -70,7 +70,7 @@
   {
     "Id": "orbital_mirrors",
     "Name": "Orbital Mirrors",
-    "Description": "Τροχιακά κάτοπτρα για λιώσιμο των πολικών καλυπτρών.",
+    "Description": "Orbital mirrors to melt the polar ice caps.",
     "Phase": 3,
     "Cost": 600,
     "Prerequisites": [ "greenhouse_gas_production" ],
@@ -79,7 +79,7 @@
   {
     "Id": "artificial_magnetosphere",
     "Name": "Artificial Magnetosphere",
-    "Description": "Τεχνητή μαγνητόσφαιρα στο L1 — προστασία της νέας ατμόσφαιρας.",
+    "Description": "Artificial magnetosphere at L1 — protects the new atmosphere.",
     "Phase": 3,
     "Cost": 700,
     "Prerequisites": [ "nuclear_fission" ],
@@ -88,7 +88,7 @@
   {
     "Id": "comet_redirection",
     "Name": "Comet Redirection",
-    "Description": "Πρόσκρουση κομητών για εισαγωγή αζώτου & νερού.",
+    "Description": "Redirect comets to import nitrogen and water.",
     "Phase": 3,
     "Cost": 800,
     "Prerequisites": [ "orbital_mirrors" ],
@@ -99,7 +99,7 @@
   {
     "Id": "cyanobacteria",
     "Name": "Cyanobacteria & Lichen",
-    "Description": "Πρώτο στάδιο οξυγόνωσης μέσω ανθεκτικών μικροοργανισμών.",
+    "Description": "First-stage oxygenation using hardy microorganisms.",
     "Phase": 4,
     "Cost": 500,
     "Prerequisites": [ "orbital_mirrors" ],
@@ -108,7 +108,7 @@
   {
     "Id": "gm_trees",
     "Name": "GM Cold-Resistant Trees",
-    "Description": "Γενετικά τροποποιημένα δέντρα ανθεκτικά στο κρύο.",
+    "Description": "Genetically modified trees that survive the cold.",
     "Phase": 4,
     "Cost": 700,
     "Prerequisites": [ "cyanobacteria" ],
@@ -117,7 +117,7 @@
   {
     "Id": "domeless_cities",
     "Name": "Domeless Cities",
-    "Description": "Πόλεις χωρίς θόλο — ζωή στην ανοιχτή επιφάνεια.",
+    "Description": "Dome-free cities — life in the open air.",
     "Phase": 4,
     "Cost": 1000,
     "Prerequisites": [ "gm_trees", "artificial_magnetosphere" ],
