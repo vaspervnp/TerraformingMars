@@ -1,12 +1,12 @@
 # Terraforming Mars
 
-Open-source base-building / simulation game σε **C# / .NET 9**, με procedural hex χάρτη και real-time σιμουλασιόν. Στόχος: εξόρυξη πόρων, υποδομές, επιβίωση πληρώματος και σταδιακή terraforming (θερμοκρασία, ατμόσφαιρα/O₂, νερό).
+Open-source base-building / simulation game σε **C# / .NET 9**, με procedural hex χάρτη και real-time προσομοίωση. Στόχος: εξόρυξη πόρων, υποδομές, επιβίωση πληρώματος και σταδιακή terraforming (θερμοκρασία, ατμόσφαιρα/O₂, νερό).
 
 ## Stack
 - **.NET 9**, καθαρό domain layer ανεξάρτητο από engine
 - **MonoGame (DesktopGL)** για rendering/input
 - Hex grid (pointy-top, axial/cube coordinates), procedural generation με Perlin noise (fBm + quantile classification)
-- Real-time simulation με fixed-timestep (pause / ×1 / ×2 / ×4)
+- Real-time προσομοίωση με fixed-timestep (pause / ×1 / ×2 / ×4)
 
 ## Δομή Solution
 ```
