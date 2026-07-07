@@ -143,6 +143,14 @@ public class MarsGame : Microsoft.Xna.Framework.Game
     private readonly HashSet<string> _knownResearched = new(StringComparer.OrdinalIgnoreCase);
     private readonly Queue<TechDefinition> _techDone = new();
 
+    // Tutorial: wizard βήμα-βήμα που προχωρά όταν ο παίκτης εκτελεί κάθε ενέργεια (Esc για έξοδο).
+    private enum TutStep { Move, Center, BuildMenu, Place, Select, Research, StartResearch, Speed, Done }
+    private bool _tutorialActive;
+    private TutStep _tutStep;
+    private int _tutBaseBuildings;
+    private Vector2 _tutBaseCamPos;
+    private float _tutBaseZoom;
+
     // Reclaim (ανακύκλωση κτιρίων για credits) — ξεκλειδώνει με την τεχνολογία "reclaim"
     private const string ReclaimTechId = "reclaim";
     private const string LandingModuleId = "landing_capsule"; // το αρχικό κτήριο (landing module)
@@ -250,8 +258,32 @@ public class MarsGame : Microsoft.Xna.Framework.Game
         CloseDialog();
         ResetTransitionTrackers();
         InitCamera();
+        _tutorialActive = false;
         _hasActiveGame = true;
         _state = GameState.Playing;
+    }
+
+    /// <summary>Ξεκινά νέο παιχνίδι σε λειτουργία tutorial: βήμα-βήμα οδηγίες, παγωμένος χρόνος στην αρχή.</summary>
+    private void StartTutorial()
+    {
+        StartGame();
+        _tutorialActive = true;
+        _tutStep = TutStep.Move;
+        _world.Clock.Speed = GameSpeed.Paused;          // ήρεμη ανάγνωση· το βήμα «Speed» διδάσκει το ξεκίνημα
+        _tutBaseCamPos = _camera.Position;
+        _tutBaseZoom = _camera.Zoom;
+        _status = "Tutorial started - press Esc to exit anytime";
+        _statusTimer = 4.0;
+    }
+
+    /// <summary>Τερματίζει το tutorial (Esc ή ολοκλήρωση) και ξαναρχίζει τον χρόνο αν ήταν παγωμένος.</summary>
+    private void EndTutorial()
+    {
+        _tutorialActive = false;
+        if (_world.Clock.Speed == GameSpeed.Paused) _world.Clock.Speed = GameSpeed.Normal;
+        _status = "Tutorial ended";
+        _statusTimer = 3.0;
+        _audio.Blip();
     }
 
     /// <summary>Φορτώνει το αποθηκευμένο παιχνίδι (αν υπάρχει) και μπαίνει σε Playing. Χρήση από μενού & F9.</summary>
@@ -277,6 +309,7 @@ public class MarsGame : Microsoft.Xna.Framework.Game
             CloseDialog();
             ResetTransitionTrackers();
             InitCamera();
+            _tutorialActive = false;
             _hasActiveGame = true;
             _state = GameState.Playing;
             _status = "Game loaded";
@@ -400,6 +433,7 @@ public class MarsGame : Microsoft.Xna.Framework.Game
         if (_hasActiveGame) list.Add(("Continue", () => _state = GameState.Playing, new Color(120, 230, 120)));
         if (File.Exists(SavePath)) list.Add(("Load Game", LoadGame, new Color(150, 210, 255)));
         list.Add((_hasActiveGame ? "New Game" : "Start Game", StartGame, new Color(255, 220, 120)));
+        list.Add(("Tutorial", StartTutorial, new Color(150, 230, 150)));
         list.Add(("Help", () => _showHelp = true, new Color(150, 200, 255)));
         list.Add(("Quit", Exit, new Color(230, 120, 110)));
         return list;
@@ -436,7 +470,9 @@ public class MarsGame : Microsoft.Xna.Framework.Game
 
     private Rectangle MenuActionRect(int idx, int count)
     {
-        const int bw = 210, bh = 50, gap = 20;
+        const int bh = 50, gap = 20, maxBw = 210, margin = 30;
+        int avail = GraphicsDevice.Viewport.Width - margin * 2 - (count - 1) * gap;
+        int bw = Math.Clamp(avail / Math.Max(1, count), 120, maxBw); // σμίκρυνση ώστε να χωρούν όλα τα κουμπιά
         int total = count * bw + (count - 1) * gap;
         int x = (GraphicsDevice.Viewport.Width - total) / 2;
         int y = MenuRowRect(MenuRowCount - 1).Bottom + 96;
@@ -1083,10 +1119,11 @@ public class MarsGame : Microsoft.Xna.Framework.Game
             return;
         }
 
-        // Esc → κλείνει πρώτα ένα ανοιχτό event popup· αλλιώς πίσω στο μενού (χωρίς να παγώνει επιπλέον χρόνο)
+        // Esc → κλείνει πρώτα το tutorial (αν τρέχει)· μετά ανοιχτό event popup· αλλιώς πίσω στο μενού.
         if (KeyPressed(keys, Keys.Escape))
         {
-            if (_eventPopups.Count > 0) { _eventPopups.Dequeue(); _audio.Blip(); }
+            if (_tutorialActive) { EndTutorial(); }
+            else if (_eventPopups.Count > 0) { _eventPopups.Dequeue(); _audio.Blip(); }
             else
             {
                 _state = GameState.Menu;
@@ -1307,9 +1344,62 @@ public class MarsGame : Microsoft.Xna.Framework.Game
             }
         }
 
+        UpdateTutorial(keys); // προχωρά το βήμα του tutorial όταν ο παίκτης εκτέλεσε την ενέργεια
+
         _prevMouse = mouse;
         _prevKeys = keys;
         base.Update(gameTime);
+    }
+
+    // ----------------------------------------------------------------- Tutorial (wizard)
+
+    /// <summary>Οδηγία για το τρέχον βήμα του tutorial.</summary>
+    private static string TutorialInstruction(TutStep step) => step switch
+    {
+        TutStep.Move => "Move around the map with WASD, the arrow keys, or by dragging with the mouse. Zoom with the mouse wheel.",
+        TutStep.Center => "Press H (or click the crosshair icon in the bottom bar) to recenter on your landing capsule.",
+        TutStep.BuildMenu => "Open the build menu: press B, or click the buildings icon in the bottom bar.",
+        TutStep.Place => "Pick a building from the palette, then left-click a highlighted hex to build it. You have plenty of Credits.",
+        TutStep.Select => "Right-click any of your buildings to select it and open its info panel.",
+        TutStep.Research => "Open the research menu: press T, or click the atom icon in the bottom bar.",
+        TutStep.StartResearch => "Click a technology in the palette to start researching it.",
+        TutStep.Speed => "Time is paused. Start it with the 1 / 2 / 3 keys (or the clock icon): 1 = normal, 2 = fast, 3 = ultra.",
+        _ => "That's the basics! Keep raising Temperature, Pressure, Oxygen and Water toward 100%. Press Esc to leave the tutorial."
+    };
+
+    /// <summary>True όταν η κάμερα είναι (περίπου) κεντραρισμένη στην κάψουλα προσγείωσης.</summary>
+    private bool CameraNearLanding()
+    {
+        var landing = _world.Colony.Buildings.FirstOrDefault(b => b.Definition.Id == LandingModuleId)
+                      ?? _world.Colony.Buildings.FirstOrDefault();
+        if (landing is null) return false;
+        var (x, y) = _renderer.Layout.HexToPixel(landing.Location);
+        return Vector2.Distance(_camera.Position, new Vector2((float)x, (float)y)) < 30f;
+    }
+
+    /// <summary>Ελέγχει αν ολοκληρώθηκε το τρέχον βήμα (με βάση την ενέργεια του παίκτη) και προχωρά.</summary>
+    private void UpdateTutorial(KeyboardState keys)
+    {
+        if (!_tutorialActive || _tutStep == TutStep.Done) return;
+
+        bool done = _tutStep switch
+        {
+            TutStep.Move => Vector2.Distance(_camera.Position, _tutBaseCamPos) > 50f
+                            || MathF.Abs(_camera.Zoom - _tutBaseZoom) > 0.02f,
+            TutStep.Center => KeyPressed(keys, Keys.H) || CameraNearLanding(),
+            TutStep.BuildMenu => _buildMenuOpen,
+            TutStep.Place => _world.Colony.Buildings.Count > _tutBaseBuildings,
+            TutStep.Select => _selectedBuilding is not null,
+            TutStep.Research => _researchMenuOpen,
+            TutStep.StartResearch => _world.Colony.Tech.CurrentTarget is not null,
+            TutStep.Speed => _world.Clock.Speed != GameSpeed.Paused,
+            _ => false
+        };
+
+        if (!done) return;
+        _tutStep++;
+        _audio.Chime();
+        if (_tutStep == TutStep.Place) _tutBaseBuildings = _world.Colony.Buildings.Count; // baseline πριν την τοποθέτηση
     }
 
     private bool KeyPressed(KeyboardState keys, Keys key) => keys.IsKeyDown(key) && _prevKeys.IsKeyUp(key);
@@ -2529,9 +2619,48 @@ public class MarsGame : Microsoft.Xna.Framework.Game
 
         DrawEventPopup();
 
+        if (_tutorialActive) DrawTutorialOverlay();
+
         if (DialogOpen) DrawDialog();
 
         _spriteBatch.End();
+    }
+
+    /// <summary>Πλαίσιο οδηγιών του tutorial (αριστερά-κέντρο, μη-modal): βήμα, οδηγία και υπενθύμιση Esc.</summary>
+    private void DrawTutorialOverlay()
+    {
+        int vh = GraphicsDevice.Viewport.Height;
+        const int pad = 16, w = 360;
+        int lineH = _font.LineSpacing;
+        int headerH = (int)(lineH * 1.15f) + 8;
+
+        var lines = new List<string>();
+        WrapText(lines, TutorialInstruction(_tutStep), w - pad * 2);
+
+        int bodyH = lines.Count * lineH;
+        int footerH = lineH + 6;
+        int h = pad + headerH + bodyH + 10 + footerH + pad;
+        var panel = new Rectangle(16, (vh - h) / 2, w, h);
+
+        var accent = new Color(120, 210, 130);
+        _spriteBatch.Draw(_pixel, panel, new Color(14, 22, 28, 245));
+        DrawRectOutline(panel, accent);
+        _spriteBatch.Draw(_pixel, new Rectangle(panel.X, panel.Y, 4, panel.Height), accent); // λωρίδα έμφασης
+
+        int total = (int)TutStep.Done;
+        string header = _tutStep == TutStep.Done ? "TUTORIAL COMPLETE" : $"TUTORIAL  ·  step {(int)_tutStep + 1}/{total}";
+        _spriteBatch.DrawString(_font, header, new Vector2(panel.X + pad, panel.Y + pad),
+            new Color(150, 230, 150), 0f, Vector2.Zero, 1.15f, SpriteEffects.None, 0f);
+
+        float y = panel.Y + pad + headerH;
+        foreach (var ln in lines)
+        {
+            _spriteBatch.DrawString(_font, ln, new Vector2(panel.X + pad, y), HudWhite);
+            y += lineH;
+        }
+
+        _spriteBatch.DrawString(_font, "Press Esc to exit the tutorial",
+            new Vector2(panel.X + pad, panel.Bottom - pad - footerH + 3), HudDim);
     }
 
     private void DrawCenterBanner(string msg, Color color)
