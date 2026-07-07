@@ -6,6 +6,7 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using TerraformingMars.Core.Buildings;
+using TerraformingMars.Core.Colonists;
 using TerraformingMars.Core.Events;
 using TerraformingMars.Core.Generation;
 using TerraformingMars.Core.Grid;
@@ -65,12 +66,21 @@ public class MarsGame : Microsoft.Xna.Framework.Game
     private bool _buildMenuOpen;   // popup παλέτα κτιρίων (2 σειρές πάνω από τη μπάρα)
     private bool _speedMenuOpen;   // popup ταχύτητας (pause / x1 / x2 / x4)
     private bool _researchMenuOpen; // popup διαθέσιμων ερευνών
-    private bool _buildHelp;       // help mode στην παλέτα κτιρίων (δείχνει περιγραφή στο hover)
-    private bool _researchHelp;    // help mode στην παλέτα έρευνας
+    private enum CatalogHelp { None, Buildings, Research }
+    private CatalogHelp _catalogHelp = CatalogHelp.None; // ανοιχτό modal βοήθειας (όλα τα κτίρια/έρευνες σε ένα παράθυρο)
+    private int _catalogScroll;    // κύλιση (px) του παραθύρου βοήθειας καταλόγου
+    private int _catalogScrollMax; // μέγιστη κύλιση — υπολογίζεται στο Draw
+    private RasterizerState _scissorRaster = null!; // clip της κυλιόμενης λίστας του παραθύρου καταλόγου
     private Rectangle _crewPlusRect, _crewMinusRect; // κουμπιά επάνδρωσης (+/-) στο panel κτηρίου
     private string _status = "";
     private double _statusTimer;
     private Point _mouseDownPos;
+
+    // Μετρητές HUD (κτήρια χωρίς εργαζόμενους / με τελειωμένα resources): ανανεώνονται περιοδικά, όχι κάθε frame.
+    private int _crewNeededCount;
+    private int _depletedCount;
+    private double _buildingCheckTimer;
+    private const double BuildingCheckInterval = 3.0;
 
     // Μετακίνηση & απομνημόνευση θέσης του panel κτηρίου (drag + JSON persistence).
     private UiSettings _uiSettings = null!;
@@ -128,6 +138,10 @@ public class MarsGame : Microsoft.Xna.Framework.Game
     }
     private readonly Queue<EventPopup> _eventPopups = new();
     private Rectangle _eventPopupPanel, _eventPopupCloseRect;
+
+    // Popup ολοκλήρωσης τεχνολογίας (modal, με «X» πάνω δεξιά — όπως τα παράθυρα help).
+    private readonly HashSet<string> _knownResearched = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Queue<TechDefinition> _techDone = new();
 
     // Reclaim (ανακύκλωση κτιρίων για credits) — ξεκλειδώνει με την τεχνολογία "reclaim"
     private const string ReclaimTechId = "reclaim";
@@ -198,6 +212,7 @@ public class MarsGame : Microsoft.Xna.Framework.Game
         _font = Content.Load<SpriteFont>("Hud");
         _pixel = new Texture2D(GraphicsDevice, 1, 1);
         _pixel.SetData(new[] { Color.White });
+        _scissorRaster = new RasterizerState { ScissorTestEnable = true };
 
         _renderer = new HexMapRenderer(GraphicsDevice, HexSize);
         _renderer.Build(_map);
@@ -280,6 +295,21 @@ public class MarsGame : Microsoft.Xna.Framework.Game
         _lastNotification = _world.EventNotifications.Count > 0 ? _world.EventNotifications[^1] : "";
         _prevWon = false;
         _prevLost = false;
+
+        // Οι ήδη ερευνημένες (π.χ. από load) δεν βγάζουν popup — μόνο όσες ολοκληρωθούν από εδώ κι εμπρός.
+        _knownResearched.Clear();
+        foreach (var id in _world.Colony.Tech.Researched) _knownResearched.Add(id);
+        _techDone.Clear();
+
+        RefreshBuildingCounts(); // άμεσος υπολογισμός ώστε το HUD να είναι σωστό από το πρώτο frame
+        _buildingCheckTimer = BuildingCheckInterval;
+    }
+
+    /// <summary>Ανανεώνει τους μετρητές HUD: κτήρια που χρειάζονται προσωπικό / με εξαντλημένο κοίτασμα.</summary>
+    private void RefreshBuildingCounts()
+    {
+        _crewNeededCount = _world.Colony.Buildings.Count(NeedsCrew);
+        _depletedCount = _world.Colony.Buildings.Count(IsDepleted);
     }
 
     private void CheckAudioTransitions()
@@ -654,11 +684,25 @@ public class MarsGame : Microsoft.Xna.Framework.Game
         return new Rectangle((vw - w) / 2, (vh - h) / 2, w, h);
     }
 
-    private Rectangle HelpCloseRect()
+    private Rectangle HelpCloseRect() => CloseButtonRect(HelpPanelRect());
+
+    /// <summary>Τετράγωνο κουμπί «X» κλεισίματος στην πάνω-δεξιά γωνία ενός παραθύρου.</summary>
+    private static Rectangle CloseButtonRect(Rectangle panel)
     {
-        var p = HelpPanelRect();
-        const int bw = 170, bh = 44;
-        return new Rectangle(p.Center.X - bw / 2, p.Bottom - bh - 16, bw, bh);
+        const int s = 34;
+        return new Rectangle(panel.Right - s - 10, panel.Y + 10, s, s);
+    }
+
+    /// <summary>Ζωγραφίζει το κουμπί «X» κλεισίματος (τονίζεται κόκκινο στο hover).</summary>
+    private void DrawCloseButton(Rectangle rect, MouseState ms)
+    {
+        bool hover = rect.Contains(ms.X, ms.Y);
+        _spriteBatch.Draw(_pixel, rect, hover ? new Color(120, 46, 44) : new Color(34, 38, 50));
+        DrawRectOutline(rect, hover ? new Color(255, 130, 120) : new Color(150, 200, 255));
+        const float sc = 1.2f;
+        var xs = _font.MeasureString("X") * sc;
+        _spriteBatch.DrawString(_font, "X", new Vector2(rect.Center.X - xs.X / 2f, rect.Center.Y - xs.Y / 2f),
+            hover ? new Color(255, 210, 205) : HudWhite, 0f, Vector2.Zero, sc, SpriteEffects.None, 0f);
     }
 
     private void DrawHelpOverlay()
@@ -689,14 +733,197 @@ public class MarsGame : Microsoft.Xna.Framework.Game
             y += header ? 27f : 22f;
         }
 
-        var close = HelpCloseRect();
-        bool hover = close.Contains(ms.X, ms.Y);
-        _spriteBatch.Draw(_pixel, close, hover ? new Color(60, 70, 90) : new Color(34, 38, 50));
-        DrawRectOutline(close, new Color(150, 200, 255));
-        const string cl = "Close (Esc)";
-        var csz = _font.MeasureString(cl);
-        _spriteBatch.DrawString(_font, cl, new Vector2(close.Center.X - csz.X / 2f, close.Center.Y - csz.Y / 2f), HudWhite);
+        DrawCloseButton(HelpCloseRect(), ms);
 
+        _spriteBatch.End();
+    }
+
+    // -------- Παράθυρο βοήθειας καταλόγου (όλα τα κτίρια / όλες οι τεχνολογίες σε ένα modal) --------
+
+    private Rectangle CatalogHelpPanelRect()
+    {
+        int vw = GraphicsDevice.Viewport.Width, vh = GraphicsDevice.Viewport.Height;
+        int w = Math.Min(vw - 40, 640);
+        int h = Math.Min(vh - 60, 720);
+        return new Rectangle((vw - w) / 2, (vh - h) / 2, w, h);
+    }
+
+    private Rectangle CatalogHelpCloseRect() => CloseButtonRect(CatalogHelpPanelRect());
+
+    /// <summary>
+    /// Modal (στο στιλ του κεντρικού help): όλα τα κτίρια ή όλες οι τεχνολογίες μαζί — καθένα με
+    /// μεγάλο εικονίδιο + περιγραφή/χαρακτηριστικά — με κύλιση (ρόδα) και κουμπί Close.
+    /// </summary>
+    private void DrawCatalogHelpOverlay()
+    {
+        int vw = GraphicsDevice.Viewport.Width, vh = GraphicsDevice.Viewport.Height;
+        var ms = Mouse.GetState();
+        var panel = CatalogHelpPanelRect();
+        bool buildings = _catalogHelp == CatalogHelp.Buildings;
+
+        const int pad = 20, iconSz = 56, gap = 16, entryGap = 18;
+        int lineH = _font.LineSpacing;
+        const float nameScale = 1.06f;
+        int nameH = (int)(lineH * nameScale) + 2;
+
+        int contentTop = panel.Y + 64;
+        var content = new Rectangle(panel.X + pad, contentTop, panel.Width - pad * 2, panel.Bottom - pad - contentTop);
+        int textX = content.X + iconSz + gap;
+        int textW = content.Right - textX - 12; // αφήνει χώρο για τη μπάρα κύλισης
+
+        // Δόμηση εγγραφών: εικονίδιο, όνομα, κόστος, αναδιπλωμένο σώμα, ύψος.
+        var entries = new List<(Texture2D? icon, string name, string subtitle, List<string> body, int height)>();
+        void Add(Texture2D? icon, string name, string subtitle, List<string> paragraphs)
+        {
+            var body = new List<string>();
+            foreach (var p in paragraphs)
+            {
+                if (p.Length == 0) body.Add("");
+                else WrapText(body, p, textW);
+            }
+            int h = Math.Max(iconSz, nameH + lineH + body.Count * lineH) + entryGap;
+            entries.Add((icon, name, subtitle, body, h));
+        }
+        if (buildings)
+            foreach (var def in _catalog.All.OrderBy(d => d.Category).ThenBy(d => d.Name))
+                Add(_icons.GetValueOrDefault(def.Id), def.Name, $"Cost: {CostString(def)}", BuildingHelpBody(def));
+        else
+            foreach (var t in _world.Colony.Tech.Catalog.All.OrderBy(x => x.Phase).ThenBy(x => x.Cost))
+                Add(_techIcons.GetValueOrDefault(t.Id), t.Name, $"{t.Cost:0} RP  ·  Phase {t.Phase}", TechHelpBody(t));
+
+        int totalH = entries.Sum(e => e.height);
+        _catalogScrollMax = Math.Max(0, totalH - content.Height);
+        _catalogScroll = Math.Clamp(_catalogScroll, 0, _catalogScrollMax);
+
+        // Batch 1: σκίαση φόντου + πλαίσιο + τίτλος.
+        _spriteBatch.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, SamplerState.PointClamp);
+        _spriteBatch.Draw(_pixel, new Rectangle(0, 0, vw, vh), new Color(0, 0, 0, 180));
+        _spriteBatch.Draw(_pixel, panel, new Color(16, 18, 26, 250));
+        DrawRectOutline(panel, new Color(120, 130, 150));
+        string title = buildings ? "BUILDINGS" : "TECHNOLOGIES";
+        var tsz = _font.MeasureString(title) * 1.4f;
+        _spriteBatch.DrawString(_font, title, new Vector2(panel.Center.X - tsz.X / 2f, panel.Y + 16),
+            new Color(230, 150, 90), 0f, Vector2.Zero, 1.4f, SpriteEffects.None, 0f);
+        _spriteBatch.End();
+
+        // Batch 2: κυλιόμενες εγγραφές, περιορισμένες (scissor) μέσα στο content.
+        var prevScissor = GraphicsDevice.ScissorRectangle;
+        GraphicsDevice.ScissorRectangle = content;
+        _spriteBatch.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, SamplerState.PointClamp, null, _scissorRaster);
+        float y = content.Y - _catalogScroll;
+        foreach (var e in entries)
+        {
+            if (y + e.height >= content.Y && y <= content.Bottom) // μόνο οι ορατές
+            {
+                if (e.icon is not null)
+                    _spriteBatch.Draw(e.icon, new Rectangle(content.X, (int)y, iconSz, iconSz), Color.White);
+                _spriteBatch.DrawString(_font, e.name, new Vector2(textX, y), new Color(255, 205, 120),
+                    0f, Vector2.Zero, nameScale, SpriteEffects.None, 0f);
+                _spriteBatch.DrawString(_font, e.subtitle, new Vector2(textX, y + nameH), HudDim);
+                float by = y + nameH + lineH;
+                foreach (var ln in e.body)
+                {
+                    if (ln.Length > 0) _spriteBatch.DrawString(_font, ln, new Vector2(textX, by), HudWhite);
+                    by += lineH;
+                }
+                _spriteBatch.Draw(_pixel, new Rectangle(content.X, (int)(y + e.height - entryGap / 2), content.Width - 10, 1),
+                    new Color(60, 64, 76));
+            }
+            y += e.height;
+        }
+        _spriteBatch.End();
+        GraphicsDevice.ScissorRectangle = prevScissor;
+
+        // Batch 3: μπάρα κύλισης + κουμπί «X» κλεισίματος (πάνω δεξιά).
+        _spriteBatch.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, SamplerState.PointClamp);
+        if (_catalogScrollMax > 0)
+        {
+            int trackX = content.Right - 5, trackH = content.Height;
+            _spriteBatch.Draw(_pixel, new Rectangle(trackX, content.Y, 5, trackH), new Color(40, 44, 54));
+            int thumbH = Math.Max(20, (int)((long)trackH * content.Height / totalH));
+            int thumbY = content.Y + (int)((long)(trackH - thumbH) * _catalogScroll / _catalogScrollMax);
+            _spriteBatch.Draw(_pixel, new Rectangle(trackX, thumbY, 5, thumbH), new Color(130, 150, 180));
+        }
+        DrawCloseButton(CatalogHelpCloseRect(), ms);
+        _spriteBatch.End();
+    }
+
+    // -------- Popup ολοκλήρωσης τεχνολογίας (modal, «X» πάνω δεξιά) --------
+
+    private const int TechDonePadX = 20, TechDoneIcon = 64;
+
+    /// <summary>Σώμα του popup: περιγραφή + τι έγινε διαθέσιμο (αναδιπλωμένο στο δοσμένο πλάτος).</summary>
+    private List<string> TechDoneBody(TechDefinition t, int textW)
+    {
+        var paras = new List<string> { t.Description, "" };
+        paras.Add(t.Unlocks.Count > 0
+            ? "Now available: " + string.Join(", ", t.Unlocks.Select(BuildingName))
+            : "A permanent upgrade for your colony.");
+        var lines = new List<string>();
+        foreach (var p in paras)
+        {
+            if (p.Length == 0) lines.Add("");
+            else WrapText(lines, p, textW);
+        }
+        return lines;
+    }
+
+    private Rectangle TechDonePanelRect()
+    {
+        int vw = GraphicsDevice.Viewport.Width, vh = GraphicsDevice.Viewport.Height;
+        int lineH = _font.LineSpacing;
+        const int padTop = 14, headGap = 12, sepGap = 16, padBottom = 18;
+        int titleH = (int)(lineH * 1.3f);
+        int w = Math.Min(vw - 40, 520);
+        int bodyCount = _techDone.Count > 0 ? TechDoneBody(_techDone.Peek(), w - TechDonePadX * 2).Count : 1;
+        int h = padTop + titleH + headGap + TechDoneIcon + sepGap + bodyCount * lineH + padBottom;
+        h = Math.Min(h, vh - 40);
+        return new Rectangle((vw - w) / 2, (vh - h) / 2, w, h);
+    }
+
+    private Rectangle TechDoneCloseRect() =>
+        _techDone.Count > 0 ? CloseButtonRect(TechDonePanelRect()) : Rectangle.Empty;
+
+    /// <summary>Modal παράθυρο για την τεχνολογία που μόλις ολοκληρώθηκε: μεγάλο εικονίδιο + όνομα + περιγραφή/ξεκλειδώματα.</summary>
+    private void DrawTechDoneOverlay()
+    {
+        int vw = GraphicsDevice.Viewport.Width, vh = GraphicsDevice.Viewport.Height;
+        var ms = Mouse.GetState();
+        var t = _techDone.Peek();
+        var panel = TechDonePanelRect();
+        int lineH = _font.LineSpacing;
+        const int padX = TechDonePadX, padTop = 14, headGap = 12, iconSz = TechDoneIcon, iconGap = 14, sepGap = 16;
+        int titleH = (int)(lineH * 1.3f);
+        int nameLineH = (int)(lineH * 1.1f) + 2;
+
+        _spriteBatch.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, SamplerState.PointClamp);
+        _spriteBatch.Draw(_pixel, new Rectangle(0, 0, vw, vh), new Color(0, 0, 0, 180));
+        _spriteBatch.Draw(_pixel, panel, new Color(16, 18, 26, 250));
+        DrawRectOutline(panel, new Color(120, 130, 150));
+
+        const string title = "RESEARCH COMPLETE";
+        var tsz = _font.MeasureString(title) * 1.3f;
+        _spriteBatch.DrawString(_font, title, new Vector2(panel.Center.X - tsz.X / 2f, panel.Y + padTop),
+            new Color(120, 230, 120), 0f, Vector2.Zero, 1.3f, SpriteEffects.None, 0f);
+
+        int headerY = panel.Y + padTop + titleH + headGap;
+        if (_techIcons.TryGetValue(t.Id, out var tex))
+            _spriteBatch.Draw(tex, new Rectangle(panel.X + padX, headerY, iconSz, iconSz), Color.White);
+        int nameX = panel.X + padX + iconSz + iconGap;
+        _spriteBatch.DrawString(_font, t.Name, new Vector2(nameX, headerY), new Color(255, 205, 120),
+            0f, Vector2.Zero, 1.1f, SpriteEffects.None, 0f);
+        _spriteBatch.DrawString(_font, $"{t.Cost:0} RP  ·  Phase {t.Phase}", new Vector2(nameX, headerY + nameLineH), HudDim);
+
+        int sepY = headerY + iconSz + sepGap / 2;
+        _spriteBatch.Draw(_pixel, new Rectangle(panel.X + padX, sepY, panel.Width - padX * 2, 1), new Color(80, 86, 100));
+
+        int bodyY = headerY + iconSz + sepGap;
+        var body = TechDoneBody(t, panel.Width - padX * 2);
+        for (int i = 0; i < body.Count; i++)
+            if (body[i].Length > 0)
+                _spriteBatch.DrawString(_font, body[i], new Vector2(panel.X + padX, bodyY + i * lineH), HudWhite);
+
+        DrawCloseButton(TechDoneCloseRect(), ms);
         _spriteBatch.End();
     }
 
@@ -786,6 +1013,41 @@ public class MarsGame : Microsoft.Xna.Framework.Game
             if (KeyPressed(keys, Keys.Escape) || (click && HelpCloseRect().Contains(mouse.X, mouse.Y)))
             {
                 _showHelp = false;
+                _audio.Blip();
+            }
+            _prevMouse = mouse;
+            _prevKeys = keys;
+            base.Update(gameTime);
+            return;
+        }
+
+        // Παράθυρο βοήθειας καταλόγου (όλα τα κτίρια/έρευνες): modal — κύλιση με ρόδα, Close/Esc κλείνει.
+        if (_catalogHelp != CatalogHelp.None)
+        {
+            _uiClick = false;
+            int cw = mouse.ScrollWheelValue - _prevMouse.ScrollWheelValue;
+            if (cw != 0) _catalogScroll = Math.Clamp(_catalogScroll - Math.Sign(cw) * 48, 0, _catalogScrollMax);
+            bool click = mouse.LeftButton == ButtonState.Released && _prevMouse.LeftButton == ButtonState.Pressed;
+            if (KeyPressed(keys, Keys.Escape) || (click && CatalogHelpCloseRect().Contains(mouse.X, mouse.Y)))
+            {
+                _catalogHelp = CatalogHelp.None;
+                _audio.Blip();
+            }
+            _prevMouse = mouse;
+            _prevKeys = keys;
+            base.Update(gameTime);
+            return;
+        }
+
+        // Popup ολοκλήρωσης τεχνολογίας: modal — «X»/Esc/Enter κλείνει (και δείχνει το επόμενο στην ουρά).
+        if (_state == GameState.Playing && _techDone.Count > 0)
+        {
+            _uiClick = false;
+            bool click = mouse.LeftButton == ButtonState.Released && _prevMouse.LeftButton == ButtonState.Pressed;
+            if (KeyPressed(keys, Keys.Escape) || KeyPressed(keys, Keys.Enter)
+                || (click && TechDoneCloseRect().Contains(mouse.X, mouse.Y)))
+            {
+                _techDone.Dequeue();
                 _audio.Blip();
             }
             _prevMouse = mouse;
@@ -916,6 +1178,14 @@ public class MarsGame : Microsoft.Xna.Framework.Game
 
         if (_statusTimer > 0) _statusTimer -= gameTime.ElapsedGameTime.TotalSeconds;
 
+        // Περιοδικός έλεγχος (κάθε 3s) για κτήρια χωρίς εργαζόμενους / με τελειωμένα resources → μετρητές HUD.
+        _buildingCheckTimer -= gameTime.ElapsedGameTime.TotalSeconds;
+        if (_buildingCheckTimer <= 0)
+        {
+            RefreshBuildingCounts();
+            _buildingCheckTimer = BuildingCheckInterval;
+        }
+
         // Προώθηση σιμουλασιόν (fixed-timestep μέσα στο World)
         _world.Update(gameTime.ElapsedGameTime.TotalSeconds);
 
@@ -927,6 +1197,11 @@ public class MarsGame : Microsoft.Xna.Framework.Game
         }
 
         CheckAudioTransitions();
+
+        // Τεχνολογίες που μόλις ολοκληρώθηκαν → modal popup (μία-μία, με «X» πάνω δεξιά).
+        foreach (var id in _world.Colony.Tech.Researched)
+            if (_knownResearched.Add(id) && _world.Colony.Tech.Catalog.TryGet(id, out var td) && td is not null)
+                _techDone.Enqueue(td);
 
         // Γεγονότα που μόλις ξεκίνησαν → ενημερωτικά popup (χωρίς πάγωμα του χρόνου).
         foreach (var start in _world.StartedEvents)
@@ -960,16 +1235,17 @@ public class MarsGame : Microsoft.Xna.Framework.Game
             {
                 _uiClick = true;              // κλικ πάνω στην κάρτα: μην τοποθετηθεί κτίριο από κάτω
             }
-            else if (_buildMenuOpen && PaletteHelpRect(_buildables.Count).Contains(mouse.X, mouse.Y))
+            else if (_buildMenuOpen && BuildHelpButtonRect().Contains(mouse.X, mouse.Y))
             {
-                _buildHelp = !_buildHelp;     // «?» help toggle της παλέτας κτιρίων
+                _catalogHelp = CatalogHelp.Buildings; // κουμπί help της παλέτας κτιρίων → παράθυρο με όλα τα κτίρια
+                _catalogScroll = 0;
                 _audio.Blip();
                 _uiClick = true;
             }
-            else if (_researchMenuOpen && ResearchOptions().Count > 0
-                     && PaletteHelpRect(ResearchOptions().Count).Contains(mouse.X, mouse.Y))
+            else if (_researchMenuOpen && ResearchHelpButtonRect(ResearchOptions().Count).Contains(mouse.X, mouse.Y))
             {
-                _researchHelp = !_researchHelp; // «?» help toggle της παλέτας έρευνας
+                _catalogHelp = CatalogHelp.Research;  // κουμπί help της παλέτας έρευνας → παράθυρο με όλες τις τεχνολογίες
+                _catalogScroll = 0;
                 _audio.Blip();
                 _uiClick = true;
             }
@@ -1398,6 +1674,8 @@ public class MarsGame : Microsoft.Xna.Framework.Game
 
         DrawHud();
         if (_showHelp) DrawHelpOverlay();
+        if (_catalogHelp != CatalogHelp.None) DrawCatalogHelpOverlay();
+        if (_techDone.Count > 0) DrawTechDoneOverlay();
 
         base.Draw(gameTime);
     }
@@ -1514,40 +1792,36 @@ public class MarsGame : Microsoft.Xna.Framework.Game
         return -1;
     }
 
-    /// <summary>Rect ενός κουμπιού μιας popup παλέτας (κτίρια/έρευνα): 2 σειρές, κεντραρισμένες, πάνω από τη μπάρα.</summary>
-    private Rectangle PaletteButtonRect(int index, int count)
+    /// <summary>Rect ενός κουμπιού μιας popup παλέτας, κεντραρισμένο πάνω από τη μπάρα (1 ή 2 σειρές).</summary>
+    private Rectangle PaletteButtonRect(int index, int count, int rows = 2)
     {
         const int bs = 46, gap = 6, bottom = 8;
-        int cols = Math.Max(1, (int)Math.Ceiling(count / 2.0));
-        bool bottomRow = index >= cols;
+        rows = Math.Clamp(rows, 1, 2);
+        int cols = Math.Max(1, (int)Math.Ceiling(count / (double)rows));
+        bool bottomRow = rows == 2 && index >= cols;
         int col = bottomRow ? index - cols : index;
         int rowCount = bottomRow ? count - cols : Math.Min(count, cols);
         int rowWidth = rowCount * bs + (rowCount - 1) * gap;
         int startX = (GraphicsDevice.Viewport.Width - rowWidth) / 2;
         int toolbarY = GraphicsDevice.Viewport.Height - bs - bottom;
-        int y = toolbarY - (bottomRow ? 1 : 2) * (bs + gap); // κάτω σειρά ακριβώς πάνω από τη μπάρα, πάνω σειρά πιο ψηλά
+        int rowFromBottom = (rows == 1 || bottomRow) ? 1 : 2; // (μοναδική/κάτω) σειρά ακριβώς πάνω από τη μπάρα, πάνω σειρά πιο ψηλά
+        int y = toolbarY - rowFromBottom * (bs + gap);
         return new Rectangle(startX + col * (bs + gap), y, bs, bs);
     }
 
     /// <summary>Πλαίσιο φόντου μιας παλέτας: η ένωση όλων των κουμπιών της, με λίγο περιθώριο.</summary>
-    private Rectangle PalettePanel(int count)
+    private Rectangle PalettePanel(int count, int rows = 2)
     {
         if (count <= 0) return Rectangle.Empty;
-        Rectangle panel = PaletteButtonRect(0, count);
-        for (int i = 1; i < count; i++) panel = Rectangle.Union(panel, PaletteButtonRect(i, count));
+        Rectangle panel = PaletteButtonRect(0, count, rows);
+        for (int i = 1; i < count; i++) panel = Rectangle.Union(panel, PaletteButtonRect(i, count, rows));
         panel.Inflate(8, 8);
         return panel;
     }
 
-    /// <summary>Το «?» κουμπί βοήθειας μιας παλέτας: μικρό tab στην πάνω-δεξιά γωνία του πλαισίου.</summary>
-    private Rectangle PaletteHelpRect(int count)
-    {
-        var panel = PalettePanel(count);
-        const int hs = 28;
-        return new Rectangle(panel.Right - hs, panel.Y - hs - 3, hs, hs);
-    }
-
-    private Rectangle BuildMenuButtonRect(int index) => PaletteButtonRect(index, _buildables.Count);
+    // Οι παλέτες έχουν ένα επιπλέον κουμπί (help) ως τελευταίο slot, στο ίδιο μέγεθος με τα υπόλοιπα.
+    private Rectangle BuildMenuButtonRect(int index) => PaletteButtonRect(index, _buildables.Count + 1);
+    private Rectangle BuildHelpButtonRect() => PaletteButtonRect(_buildables.Count, _buildables.Count + 1);
 
     private int BuildMenuHitIndex(int mx, int my)
     {
@@ -1562,12 +1836,12 @@ public class MarsGame : Microsoft.Xna.Framework.Game
         var tools = ToolbarTools();
         for (int i = 0; i < tools.Count; i++)
             if (ToolbarButtonRect(i, tools.Count).Contains(mx, my)) return true;
-        if (_buildMenuOpen && (BuildMenuHitIndex(mx, my) >= 0 || PaletteHelpRect(_buildables.Count).Contains(mx, my))) return true;
+        if (_buildMenuOpen && (BuildMenuHitIndex(mx, my) >= 0 || BuildHelpButtonRect().Contains(mx, my))) return true;
         if (_speedMenuOpen && SpeedMenuHitIndex(mx, my) >= 0) return true;
         if (_researchMenuOpen)
         {
             int techCount = ResearchOptions().Count;
-            if (ResearchMenuHitIndex(mx, my) >= 0 || (techCount > 0 && PaletteHelpRect(techCount).Contains(mx, my))) return true;
+            if (ResearchMenuHitIndex(mx, my) >= 0 || ResearchHelpButtonRect(techCount).Contains(mx, my)) return true;
         }
         return false;
     }
@@ -1705,7 +1979,9 @@ public class MarsGame : Microsoft.Xna.Framework.Game
 
     private List<TechDefinition> ResearchOptions() => _world.Colony.Tech.Available.ToList();
 
-    private Rectangle ResearchMenuButtonRect(int index, int count) => PaletteButtonRect(index, count);
+    // Οι τεχνολογίες + το κουμπί help σε μία σειρά (rows: 1), το help τελευταίο και στο ίδιο μέγεθος.
+    private Rectangle ResearchMenuButtonRect(int index, int count) => PaletteButtonRect(index, count + 1, rows: 1);
+    private Rectangle ResearchHelpButtonRect(int count) => PaletteButtonRect(count, count + 1, rows: 1);
 
     private int ResearchMenuHitIndex(int mx, int my)
     {
@@ -1715,25 +1991,21 @@ public class MarsGame : Microsoft.Xna.Framework.Game
         return -1;
     }
 
-    /// <summary>popup διαθέσιμων ερευνών: πλέγμα εικονιδίων + «?» help· κλικ ξεκινά την έρευνα. Hover = όνομα/κόστος (ή περιγραφή σε help mode).</summary>
+    /// <summary>popup διαθέσιμων ερευνών: πλέγμα εικονιδίων + κουμπί help (τελευταίο)· κλικ ξεκινά την έρευνα, το help ανοίγει το παράθυρο καταλόγου.</summary>
     private void DrawResearchMenu(MouseState ms)
     {
         var techs = ResearchOptions();
         if (techs.Count == 0)
         {
-            const int bs = 46, gap = 6, bottom = 8;
-            int toolbarY = GraphicsDevice.Viewport.Height - bs - bottom;
-            var msg = "no research available";
-            var sz = _font.MeasureString(msg);
-            int pw = (int)sz.X + 24;
-            var empty = new Rectangle((GraphicsDevice.Viewport.Width - pw) / 2, toolbarY - (bs + gap), pw, bs);
-            _spriteBatch.Draw(_pixel, empty, new Color(12, 14, 20, 242));
-            DrawRectOutline(empty, new Color(90, 130, 170));
-            _spriteBatch.DrawString(_font, msg, new Vector2(empty.Center.X - sz.X / 2f, empty.Center.Y - sz.Y / 2f), HudDim);
+            // Δεν υπάρχει διαθέσιμη έρευνα: δείχνουμε μόνο το κουμπί help (ώστε να φαίνονται όλες οι τεχνολογίες).
+            Rectangle emptyPanel = PalettePanel(1, rows: 1);
+            _spriteBatch.Draw(_pixel, emptyPanel, new Color(12, 14, 20, 240));
+            DrawRectOutline(emptyPanel, new Color(90, 130, 170));
+            DrawPaletteHelpButton(ResearchHelpButtonRect(0), ms, "Help: none available now - see all techs");
             return;
         }
 
-        Rectangle panel = PalettePanel(techs.Count);
+        Rectangle panel = PalettePanel(techs.Count + 1, rows: 1);
         _spriteBatch.Draw(_pixel, panel, new Color(12, 14, 20, 240));
         DrawRectOutline(panel, new Color(90, 130, 170));
 
@@ -1749,18 +2021,11 @@ public class MarsGame : Microsoft.Xna.Framework.Game
                 _spriteBatch.Draw(tex, new Rectangle(rect.X + 3, rect.Y + 3, rect.Width - 6, rect.Height - 6), Color.White);
         }
 
-        var help = PaletteHelpRect(techs.Count);
-        DrawHelpToggle(help, _researchHelp, ms);
+        DrawPaletteHelpButton(ResearchHelpButtonRect(techs.Count), ms, "Help: what each tech does");
 
         int hover = ResearchMenuHitIndex(ms.X, ms.Y);
         if (hover >= 0)
-        {
-            var t = techs[hover];
-            string text = _researchHelp ? $"{t.Name}: {t.Description}" : $"{t.Name}   {t.Cost} RP";
-            DrawPaletteTooltip(text, ResearchMenuButtonRect(hover, techs.Count));
-        }
-        else if (help.Contains(ms.X, ms.Y))
-            DrawPaletteTooltip(_researchHelp ? "Help: ON - hover a tech for details" : "Help: what each tech does", help);
+            DrawPaletteTooltip($"{techs[hover].Name}   {techs[hover].Cost} RP", ResearchMenuButtonRect(hover, techs.Count));
     }
 
     private void SaveGameToFile()
@@ -1809,12 +2074,12 @@ public class MarsGame : Microsoft.Xna.Framework.Game
         }
     }
 
-    /// <summary>Ζωγραφίζει την popup παλέτα κτιρίων: πλαίσιο φόντου + 2 σειρές εικονιδίων + «?» help + tooltip.</summary>
+    /// <summary>Ζωγραφίζει την popup παλέτα κτιρίων: πλαίσιο φόντου + εικονίδια + κουμπί help (τελευταίο) + tooltip.</summary>
     private void DrawBuildMenu(MouseState ms)
     {
         if (_buildables.Count == 0) return;
 
-        Rectangle panel = PalettePanel(_buildables.Count);
+        Rectangle panel = PalettePanel(_buildables.Count + 1);
         _spriteBatch.Draw(_pixel, panel, new Color(12, 14, 20, 240));
         DrawRectOutline(panel, new Color(90, 130, 170));
 
@@ -1829,29 +2094,23 @@ public class MarsGame : Microsoft.Xna.Framework.Game
                 _spriteBatch.Draw(tex, new Rectangle(rect.X + 3, rect.Y + 3, rect.Width - 6, rect.Height - 6), Color.White);
         }
 
-        var help = PaletteHelpRect(_buildables.Count);
-        DrawHelpToggle(help, _buildHelp, ms);
+        DrawPaletteHelpButton(BuildHelpButtonRect(), ms, "Help: what each building does");
 
         int hover = BuildMenuHitIndex(ms.X, ms.Y);
         if (hover >= 0)
-        {
-            var def = _buildables[hover];
-            string text = _buildHelp ? $"{def.Name}: {def.Description}" : $"{def.Name}   ({CostString(def)})";
-            DrawPaletteTooltip(text, BuildMenuButtonRect(hover));
-        }
-        else if (help.Contains(ms.X, ms.Y))
-            DrawPaletteTooltip(_buildHelp ? "Help: ON - hover a building for details" : "Help: what each building does", help);
+            DrawPaletteTooltip($"{_buildables[hover].Name}   ({CostString(_buildables[hover])})", BuildMenuButtonRect(hover));
     }
 
-    /// <summary>Κουμπί «?» (toggle) help μιας παλέτας — τονίζεται όταν το help mode είναι ενεργό.</summary>
-    private void DrawHelpToggle(Rectangle rect, bool active, MouseState ms)
+    /// <summary>Κουμπί help μιας παλέτας (τελευταίο slot, ίδιο μέγεθος): κλικ ανοίγει το παράθυρο καταλόγου. Hover = hint.</summary>
+    private void DrawPaletteHelpButton(Rectangle rect, MouseState ms, string hint)
     {
         bool hover = rect.Contains(ms.X, ms.Y);
-        _spriteBatch.Draw(_pixel, rect, active ? new Color(45, 62, 84, 240) : (hover ? new Color(30, 36, 48, 240) : new Color(18, 20, 28, 235)));
-        DrawRectOutline(rect, active ? new Color(140, 195, 245) : new Color(90, 130, 170));
-        var qs = _font.MeasureString("?") * 1.2f;
+        _spriteBatch.Draw(_pixel, rect, hover ? new Color(45, 62, 84, 240) : new Color(18, 20, 28, 235));
+        DrawRectOutline(rect, hover ? new Color(140, 195, 245) : new Color(90, 130, 170));
+        var qs = _font.MeasureString("?") * 1.6f;
         _spriteBatch.DrawString(_font, "?", new Vector2(rect.Center.X - qs.X / 2f, rect.Center.Y - qs.Y / 2f),
-            active ? new Color(150, 200, 255) : HudWhite, 0f, Vector2.Zero, 1.2f, SpriteEffects.None, 0f);
+            hover ? new Color(150, 200, 255) : HudWhite, 0f, Vector2.Zero, 1.6f, SpriteEffects.None, 0f);
+        if (hover) DrawPaletteTooltip(hint, rect);
     }
 
     /// <summary>Tooltip πάνω από ένα κουμπί παλέτας, κεντραρισμένο & περιορισμένο μέσα στην οθόνη.</summary>
@@ -1863,6 +2122,63 @@ public class MarsGame : Microsoft.Xna.Framework.Game
         _spriteBatch.Draw(_pixel, new Rectangle((int)x - 5, (int)y - 2, (int)size.X + 10, (int)size.Y + 4), new Color(0, 0, 0, 235));
         _spriteBatch.DrawString(_font, text, new Vector2(x, y), HudWhite);
     }
+
+    /// <summary>Αναδιπλώνει κείμενο σε γραμμές που χωρούν σε <paramref name="maxWidth"/> px (στο δοσμένο scale).</summary>
+    private void WrapText(List<string> outLines, string text, float maxWidth, float scale = 1f)
+    {
+        string cur = "";
+        foreach (var word in text.Split(' '))
+        {
+            string trial = cur.Length == 0 ? word : cur + " " + word;
+            if (cur.Length > 0 && _font.MeasureString(trial).X * scale > maxWidth)
+            {
+                outLines.Add(cur);
+                cur = word;
+            }
+            else cur = trial;
+        }
+        if (cur.Length > 0) outLines.Add(cur);
+    }
+
+    /// <summary>Σώμα της κάρτας βοήθειας ενός κτιρίου: περιγραφή + βασικά χαρακτηριστικά.</summary>
+    private List<string> BuildingHelpBody(BuildingDefinition def)
+    {
+        var body = new List<string> { def.Description, "" };
+        if (def.RequiredTech.Length > 0) body.Add($"Requires tech: {TechName(def.RequiredTech)}");
+        if (def.RequiresDeposit != ResourceType.None) body.Add($"Requires deposit: {def.RequiresDeposit}");
+        body.Add(def.MaxWorkers > 0
+            ? $"Crew: up to {def.MaxWorkers}" + (def.OptimalSpecialty != Specialty.None ? $" (best: {def.OptimalSpecialty})" : "")
+            : "Crew: automatic (none needed)");
+        if (def.Production.Count > 0)
+            body.Add("Output/tick: " + string.Join(", ", def.Production.Select(kv => $"{Signed(kv.Value)} {kv.Key}")));
+        if (def.PlanetEffects.Count > 0)
+            body.Add("Planet/tick: " + string.Join(", ", def.PlanetEffects.Select(kv => $"{Signed(kv.Value)} {kv.Key}")));
+        if (def.Storage.Count > 0)
+            body.Add("Storage: " + string.Join(", ", def.Storage.Select(kv => $"{kv.Value:0} {kv.Key}")));
+        if (def.HousingCapacity > 0) body.Add($"Housing: +{def.HousingCapacity}");
+        if (def.VegetationSpreadPerTick > 0) body.Add("Spreads vegetation");
+        return body;
+    }
+
+    /// <summary>Σώμα της κάρτας βοήθειας μιας τεχνολογίας: περιγραφή + φάση/προαπαιτούμενα/ξεκλειδώματα.</summary>
+    private List<string> TechHelpBody(TechDefinition t)
+    {
+        var body = new List<string> { t.Description, "" };
+        body.Add($"Phase: {t.Phase}");
+        if (t.Prerequisites.Count > 0)
+            body.Add("Needs: " + string.Join(", ", t.Prerequisites.Select(TechName)));
+        if (t.Unlocks.Count > 0)
+            body.Add("Unlocks: " + string.Join(", ", t.Unlocks.Select(BuildingName)));
+        return body;
+    }
+
+    private static string Signed(double v) => (v >= 0 ? "+" : "") + v.ToString("0.###");
+
+    private string TechName(string id) =>
+        _world.Colony.Tech.Catalog.TryGet(id, out var t) && t is not null ? t.Name : id;
+
+    private string BuildingName(string id) =>
+        _catalog.TryGet(id, out var d) && d is not null ? d.Name : id;
 
     private void DrawToolbarTooltip(string label, int centerX)
     {
@@ -2173,6 +2489,12 @@ public class MarsGame : Microsoft.Xna.Framework.Game
 
         foreach (var note in _world.EventNotifications.AsEnumerable().Reverse().Take(3))
             bottom.Add(("* " + note, HudDim));
+
+        // Σύνοψη κτηρίων που χρειάζονται προσοχή (ανανεώνεται περιοδικά κάθε 3s στο Update).
+        if (_crewNeededCount > 0)
+            bottom.Add(($"{_crewNeededCount} building{(_crewNeededCount == 1 ? "" : "s")} needing crew   (. to find)", new Color(150, 200, 245)));
+        if (_depletedCount > 0)
+            bottom.Add(($"{_depletedCount} building{(_depletedCount == 1 ? "" : "s")} out of resources   (, to find)", new Color(240, 170, 80)));
 
         // Κρίσιμα alerts (μεταφέρθηκαν από το πρώην πάνω HUD ώστε να μη χάνονται).
         if (_world.Colony.LifeSupportFailing) bottom.Add(("!! LIFE SUPPORT FAILURE !!", HudWarn));
