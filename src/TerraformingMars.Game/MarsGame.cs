@@ -126,15 +126,23 @@ public class MarsGame : Microsoft.Xna.Framework.Game
     private bool ReclaimUnlocked => _world.Colony.Tech.IsResearched(ReclaimTechId);
 
     // Μπάρα εργαλείων: δυναμική λίστα κουμπιών (το Reclaim εμφανίζεται μόνο όταν ξεκλειδωθεί).
-    private enum Tool { Buildings, Research, Speed, Save, Mute, Center, Reclaim, Menu, Help }
+    private enum Tool { Buildings, Research, Speed, Save, Mute, Center, CrewNeeded, Depleted, Reclaim, Menu, Help }
     private List<Tool> ToolbarTools()
     {
-        var list = new List<Tool> { Tool.Buildings, Tool.Research, Tool.Speed, Tool.Save, Tool.Mute, Tool.Center };
+        var list = new List<Tool>
+        {
+            Tool.Buildings, Tool.Research, Tool.Speed, Tool.Save, Tool.Mute,
+            Tool.Center, Tool.CrewNeeded, Tool.Depleted,
+        };
         if (ReclaimUnlocked) list.Add(Tool.Reclaim);
         list.Add(Tool.Menu);
         list.Add(Tool.Help);
         return list;
     }
+
+    // Κυκλική πλοήγηση: το τελευταίο κτήριο που δείξαμε με «.»/«,» ώστε το επόμενο πάτημα να πάει παρακάτω.
+    private Building? _crewFocus;
+    private Building? _depletedFocus;
 
     // Οθόνη βοήθειας (modal· ανοίγει από τη μπάρα ή το μενού)
     private bool _showHelp;
@@ -595,7 +603,7 @@ public class MarsGame : Microsoft.Xna.Framework.Game
         "",
         "RESEARCH & RECLAIM",
         "Click the research icon (or T) and pick a technology to research.",
-        "Research 'Reclaim' to recycle a building for some Credits and Materials back.",
+        "Research 'Reclaim' to recycle a building for Credits and Materials back (R).",
         "",
         "TIME, SAVE & LOAD",
         "Clock icon: pause / x1 / x2 / x4  (or Space, 1 / 2 / 3).",
@@ -604,6 +612,7 @@ public class MarsGame : Microsoft.Xna.Framework.Game
         "CONTROLS",
         "Move: WASD / arrows / drag   Zoom: wheel   Select: right-click   Mute: U",
         "Center on landing module: H, or the crosshair icon in the bottom bar.",
+        "Jump to a building needing crew: '.'   to a depleted deposit: ','",
         "Resource numbers (top) turn red when falling.   Menu / back: Esc.",
     };
 
@@ -697,9 +706,45 @@ public class MarsGame : Microsoft.Xna.Framework.Game
     {
         var landing = _world.Colony.Buildings.FirstOrDefault(b => b.Definition.Id == LandingModuleId)
                       ?? _world.Colony.Buildings.FirstOrDefault();
-        if (landing is null) return;
-        var (x, y) = _renderer.Layout.HexToPixel(landing.Location);
+        if (landing is not null) CenterOnBuilding(landing);
+    }
+
+    /// <summary>Κεντράρει την κάμερα πάνω σε ένα κτήριο (διατηρεί το τρέχον zoom).</summary>
+    private void CenterOnBuilding(Building building)
+    {
+        var (x, y) = _renderer.Layout.HexToPixel(building.Location);
         _camera.Position = new Vector2((float)x, (float)y);
+    }
+
+    // Κτήρια που «χρειάζονται προσωπικό»: λειτουργικά, με θέσεις εργασίας αλλά υποστελεχωμένα.
+    private static bool NeedsCrew(Building b) =>
+        b.State == BuildingState.Operational
+        && b.Definition.MaxWorkers > 0
+        && b.Workers.Count < b.Definition.MaxWorkers;
+
+    // Κτήρια με εξαντλημένο κοίτασμα (ορυχεία/γεωτρήσεις που σταμάτησαν να παράγουν).
+    private static bool IsDepleted(Building b) => b.DepositDepleted;
+
+    /// <summary>
+    /// Κεντράρει (κυκλικά) στο επόμενο κτήριο που ταιριάζει στο <paramref name="match"/>, το επιλέγει
+    /// ώστε να φανεί το panel του, και θυμάται ποιο έδειξε ώστε το επόμενο πάτημα να πάει στο μεθεπόμενο.
+    /// </summary>
+    private void CenterOnNextBuilding(Func<Building, bool> match, ref Building? focus, string emptyStatus)
+    {
+        var list = _world.Colony.Buildings.Where(match).ToList();
+        if (list.Count == 0)
+        {
+            focus = null;
+            _status = emptyStatus;
+            _statusTimer = 3.0;
+            return;
+        }
+        int prev = focus is null ? -1 : list.IndexOf(focus);
+        var next = list[(prev + 1) % list.Count];
+        focus = next;
+        CenterOnBuilding(next);
+        _selected = _map.GetTile(next.Location);
+        _selectedBuilding = next;
     }
 
     protected override void Update(GameTime gameTime)
@@ -789,6 +834,19 @@ public class MarsGame : Microsoft.Xna.Framework.Game
 
         // H: κεντράρισμα κάμερας στο landing module (αρχική κάψουλα)
         if (KeyPressed(keys, Keys.H)) { CenterOnLandingModule(); _audio.Blip(); }
+
+        // . / , : κεντράρισμα στο επόμενο κτήριο που χρειάζεται προσωπικό / έχει εξαντλημένο κοίτασμα
+        if (KeyPressed(keys, Keys.OemPeriod))
+        { CenterOnNextBuilding(NeedsCrew, ref _crewFocus, "No building needs crew"); _audio.Blip(); }
+        if (KeyPressed(keys, Keys.OemComma))
+        { CenterOnNextBuilding(IsDepleted, ref _depletedFocus, "No depleted deposits"); _audio.Blip(); }
+
+        // R: εναλλαγή reclaim mode (μόνο όταν έχει ξεκλειδωθεί από έρευνα)
+        if (KeyPressed(keys, Keys.R))
+        {
+            if (ReclaimUnlocked) HandleToolClick(Tool.Reclaim);
+            else { _status = "Reclaim locked - research 'Reclaim' first"; _statusTimer = 3.0; }
+        }
 
         // Save (F5) / Load (F9). Νέος χάρτης & αλλαγή χορηγού γίνονται πλέον μόνο από το μενού.
         if (KeyPressed(keys, Keys.F5)) SaveGameToFile();
@@ -1372,6 +1430,8 @@ public class MarsGame : Microsoft.Xna.Framework.Game
         Tool.Save => _toolIcons["save"],
         Tool.Mute => _toolIcons[_audio.Enabled ? "mute_on" : "mute_off"],
         Tool.Center => _toolIcons["center"],
+        Tool.CrewNeeded => _toolIcons["crew_needed"],
+        Tool.Depleted => _toolIcons["depleted"],
         Tool.Menu => _toolIcons["menu"],
         _ => _buildingsIcon
     };
@@ -1385,8 +1445,10 @@ public class MarsGame : Microsoft.Xna.Framework.Game
         Tool.Speed => "Speed   (pause / x1 / x2 / x4)",
         Tool.Save => "Save game   (F5)",
         Tool.Mute => _audio.Enabled ? "Mute sound   (U)" : "Unmute sound   (U)",
-        Tool.Reclaim => "Reclaim   (recycle a building for credits)",
+        Tool.Reclaim => "Reclaim   (R - recycle a building for credits)",
         Tool.Center => "Center on landing module   (H)",
+        Tool.CrewNeeded => "Next understaffed building   (.)",
+        Tool.Depleted => "Next depleted deposit   (,)",
         Tool.Menu => "Menu   (Esc - back to main menu)",
         Tool.Help => "Help   (how to play)",
         _ => ""
@@ -1426,6 +1488,12 @@ public class MarsGame : Microsoft.Xna.Framework.Game
                 break;
             case Tool.Center:
                 CenterOnLandingModule();
+                break;
+            case Tool.CrewNeeded:
+                CenterOnNextBuilding(NeedsCrew, ref _crewFocus, "No building needs crew");
+                break;
+            case Tool.Depleted:
+                CenterOnNextBuilding(IsDepleted, ref _depletedFocus, "No depleted deposits");
                 break;
             case Tool.Menu:
                 _state = GameState.Menu;

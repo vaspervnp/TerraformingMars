@@ -139,6 +139,7 @@ public static class IconFactory
     {
         var icons = new Dictionary<string, Texture2D>(StringComparer.OrdinalIgnoreCase);
         foreach (var id in new[] { "research", "speed", "save", "menu", "mute_on", "mute_off", "center",
+                                   "crew_needed", "depleted",
                                    "pause", "speed1", "speed2", "speed4",
                                    "sol", "sponsor", "temperature", "pressure", "planet", "biomass" })
         {
@@ -198,6 +199,24 @@ public static class IconFactory
                 Line(b, 32, 49, 32, 58, 3, cross);  // κάτω
                 Line(b, 6, 32, 15, 32, 3, cross);   // αριστερά
                 Line(b, 49, 32, 58, 32, 3, cross);  // δεξιά
+                break;
+            case "crew_needed": // άποικος + πορτοκαλί «+» (κτήριο που ζητά προσωπικό)
+                var person = new Color(150, 200, 245);
+                Disc(b, 25, 24, 8, person);                     // κεφάλι
+                RoundRect(b, 13, 34, 24, 20, 8, person, 1f);    // σώμα
+                var plus = new Color(255, 180, 70);
+                Rect(b, 44, 33, 5, 17, plus);                   // κάθετη ράβδος του +
+                Rect(b, 39, 39, 15, 5, plus);                   // οριζόντια ράβδος του +
+                break;
+            case "depleted": // άδειος ρόμβος κοιτάσματος + κόκκινο κάτω βέλος (εξάντληση)
+                var edge = new Color(150, 155, 165);
+                Line(b, 32, 12, 50, 32, 3, edge);
+                Line(b, 50, 32, 32, 52, 3, edge);
+                Line(b, 32, 52, 14, 32, 3, edge);
+                Line(b, 14, 32, 32, 12, 3, edge);
+                var down = new Color(240, 90, 80);
+                Line(b, 32, 22, 32, 38, 4, down);
+                Tri(b, 32, 45, 24, 34, 40, 34, down);           // μύτη βέλους προς τα κάτω
                 break;
             case "pause":
                 Rect(b, 22, 17, 7, 30, new Color(235, 240, 250));
