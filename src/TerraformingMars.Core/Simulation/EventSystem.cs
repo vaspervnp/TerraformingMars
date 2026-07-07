@@ -47,17 +47,19 @@ public sealed class EventSystem : ISimulationSystem
             case EventType.DustStorm:
                 if (!world.ActiveEvents.Any(e => e.Type == EventType.DustStorm))
                 {
-                    world.ActiveEvents.Add(new ActiveEvent(EventType.DustStorm,
-                        RandRange(_sponsor.DustStormMinTicks, _sponsor.DustStormMaxTicks)));
+                    int ticks = RandRange(_sponsor.DustStormMinTicks, _sponsor.DustStormMaxTicks);
+                    world.ActiveEvents.Add(new ActiveEvent(EventType.DustStorm, ticks));
                     Notify(world, "Dust storm: solar power crippled");
+                    world.StartedEvents.Add(new EventStart(EventType.DustStorm, ticks));
                 }
                 break;
 
             case EventType.SolarFlare:
-                world.ActiveEvents.Add(new ActiveEvent(EventType.SolarFlare,
-                    RandRange(_sponsor.SolarFlareMinTicks, _sponsor.SolarFlareMaxTicks)));
+                int flareTicks = RandRange(_sponsor.SolarFlareMinTicks, _sponsor.SolarFlareMaxTicks);
+                world.ActiveEvents.Add(new ActiveEvent(EventType.SolarFlare, flareTicks));
                 Notify(world, "Solar flare incoming");
                 if (!IsProtected(world)) DisableRandom(world, "electronics fried by flare");
+                world.StartedEvents.Add(new EventStart(EventType.SolarFlare, flareTicks));
                 break;
 
             case EventType.LifeSupportFailure:
@@ -66,6 +68,7 @@ public sealed class EventSystem : ISimulationSystem
                 {
                     Disable(target, _sponsor.RepairTicks);
                     Notify(world, $"LIFE SUPPORT FAILURE: {target.Definition.Name} (send an Engineer!)");
+                    world.StartedEvents.Add(new EventStart(EventType.LifeSupportFailure, _sponsor.RepairTicks));
                 }
                 break;
 
@@ -74,6 +77,7 @@ public sealed class EventSystem : ISimulationSystem
                 {
                     world.HasCaveShelter = true;
                     Notify(world, "Cave discovered: natural radiation shelter");
+                    world.StartedEvents.Add(new EventStart(EventType.CaveDiscovery, 0));
                 }
                 break;
         }

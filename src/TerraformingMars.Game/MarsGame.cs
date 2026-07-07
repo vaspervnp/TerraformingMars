@@ -116,6 +116,16 @@ public class MarsGame : Microsoft.Xna.Framework.Game
     private Rectangle _dialogPanel;
     private bool DialogOpen => _dialogButtons.Count > 0;
 
+    // Ενημερωτικό popup γεγονότος (μη-modal: ΔΕΝ παγώνει τον χρόνο· κλείνει με κουμπί/Enter/Esc).
+    private sealed class EventPopup
+    {
+        public string Title = "";
+        public Color Accent;
+        public List<(string text, Color color)> Lines = new();
+    }
+    private readonly Queue<EventPopup> _eventPopups = new();
+    private Rectangle _eventPopupPanel, _eventPopupCloseRect;
+
     // Reclaim (ανακύκλωση κτιρίων για credits) — ξεκλειδώνει με την τεχνολογία "reclaim"
     private const string ReclaimTechId = "reclaim";
     private const string LandingModuleId = "landing_capsule"; // το αρχικό κτήριο (landing module)
@@ -217,6 +227,7 @@ public class MarsGame : Microsoft.Xna.Framework.Game
         _researchMenuOpen = false;
         _reclaimMode = false;
         _reclaimTarget = null;
+        _eventPopups.Clear();
         CloseDialog();
         ResetTransitionTrackers();
         InitCamera();
@@ -243,6 +254,7 @@ public class MarsGame : Microsoft.Xna.Framework.Game
             _researchMenuOpen = false;
             _reclaimMode = false;
             _reclaimTarget = null;
+            _eventPopups.Clear();
             CloseDialog();
             ResetTransitionTrackers();
             InitCamera();
@@ -805,14 +817,18 @@ public class MarsGame : Microsoft.Xna.Framework.Game
             return;
         }
 
-        // Esc → πίσω στο μενού (από εκεί κλείνει το παιχνίδι)
+        // Esc → κλείνει πρώτα ένα ανοιχτό event popup· αλλιώς πίσω στο μενού (χωρίς να παγώνει επιπλέον χρόνο)
         if (KeyPressed(keys, Keys.Escape))
         {
-            _state = GameState.Menu;
-            _prevMouse = mouse;
-            _prevKeys = keys;
-            base.Update(gameTime);
-            return;
+            if (_eventPopups.Count > 0) { _eventPopups.Dequeue(); _audio.Blip(); }
+            else
+            {
+                _state = GameState.Menu;
+                _prevMouse = mouse;
+                _prevKeys = keys;
+                base.Update(gameTime);
+                return;
+            }
         }
         if (KeyPressed(keys, Keys.U)) ToggleMute();
 
@@ -908,6 +924,13 @@ public class MarsGame : Microsoft.Xna.Framework.Game
 
         CheckAudioTransitions();
 
+        // Γεγονότα που μόλις ξεκίνησαν → ενημερωτικά popup (χωρίς πάγωμα του χρόνου).
+        foreach (var start in _world.StartedEvents)
+            _eventPopups.Enqueue(BuildEventPopup(start.Type, start.DurationTicks));
+        _world.StartedEvents.Clear();
+        LayoutEventPopup();
+        if (_eventPopups.Count > 0 && KeyPressed(keys, Keys.Enter)) { _eventPopups.Dequeue(); _audio.Blip(); }
+
         // Hover hex μέσω screen→world→PixelToHex
         Vector2 world = _camera.ScreenToWorld(new Vector2(mouse.X, mouse.Y));
         _hoverHex = _renderer.Layout.PixelToHex(world.X, world.Y);
@@ -923,7 +946,17 @@ public class MarsGame : Microsoft.Xna.Framework.Game
             int menuBtn = _buildMenuOpen ? BuildMenuHitIndex(mouse.X, mouse.Y) : -1;
             int speedBtn = _speedMenuOpen ? SpeedMenuHitIndex(mouse.X, mouse.Y) : -1;
             int researchBtn = _researchMenuOpen ? ResearchMenuHitIndex(mouse.X, mouse.Y) : -1;
-            if (CrewButtonClick(mouse.X, mouse.Y))
+            if (_eventPopups.Count > 0 && _eventPopupCloseRect.Contains(mouse.X, mouse.Y))
+            {
+                _eventPopups.Dequeue();       // κουμπί «Close/Next» του event popup
+                _audio.Blip();
+                _uiClick = true;
+            }
+            else if (_eventPopups.Count > 0 && _eventPopupPanel.Contains(mouse.X, mouse.Y))
+            {
+                _uiClick = true;              // κλικ πάνω στην κάρτα: μην τοποθετηθεί κτίριο από κάτω
+            }
+            else if (CrewButtonClick(mouse.X, mouse.Y))
             {
                 // κουμπιά επάνδρωσης (+/-) στο panel του επιλεγμένου κτηρίου
             }
@@ -1126,6 +1159,120 @@ public class MarsGame : Microsoft.Xna.Framework.Game
 
     private static string CostString(BuildingDefinition def) =>
         def.Cost.Count == 0 ? "free" : string.Join(", ", def.Cost.Select(kv => $"{kv.Value:0} {kv.Key}"));
+
+    // ----------------------------------------------------------------- Event popup (μη-modal)
+
+    /// <summary>True αν η αποικία είναι θωρακισμένη από ακτινοβολία (σπήλαιο ή magnetosphere station).</summary>
+    private bool IsShielded() =>
+        _world.HasCaveShelter ||
+        _world.Colony.Buildings.Any(b => b.State == BuildingState.Operational && b.Definition.ShieldsAtmosphere);
+
+    /// <summary>Χτίζει την ενημερωτική κάρτα ενός γεγονότος: περιγραφή, εκτιμώμενη διάρκεια, σύσταση.</summary>
+    private EventPopup BuildEventPopup(EventType type, int durationTicks)
+    {
+        // Ίδια μονάδα με τον μετρητή στο HUD (ticks/4 ≈ δευτ. στο ×1).
+        string dur = $"~{Math.Max(1, durationTicks / 4)}s";
+        var suggest = new Color(150, 220, 150);
+        var p = new EventPopup { Title = EventLabel(type) };
+
+        switch (type)
+        {
+            case EventType.DustStorm:
+                p.Accent = new Color(210, 160, 90);
+                p.Lines.Add(("A planet-wide dust storm is blocking sunlight.", HudWhite));
+                p.Lines.Add(("Solar power output drops sharply until it clears.", HudWhite));
+                p.Lines.Add(($"Estimated duration: {dur}", HudDim));
+                p.Lines.Add(("Suggested: lean on stored energy or fission power", suggest));
+                p.Lines.Add(("and hold off on power-hungry construction.", suggest));
+                break;
+
+            case EventType.SolarFlare:
+                p.Accent = new Color(255, 180, 70);
+                p.Lines.Add(("Intense solar radiation is sweeping the colony.", HudWhite));
+                if (IsShielded())
+                    p.Lines.Add(("Your colony is shielded - the crew stays safe.", new Color(120, 220, 120)));
+                else
+                    p.Lines.Add(("Unshielded crew lose health and electronics may fail.", HudWarn));
+                p.Lines.Add(($"Estimated duration: {dur}", HudDim));
+                p.Lines.Add(("Suggested: build a Magnetosphere Station or shelter,", suggest));
+                p.Lines.Add(("and keep an Engineer ready to repair damage.", suggest));
+                break;
+
+            case EventType.LifeSupportFailure:
+                p.Accent = HudWarn;
+                p.Lines.Add(("A life-support building has broken down.", HudWhite));
+                p.Lines.Add(("Its oxygen / water output has stopped.", HudWhite));
+                p.Lines.Add(($"Estimated repair: {dur} (faster with an Engineer)", HudDim));
+                p.Lines.Add(("Suggested: assign an Engineer to the disabled", suggest));
+                p.Lines.Add(("building to bring it back online sooner.", suggest));
+                break;
+
+            case EventType.CaveDiscovery:
+                p.Accent = new Color(120, 220, 120);
+                p.Lines.Add(("Explorers have found a natural cavern.", HudWhite));
+                p.Lines.Add(("It grants permanent shelter from solar radiation.", HudWhite));
+                p.Lines.Add(("Effect: ongoing protection from solar flares.", HudDim));
+                p.Lines.Add(("No action needed - a lucky break.", suggest));
+                break;
+        }
+        return p;
+    }
+
+    /// <summary>Υπολογίζει panel & κουμπί «Close» της τρέχουσας κάρτας (κοινό για hit-test & draw).</summary>
+    private void LayoutEventPopup()
+    {
+        if (_eventPopups.Count == 0) { _eventPopupPanel = _eventPopupCloseRect = Rectangle.Empty; return; }
+
+        var popup = _eventPopups.Peek();
+        const float titleScale = 1.3f;
+        float lineH = _font.LineSpacing;
+        float maxW = _font.MeasureString(popup.Title).X * titleScale;
+        foreach (var (text, _) in popup.Lines) maxW = MathF.Max(maxW, _font.MeasureString(text).X);
+
+        const int pad = 18, btnH = 40, btnW = 170;
+        int titleH = (int)(lineH * titleScale);
+        int panelW = (int)MathF.Max(maxW, btnW) + pad * 2;
+        int panelH = pad + titleH + 8 + popup.Lines.Count * (int)lineH + 14 + btnH + pad;
+        int px = (GraphicsDevice.Viewport.Width - panelW) / 2;
+        int py = (int)(GraphicsDevice.Viewport.Height * 0.17f);
+
+        _eventPopupPanel = new Rectangle(px, py, panelW, panelH);
+        _eventPopupCloseRect = new Rectangle(_eventPopupPanel.Center.X - btnW / 2, _eventPopupPanel.Bottom - btnH - pad, btnW, btnH);
+    }
+
+    private void DrawEventPopup()
+    {
+        LayoutEventPopup();
+        if (_eventPopups.Count == 0) return;
+
+        var popup = _eventPopups.Peek();
+        var ms = Mouse.GetState();
+        const float titleScale = 1.3f;
+        const int pad = 18;
+        float lineH = _font.LineSpacing;
+
+        _spriteBatch.Draw(_pixel, _eventPopupPanel, new Color(18, 20, 30, 248));
+        DrawRectOutline(_eventPopupPanel, popup.Accent);
+        _spriteBatch.Draw(_pixel, new Rectangle(_eventPopupPanel.X, _eventPopupPanel.Y, 4, _eventPopupPanel.Height), popup.Accent); // έγχρωμη λωρίδα έμφασης
+
+        float y = _eventPopupPanel.Y + pad;
+        _spriteBatch.DrawString(_font, popup.Title, new Vector2(_eventPopupPanel.X + pad, y),
+            popup.Accent, 0f, Vector2.Zero, titleScale, SpriteEffects.None, 0f);
+        y += lineH * titleScale + 8;
+        foreach (var (text, color) in popup.Lines)
+        {
+            _spriteBatch.DrawString(_font, text, new Vector2(_eventPopupPanel.X + pad, y), color);
+            y += lineH;
+        }
+
+        bool hover = _eventPopupCloseRect.Contains(ms.X, ms.Y);
+        _spriteBatch.Draw(_pixel, _eventPopupCloseRect, hover ? new Color(60, 70, 90) : new Color(34, 38, 50));
+        DrawRectOutline(_eventPopupCloseRect, new Color(150, 200, 255));
+        string label = _eventPopups.Count > 1 ? $"Next ({_eventPopups.Count})" : "Close  (Enter)";
+        var lsz = _font.MeasureString(label);
+        _spriteBatch.DrawString(_font, label,
+            new Vector2(_eventPopupCloseRect.Center.X - lsz.X / 2f, _eventPopupCloseRect.Center.Y - lsz.Y / 2f), HudWhite);
+    }
 
     private void AssignCrew(Building building)
     {
@@ -2008,6 +2155,8 @@ public class MarsGame : Microsoft.Xna.Framework.Game
             DrawCenterBanner("***  PLANET TERRAFORMED  ***", new Color(120, 230, 120));
         else if (_world.IsLost)
             DrawCenterBanner("***  COLONY LOST - press Esc  ***", new Color(255, 90, 80));
+
+        DrawEventPopup();
 
         if (DialogOpen) DrawDialog();
 

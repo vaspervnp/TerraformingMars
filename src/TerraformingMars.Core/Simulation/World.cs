@@ -37,6 +37,9 @@ public sealed class World
     public List<ActiveEvent> ActiveEvents { get; } = new();
     public List<string> EventNotifications { get; } = new();      // πρόσφατα μηνύματα για το HUD
 
+    /// <summary>Γεγονότα που μόλις ξεκίνησαν αυτό το βήμα· τα «καταναλώνει» το UI για popup (εφήμερο, δεν σώζεται).</summary>
+    public List<EventStart> StartedEvents { get; } = new();
+
     public World(HexMap map, Colony colony, IEnumerable<ISimulationSystem>? systems = null)
     {
         Map = map;
