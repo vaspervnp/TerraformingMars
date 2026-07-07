@@ -3,7 +3,14 @@ namespace TerraformingMars.Core.Persistence;
 /// <summary>Serializable στιγμιότυπο παιχνιδιού (JSON). Ο χάρτης ανακατασκευάζεται από το seed + overrides.</summary>
 public sealed class SaveGame
 {
-    public int Version { get; set; } = 1;
+    public int Version { get; set; } = 2;
+
+    /// <summary>Εμφανιζόμενο όνομα του save (π.χ. "Save" ή "Auto 1"). Κενό για παλιά αρχεία.</summary>
+    public string Name { get; set; } = "";
+
+    /// <summary>Χρονική στιγμή αποθήκευσης σε ISO-8601 UTC ("o"). Κενό για παλιά αρχεία.</summary>
+    public string SavedAtUtc { get; set; } = "";
+
     public int Seed { get; set; }
     public int Width { get; set; }
     public int Height { get; set; }

@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json;
 using TerraformingMars.Core.Buildings;
 using TerraformingMars.Core.Colonists;
@@ -15,8 +16,24 @@ public static class SaveSystem
 {
     private static readonly JsonSerializerOptions Options = new() { WriteIndented = true };
 
-    public static string ToJson(World world, SponsorProfile sponsor) =>
-        JsonSerializer.Serialize(Capture(world, sponsor), Options);
+    public static string ToJson(World world, SponsorProfile sponsor, string? name = null, DateTime? savedAtUtc = null)
+    {
+        var save = Capture(world, sponsor);
+        save.Name = name ?? "";
+        save.SavedAtUtc = (savedAtUtc ?? DateTime.UtcNow).ToString("o", CultureInfo.InvariantCulture);
+        return JsonSerializer.Serialize(save, Options);
+    }
+
+    /// <summary>Διαβάζει μόνο τα metadata (όνομα + τοπική ώρα) ενός save χωρίς πλήρη φόρτωση κόσμου.</summary>
+    public static (string Name, DateTime SavedAtLocal) ReadInfo(string json)
+    {
+        var save = JsonSerializer.Deserialize<SaveGame>(json, Options);
+        if (save is null) return ("", DateTime.MinValue);
+        return DateTime.TryParse(save.SavedAtUtc, CultureInfo.InvariantCulture,
+                   DateTimeStyles.RoundtripKind, out var dt)
+            ? (save.Name, dt.ToLocalTime())
+            : (save.Name, DateTime.MinValue);
+    }
 
     public static SaveGame Capture(World world, SponsorProfile sponsor)
     {

@@ -16,6 +16,7 @@ using TerraformingMars.Core.Planet;
 using TerraformingMars.Core.Research;
 using TerraformingMars.Core.Simulation;
 using TerraformingMars.Game.Audio;
+using TerraformingMars.Game.Persistence;
 using TerraformingMars.Game.Rendering;
 
 namespace TerraformingMars.Game;
@@ -28,7 +29,6 @@ namespace TerraformingMars.Game;
 public class MarsGame : Microsoft.Xna.Framework.Game
 {
     private const float HexSize = 22f;
-    private static readonly string SavePath = Path.Combine(AppContext.BaseDirectory, "terraforming_save.json");
 
     private readonly GraphicsDeviceManager _graphics;
     private readonly Camera2D _camera = new();
@@ -151,6 +151,20 @@ public class MarsGame : Microsoft.Xna.Framework.Game
     private Vector2 _tutBaseCamPos;
     private float _tutBaseZoom;
 
+    // Saves: πολλαπλά αρχεία στον φάκελο SavedGames, με screenshot της στιγμής αποθήκευσης.
+    private RenderTarget2D? _captureRT;                 // στιγμιότυπο οθόνης για το save
+    private (string slug, string name)? _captureRequest; // εκκρεμές save (γράφεται αφού τραβηχτεί το screenshot)
+    private double _autoSaveTimer;                       // χρονόμετρο αυτόματης αποθήκευσης (κάθε 5 λεπτά)
+    private int _autoSaveIndex;                          // 0..2 → Auto 1..3 (κυκλικά)
+    private const double AutoSaveInterval = 300.0;
+
+    // Οθόνη Load: λίστα με thumbnails + ημ/ώρα, scroll, μεγάλο preview στο κλικ.
+    private sealed class SaveEntry { public string Slug = ""; public string Name = ""; public DateTime When; public Texture2D? Thumb; }
+    private bool _loadScreenOpen;
+    private int _loadScroll, _loadScrollMax;
+    private int _previewIndex = -1;                      // -1 = λίστα· >=0 = μεγάλο preview της εγγραφής
+    private List<SaveEntry> _saveEntries = new();
+
     // Reclaim (ανακύκλωση κτιρίων για credits) — ξεκλειδώνει με την τεχνολογία "reclaim"
     private const string ReclaimTechId = "reclaim";
     private const string LandingModuleId = "landing_capsule"; // το αρχικό κτήριο (landing module)
@@ -244,6 +258,12 @@ public class MarsGame : Microsoft.Xna.Framework.Game
         _settings = new MapGenerationSettings { Width = 64, Height = 44, Seed = _seed };
         _map = new MapGenerator(_settings).Generate();
         _world = ColonyFactory.CreateStartingWorld(_map, _catalog, _sponsor, enableEvents: true);
+        ResetSessionState();
+    }
+
+    /// <summary>Κοινή επαναφορά κατάστασης μετά από νέο παιχνίδι ή φόρτωση (UI, κάμερα, trackers).</summary>
+    private void ResetSessionState()
+    {
         _renderer.Build(_map);
         _lastMapRevision = _world.MapRevision;
         _selected = null;
@@ -259,6 +279,7 @@ public class MarsGame : Microsoft.Xna.Framework.Game
         ResetTransitionTrackers();
         InitCamera();
         _tutorialActive = false;
+        _autoSaveTimer = 0;
         _hasActiveGame = true;
         _state = GameState.Playing;
     }
@@ -286,32 +307,16 @@ public class MarsGame : Microsoft.Xna.Framework.Game
         _audio.Blip();
     }
 
-    /// <summary>Φορτώνει το αποθηκευμένο παιχνίδι (αν υπάρχει) και μπαίνει σε Playing. Χρήση από μενού & F9.</summary>
-    private void LoadGame()
+    /// <summary>Φορτώνει ένα συγκεκριμένο save (slug) από τον φάκελο SavedGames και μπαίνει σε Playing.</summary>
+    private void LoadSlot(string slug)
     {
-        if (!File.Exists(SavePath)) return;
         try
         {
-            _world = SaveSystem.Load(File.ReadAllText(SavePath), _catalog, _sponsorCatalog, out _sponsor);
+            _world = SaveSystem.Load(File.ReadAllText(SaveManager.JsonPath(slug)), _catalog, _sponsorCatalog, out _sponsor);
             _map = _world.Map;
             _sponsorIndex = Math.Max(0, _sponsorCatalog.All.ToList().FindIndex(s => s.Id == _sponsor.Id));
-            _renderer.Build(_map);
-            _lastMapRevision = _world.MapRevision;
-            _selected = null;
-            _selectedBuilding = null;
-            _buildMode = false;
-            _buildMenuOpen = false;
-            _speedMenuOpen = false;
-            _researchMenuOpen = false;
-            _reclaimMode = false;
-            _reclaimTarget = null;
-            _eventPopups.Clear();
-            CloseDialog();
-            ResetTransitionTrackers();
-            InitCamera();
-            _tutorialActive = false;
-            _hasActiveGame = true;
-            _state = GameState.Playing;
+            ResetSessionState();
+            CloseLoadScreen();
             _status = "Game loaded";
             _statusTimer = 3.0;
         }
@@ -320,6 +325,256 @@ public class MarsGame : Microsoft.Xna.Framework.Game
             _status = "Load failed (corrupt save?)";
             _statusTimer = 3.0;
         }
+    }
+
+    // -------- Οθόνη Load (λίστα save με thumbnails, ημ/ώρα, scroll & μεγάλο preview) --------
+
+    private void OpenLoadScreen()
+    {
+        LoadSaveEntries();
+        _loadScreenOpen = true;
+        _loadScroll = 0;
+        _previewIndex = -1;
+        _audio.Blip();
+    }
+
+    private void CloseLoadScreen()
+    {
+        foreach (var e in _saveEntries) e.Thumb?.Dispose();
+        _saveEntries.Clear();
+        _loadScreenOpen = false;
+        _previewIndex = -1;
+    }
+
+    /// <summary>Σκανάρει τον φάκελο SavedGames: metadata + thumbnail κάθε save, ταξινομημένα (νεότερα πρώτα).</summary>
+    private void LoadSaveEntries()
+    {
+        foreach (var e in _saveEntries) e.Thumb?.Dispose();
+        var list = new List<SaveEntry>();
+        foreach (var slug in SaveManager.Slugs())
+        {
+            var entry = new SaveEntry { Slug = slug };
+            string json = SaveManager.JsonPath(slug);
+            try
+            {
+                var (name, when) = SaveSystem.ReadInfo(File.ReadAllText(json));
+                entry.Name = string.IsNullOrEmpty(name) ? slug : name;
+                entry.When = when == DateTime.MinValue ? File.GetLastWriteTime(json) : when;
+            }
+            catch { entry.Name = slug; entry.When = File.GetLastWriteTime(json); }
+
+            string png = SaveManager.PngPath(slug);
+            if (File.Exists(png))
+                try { using var fs = File.OpenRead(png); entry.Thumb = Texture2D.FromStream(GraphicsDevice, fs); }
+                catch { /* χωρίς thumbnail */ }
+
+            list.Add(entry);
+        }
+        _saveEntries = list.OrderByDescending(e => e.When).ToList();
+    }
+
+    private void DeleteSaveEntry(int i)
+    {
+        if (i < 0 || i >= _saveEntries.Count) return;
+        SaveManager.Delete(_saveEntries[i].Slug);
+        LoadSaveEntries();
+        _loadScroll = Math.Clamp(_loadScroll, 0, LoadScrollMax());
+        _audio.Blip();
+    }
+
+    // ---- Γεωμετρία οθόνης Load ----
+    private const int LoadRowH = 116;
+
+    private Rectangle LoadPanelRect()
+    {
+        int vw = GraphicsDevice.Viewport.Width, vh = GraphicsDevice.Viewport.Height;
+        int w = Math.Min(vw - 40, 760);
+        int h = Math.Min(vh - 40, 820);
+        return new Rectangle((vw - w) / 2, (vh - h) / 2, w, h);
+    }
+
+    private Rectangle LoadCloseRect() => CloseButtonRect(LoadPanelRect());
+
+    private Rectangle LoadContentRect()
+    {
+        var p = LoadPanelRect();
+        const int pad = 20;
+        int top = p.Y + 64;
+        return new Rectangle(p.X + pad, top, p.Width - pad * 2, p.Bottom - pad - top);
+    }
+
+    private Rectangle LoadRowRect(int i)
+    {
+        var c = LoadContentRect();
+        return new Rectangle(c.X, c.Y - _loadScroll + i * LoadRowH, c.Width, LoadRowH - 8);
+    }
+
+    private Rectangle LoadThumbRect(int i) { var r = LoadRowRect(i); return new Rectangle(r.X + 6, r.Y + 6, 160, r.Height - 12); }
+    private Rectangle LoadRowLoadBtn(int i) { var r = LoadRowRect(i); return new Rectangle(r.Right - 110, r.Y + 12, 96, 34); }
+    private Rectangle LoadRowDelBtn(int i) { var r = LoadRowRect(i); return new Rectangle(r.Right - 110, r.Bottom - 12 - 34, 96, 34); }
+
+    private int LoadScrollMax() => Math.Max(0, _saveEntries.Count * LoadRowH - LoadContentRect().Height);
+
+    private Rectangle PreviewPanelRect()
+    {
+        int vw = GraphicsDevice.Viewport.Width, vh = GraphicsDevice.Viewport.Height;
+        int w = Math.Min(vw - 60, 940);
+        int h = Math.Min(vh - 60, 680);
+        return new Rectangle((vw - w) / 2, (vh - h) / 2, w, h);
+    }
+    private Rectangle PreviewCloseRect() => CloseButtonRect(PreviewPanelRect());
+    private Rectangle PreviewLoadBtn()
+    {
+        var p = PreviewPanelRect();
+        const int bw = 180, bh = 46;
+        return new Rectangle(p.Center.X - bw / 2, p.Bottom - bh - 16, bw, bh);
+    }
+
+    // ---- Είσοδος οθόνης Load ----
+    private void UpdateLoadScreen(KeyboardState keys, MouseState mouse)
+    {
+        _uiClick = false;
+        bool click = mouse.LeftButton == ButtonState.Released && _prevMouse.LeftButton == ButtonState.Pressed;
+
+        // Μεγάλο preview: Load / Close(X)/Esc / κλικ έξω.
+        if (_previewIndex >= 0)
+        {
+            if (KeyPressed(keys, Keys.Escape) || (click && PreviewCloseRect().Contains(mouse.X, mouse.Y)))
+            { _previewIndex = -1; _audio.Blip(); return; }
+            if (click && PreviewLoadBtn().Contains(mouse.X, mouse.Y))
+            { LoadSlot(_saveEntries[_previewIndex].Slug); return; }
+            if (click && !PreviewPanelRect().Contains(mouse.X, mouse.Y))
+            { _previewIndex = -1; _audio.Blip(); }
+            return;
+        }
+
+        int wheel = mouse.ScrollWheelValue - _prevMouse.ScrollWheelValue;
+        if (wheel != 0) _loadScroll = Math.Clamp(_loadScroll - Math.Sign(wheel) * 48, 0, LoadScrollMax());
+
+        if (KeyPressed(keys, Keys.Escape) || (click && LoadCloseRect().Contains(mouse.X, mouse.Y)))
+        { CloseLoadScreen(); _audio.Blip(); return; }
+
+        if (click && LoadContentRect().Contains(mouse.X, mouse.Y))
+            for (int i = 0; i < _saveEntries.Count; i++)
+            {
+                if (LoadThumbRect(i).Contains(mouse.X, mouse.Y)) { _previewIndex = i; _audio.Blip(); return; }
+                if (LoadRowLoadBtn(i).Contains(mouse.X, mouse.Y)) { LoadSlot(_saveEntries[i].Slug); return; }
+                if (LoadRowDelBtn(i).Contains(mouse.X, mouse.Y)) { DeleteSaveEntry(i); return; }
+            }
+    }
+
+    // ---- Σχεδίαση οθόνης Load ----
+    private void DrawLoadScreen()
+    {
+        int vw = GraphicsDevice.Viewport.Width, vh = GraphicsDevice.Viewport.Height;
+        var ms = Mouse.GetState();
+        var panel = LoadPanelRect();
+        var content = LoadContentRect();
+        _loadScrollMax = LoadScrollMax();
+        _loadScroll = Math.Clamp(_loadScroll, 0, _loadScrollMax);
+
+        _spriteBatch.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, SamplerState.PointClamp);
+        _spriteBatch.Draw(_pixel, new Rectangle(0, 0, vw, vh), new Color(0, 0, 0, 190));
+        _spriteBatch.Draw(_pixel, panel, new Color(16, 18, 26, 250));
+        DrawRectOutline(panel, new Color(120, 130, 150));
+        const string title = "LOAD GAME";
+        var tsz = _font.MeasureString(title) * 1.4f;
+        _spriteBatch.DrawString(_font, title, new Vector2(panel.Center.X - tsz.X / 2f, panel.Y + 16),
+            new Color(150, 210, 255), 0f, Vector2.Zero, 1.4f, SpriteEffects.None, 0f);
+        if (_saveEntries.Count == 0)
+        {
+            var msg = "No saved games yet.";
+            var msz = _font.MeasureString(msg);
+            _spriteBatch.DrawString(_font, msg, new Vector2(content.Center.X - msz.X / 2f, content.Center.Y - msz.Y / 2f), HudDim);
+        }
+        _spriteBatch.End();
+
+        if (_saveEntries.Count > 0)
+        {
+            var prevScissor = GraphicsDevice.ScissorRectangle;
+            GraphicsDevice.ScissorRectangle = content;
+            _spriteBatch.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, SamplerState.PointClamp, null, _scissorRaster);
+            for (int i = 0; i < _saveEntries.Count; i++)
+            {
+                var row = LoadRowRect(i);
+                if (row.Bottom < content.Y || row.Y > content.Bottom) continue; // εκτός ορατού
+                var e = _saveEntries[i];
+                bool hoverRow = row.Contains(ms.X, ms.Y) && content.Contains(ms.X, ms.Y);
+                _spriteBatch.Draw(_pixel, row, hoverRow ? new Color(30, 40, 56, 235) : new Color(22, 26, 36, 235));
+                DrawRectOutline(row, new Color(70, 80, 100));
+
+                var thumb = LoadThumbRect(i);
+                if (e.Thumb is not null) _spriteBatch.Draw(e.Thumb, thumb, Color.White);
+                else _spriteBatch.Draw(_pixel, thumb, new Color(40, 44, 54));
+                DrawRectOutline(thumb, new Color(60, 66, 80));
+
+                int tx = thumb.Right + 16;
+                _spriteBatch.DrawString(_font, e.Name, new Vector2(tx, row.Y + 14), new Color(255, 205, 120),
+                    0f, Vector2.Zero, 1.1f, SpriteEffects.None, 0f);
+                _spriteBatch.DrawString(_font, e.When.ToString("ddd dd MMM yyyy  HH:mm:ss"),
+                    new Vector2(tx, row.Y + 14 + (int)(_font.LineSpacing * 1.1f) + 4), HudDim);
+
+                DrawSmallButton(LoadRowLoadBtn(i), "Load", new Color(120, 230, 140), ms);
+                DrawSmallButton(LoadRowDelBtn(i), "Delete", new Color(230, 120, 110), ms);
+            }
+            _spriteBatch.End();
+            GraphicsDevice.ScissorRectangle = prevScissor;
+        }
+
+        _spriteBatch.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, SamplerState.PointClamp);
+        if (_loadScrollMax > 0)
+        {
+            int trackX = content.Right - 5, trackH = content.Height, total = _saveEntries.Count * LoadRowH;
+            _spriteBatch.Draw(_pixel, new Rectangle(trackX, content.Y, 5, trackH), new Color(40, 44, 54));
+            int thumbH = Math.Max(24, (int)((long)trackH * content.Height / total));
+            int thumbY = content.Y + (int)((long)(trackH - thumbH) * _loadScroll / _loadScrollMax);
+            _spriteBatch.Draw(_pixel, new Rectangle(trackX, thumbY, 5, thumbH), new Color(130, 150, 180));
+        }
+        DrawCloseButton(LoadCloseRect(), ms);
+        _spriteBatch.End();
+
+        if (_previewIndex >= 0 && _previewIndex < _saveEntries.Count) DrawPreview(ms);
+    }
+
+    /// <summary>Μικρό κουμπί κειμένου (Load/Delete) με highlight στο hover.</summary>
+    private void DrawSmallButton(Rectangle r, string label, Color accent, MouseState ms)
+    {
+        bool hover = r.Contains(ms.X, ms.Y);
+        _spriteBatch.Draw(_pixel, r, hover ? new Color(50, 58, 74) : new Color(30, 34, 46));
+        DrawRectOutline(r, accent);
+        var sz = _font.MeasureString(label);
+        _spriteBatch.DrawString(_font, label, new Vector2(r.Center.X - sz.X / 2f, r.Center.Y - sz.Y / 2f), accent);
+    }
+
+    /// <summary>Μεγάλο preview του screenshot ενός save, με Load και «X» κλείσιμο.</summary>
+    private void DrawPreview(MouseState ms)
+    {
+        int vw = GraphicsDevice.Viewport.Width, vh = GraphicsDevice.Viewport.Height;
+        var e = _saveEntries[_previewIndex];
+        var panel = PreviewPanelRect();
+        const int pad = 20;
+
+        _spriteBatch.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, SamplerState.PointClamp);
+        _spriteBatch.Draw(_pixel, new Rectangle(0, 0, vw, vh), new Color(0, 0, 0, 210));
+        _spriteBatch.Draw(_pixel, panel, new Color(16, 18, 26, 252));
+        DrawRectOutline(panel, new Color(120, 130, 150));
+
+        string header = $"{e.Name}   ·   {e.When:ddd dd MMM yyyy  HH:mm:ss}";
+        _spriteBatch.DrawString(_font, header, new Vector2(panel.X + pad, panel.Y + 16), HudWhite,
+            0f, Vector2.Zero, 1.05f, SpriteEffects.None, 0f);
+
+        var area = new Rectangle(panel.X + pad, panel.Y + 52, panel.Width - pad * 2, panel.Height - 52 - 78);
+        float ar = e.Thumb is not null && e.Thumb.Height > 0 ? (float)e.Thumb.Width / e.Thumb.Height : 1.6f;
+        int iw = area.Width, ih = (int)(iw / ar);
+        if (ih > area.Height) { ih = area.Height; iw = (int)(ih * ar); }
+        var img = new Rectangle(area.Center.X - iw / 2, area.Y + (area.Height - ih) / 2, iw, ih);
+        if (e.Thumb is not null) _spriteBatch.Draw(e.Thumb, img, Color.White);
+        else _spriteBatch.Draw(_pixel, img, new Color(40, 44, 54));
+        DrawRectOutline(img, new Color(70, 80, 100));
+
+        DrawSmallButton(PreviewLoadBtn(), "Load", new Color(120, 230, 140), ms);
+        DrawCloseButton(PreviewCloseRect(), ms);
+        _spriteBatch.End();
     }
 
     private void ResetTransitionTrackers()
@@ -431,7 +686,7 @@ public class MarsGame : Microsoft.Xna.Framework.Game
     {
         var list = new List<(string, Action, Color)>();
         if (_hasActiveGame) list.Add(("Continue", () => _state = GameState.Playing, new Color(120, 230, 120)));
-        if (File.Exists(SavePath)) list.Add(("Load Game", LoadGame, new Color(150, 210, 255)));
+        if (SaveManager.HasAny()) list.Add(("Load Game", OpenLoadScreen, new Color(150, 210, 255)));
         list.Add((_hasActiveGame ? "New Game" : "Start Game", StartGame, new Color(255, 220, 120)));
         list.Add(("Tutorial", StartTutorial, new Color(150, 230, 150)));
         list.Add(("Help", () => _showHelp = true, new Color(150, 200, 255)));
@@ -1057,6 +1312,16 @@ public class MarsGame : Microsoft.Xna.Framework.Game
             return;
         }
 
+        // Οθόνη Load: modal (σε μενού & παιχνίδι) — scroll λίστας, μεγάλο preview, επιλογή για φόρτωμα.
+        if (_loadScreenOpen)
+        {
+            UpdateLoadScreen(keys, mouse);
+            _prevMouse = mouse;
+            _prevKeys = keys;
+            base.Update(gameTime);
+            return;
+        }
+
         // Παράθυρο βοήθειας καταλόγου (όλα τα κτίρια/έρευνες): modal — κύλιση με ρόδα, Close/Esc κλείνει.
         if (_catalogHelp != CatalogHelp.None)
         {
@@ -1179,7 +1444,7 @@ public class MarsGame : Microsoft.Xna.Framework.Game
 
         // Save (F5) / Load (F9). Νέος χάρτης & αλλαγή χορηγού γίνονται πλέον μόνο από το μενού.
         if (KeyPressed(keys, Keys.F5)) SaveGameToFile();
-        if (KeyPressed(keys, Keys.F9)) LoadGame();
+        if (KeyPressed(keys, Keys.F9)) OpenLoadScreen();
 
         // Έλεγχος ταχύτητας σιμουλασιόν
         if (KeyPressed(keys, Keys.Space))
@@ -1221,6 +1486,13 @@ public class MarsGame : Microsoft.Xna.Framework.Game
         {
             RefreshBuildingCounts();
             _buildingCheckTimer = BuildingCheckInterval;
+        }
+
+        // Αυτόματη αποθήκευση κάθε 5 λεπτά (κυκλικά Auto 1/2/3), εκτός tutorial.
+        if (!_tutorialActive)
+        {
+            _autoSaveTimer += gameTime.ElapsedGameTime.TotalSeconds;
+            if (_autoSaveTimer >= AutoSaveInterval) { _autoSaveTimer = 0; RequestAutoSave(); }
         }
 
         // Προώθηση σιμουλασιόν (fixed-timestep μέσα στο World)
@@ -1730,8 +2002,17 @@ public class MarsGame : Microsoft.Xna.Framework.Game
         {
             DrawMenu();
             if (_showHelp) DrawHelpOverlay();
+            if (_loadScreenOpen) DrawLoadScreen();
             base.Draw(gameTime);
             return;
+        }
+
+        int vw = GraphicsDevice.Viewport.Width, vh = GraphicsDevice.Viewport.Height;
+        bool capturing = _captureRequest is not null;
+        if (capturing)
+        {
+            EnsureCaptureTarget(vw, vh);
+            GraphicsDevice.SetRenderTarget(_captureRT); // ζωγραφίζουμε το frame σε render target για screenshot
         }
 
         GraphicsDevice.Clear(new Color(0x0b, 0x0b, 0x12));
@@ -1766,6 +2047,18 @@ public class MarsGame : Microsoft.Xna.Framework.Game
         if (_showHelp) DrawHelpOverlay();
         if (_catalogHelp != CatalogHelp.None) DrawCatalogHelpOverlay();
         if (_techDone.Count > 0) DrawTechDoneOverlay();
+
+        if (capturing)
+        {
+            GraphicsDevice.SetRenderTarget(null);
+            PerformCaptureSave();                       // json + PNG από το render target
+            GraphicsDevice.Clear(Color.Black);          // εμφάνιση του ίδιου frame στην οθόνη
+            _spriteBatch.Begin(SpriteSortMode.Deferred, BlendState.Opaque, SamplerState.PointClamp);
+            _spriteBatch.Draw(_captureRT, new Rectangle(0, 0, vw, vh), Color.White);
+            _spriteBatch.End();
+        }
+
+        if (_loadScreenOpen) DrawLoadScreen();          // πάνω από όλα, εκτός screenshot
 
         base.Draw(gameTime);
     }
@@ -2118,11 +2411,71 @@ public class MarsGame : Microsoft.Xna.Framework.Game
             DrawPaletteTooltip($"{techs[hover].Name}   {techs[hover].Cost} RP", ResearchMenuButtonRect(hover, techs.Count));
     }
 
+    /// <summary>Ζητά χειροκίνητο save· το γράψιμο (json + screenshot) γίνεται στο επόμενο Draw.</summary>
     private void SaveGameToFile()
     {
-        File.WriteAllText(SavePath, SaveSystem.ToJson(_world, _sponsor));
-        _status = "Game saved";
+        if (_captureRequest is not null) return; // ήδη εκκρεμεί ένα save
+        _captureRequest = (SaveManager.ManualSlug(DateTime.Now), "Save");
+        _status = "Saving...";
+        _statusTimer = 1.5;
+    }
+
+    /// <summary>Ζητά αυτόματο save στο επόμενο κυκλικό slot (Auto 1/2/3).</summary>
+    private void RequestAutoSave()
+    {
+        if (_captureRequest is not null) return;
+        int slot = _autoSaveIndex + 1;
+        _captureRequest = (SaveManager.AutoSlug(slot), "Auto " + slot);
+        _autoSaveIndex = (_autoSaveIndex + 1) % 3;
+    }
+
+    /// <summary>Γράφει το εκκρεμές save: json + PNG thumbnail από το render target της οθόνης.</summary>
+    private void PerformCaptureSave()
+    {
+        if (_captureRequest is not ({ } slug, { } name) || _captureRT is null) { _captureRequest = null; return; }
+        SaveManager.EnsureFolder();
+        int vw = _captureRT.Width, vh = _captureRT.Height;
+
+        try { File.WriteAllText(SaveManager.JsonPath(slug), SaveSystem.ToJson(_world, _sponsor, name)); }
+        catch { _status = "Save failed"; _statusTimer = 3.0; _captureRequest = null; return; }
+
+        try
+        {
+            var full = new Color[vw * vh];
+            _captureRT.GetData(full);
+            int tw = 512, th = Math.Max(1, tw * vh / vw);
+            var small = DownscalePixels(full, vw, vh, tw, th);
+            using var tex = new Texture2D(GraphicsDevice, tw, th);
+            tex.SetData(small);
+            using var fs = File.Create(SaveManager.PngPath(slug));
+            tex.SaveAsPng(fs, tw, th);
+        }
+        catch { /* το json σώθηκε· χωρίς thumbnail απλώς δεν θα φαίνεται εικόνα */ }
+
+        _status = $"{name} saved";
         _statusTimer = 3.0;
+        _captureRequest = null;
+    }
+
+    /// <summary>Nearest-neighbor σμίκρυνση pixel buffer (για το thumbnail του save).</summary>
+    private static Color[] DownscalePixels(Color[] src, int sw, int sh, int dw, int dh)
+    {
+        var dst = new Color[dw * dh];
+        for (int y = 0; y < dh; y++)
+        {
+            int sy = y * sh / dh;
+            for (int x = 0; x < dw; x++)
+                dst[y * dw + x] = src[sy * sw + x * sw / dw];
+        }
+        return dst;
+    }
+
+    private void EnsureCaptureTarget(int w, int h)
+    {
+        if (_captureRT is not null && _captureRT.Width == w && _captureRT.Height == h) return;
+        _captureRT?.Dispose();
+        _captureRT = new RenderTarget2D(GraphicsDevice, w, h, false,
+            GraphicsDevice.PresentationParameters.BackBufferFormat, DepthFormat.Depth24);
     }
 
     private void ToggleMute()
