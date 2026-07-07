@@ -147,6 +147,10 @@ public class MarsGame : Microsoft.Xna.Framework.Game
     // Οθόνη βοήθειας (modal· ανοίγει από τη μπάρα ή το μενού)
     private bool _showHelp;
 
+    // Έκδοση παιχνιδιού (από το <Version> του .csproj) — εμφανίζεται στο κεντρικό μενού.
+    private static readonly string VersionText =
+        typeof(MarsGame).Assembly.GetName().Version is { } v ? $"v{v.Major}.{v.Minor}" : "v1.0";
+
     public MarsGame()
     {
         _graphics = new GraphicsDeviceManager(this)
@@ -570,6 +574,12 @@ public class MarsGame : Microsoft.Xna.Framework.Game
         DrawCentered($"Click, or use arrow keys.    Enter = {actions[0].label}    Esc = {(_hasActiveGame ? "Continue" : "Quit")}",
             MenuActionRect(0, actions.Count).Bottom + 20, 0.9f, HudDim);
 
+        // Έκδοση, κάτω-δεξιά γωνία.
+        var vsz = _font.MeasureString(VersionText) * 0.9f;
+        _spriteBatch.DrawString(_font, VersionText,
+            new Vector2(GraphicsDevice.Viewport.Width - vsz.X - 12f, GraphicsDevice.Viewport.Height - vsz.Y - 10f),
+            HudDim, 0f, Vector2.Zero, 0.9f, SpriteEffects.None, 0f);
+
         _spriteBatch.End();
     }
 
@@ -590,7 +600,7 @@ public class MarsGame : Microsoft.Xna.Framework.Game
     {
         "GOAL",
         "Raise Temperature, Pressure, Oxygen and Water to their target levels.",
-        "Win when all four goals (bottom-left) hit 100% - keep your crew alive.",
+        "Win when all four goals (top, under the resource bar) hit 100% - keep your crew alive.",
         "",
         "BUILD",
         "Click the buildings icon (bottom bar), pick a building, then a hex.",
@@ -1792,7 +1802,7 @@ public class MarsGame : Microsoft.Xna.Framework.Game
 
     private Texture2D GoalIcon(string key) => _resIcons.TryGetValue(key, out var t) ? t : _toolIcons[key];
 
-    /// <summary>Κάτω αριστερά: στόχοι + συνολικό terraforming + biomass (πρόοδος % στο εικονίδιο, λεπτομέρεια στο hint).</summary>
+    /// <summary>Πάνω-κέντρο (κάτω από τη μπάρα πόρων): στόχοι + συνολικό terraforming + biomass (πρόοδος % στο εικονίδιο, λεπτομέρεια στο hint).</summary>
     private void DrawGoals()
     {
         var planet = _world.Planet;
@@ -1813,15 +1823,27 @@ public class MarsGame : Microsoft.Xna.Framework.Game
         chips.Add(("biomass", $"{planet.Biomass * 100:0}%", $"Biomass   vegetation cover {planet.Biomass * 100:0.0}%", new Color(90, 200, 90)));
 
         const int icon = 20, gap = 12;
+
+        // Πλάτη ανά chip για οριζόντιο κεντράρισμα, κάτω από τη μπάρα πόρων.
+        var widths = new float[chips.Count];
+        float total = 0;
+        for (int i = 0; i < chips.Count; i++)
+        {
+            widths[i] = icon + 3 + _font.MeasureString(chips[i].text).X;
+            total += widths[i];
+        }
+        total += gap * (chips.Count - 1);
+
         var ms = Mouse.GetState();
-        float x = 12f;
-        float y = GraphicsDevice.Viewport.Height - 30f;
+        float x = (GraphicsDevice.Viewport.Width - total) / 2f;
+        const float y = 40f; // ακριβώς κάτω από τη μπάρα πόρων (που τελειώνει ~y=32)
         string? tip = null;
         float tipCx = 0;
 
-        foreach (var (ic, text, chipTip, color) in chips)
+        for (int i = 0; i < chips.Count; i++)
         {
-            float w = icon + 3 + _font.MeasureString(text).X;
+            var (ic, text, chipTip, color) = chips[i];
+            float w = widths[i];
             var rect = new Rectangle((int)x - 4, (int)y - 4, (int)w + 8, icon + 8);
             _spriteBatch.Draw(_pixel, rect, new Color(12, 14, 20, 205));
             _spriteBatch.Draw(GoalIcon(ic), new Rectangle((int)x, (int)y, icon, icon), Color.White);
@@ -1830,7 +1852,7 @@ public class MarsGame : Microsoft.Xna.Framework.Game
             if (rect.Contains(ms.X, ms.Y)) { tip = chipTip; tipCx = x + w / 2f; }
             x += w + gap;
         }
-        if (tip is not null) DrawTip(tip, tipCx, y - 4, above: true);
+        if (tip is not null) DrawTip(tip, tipCx, y + icon + 4, above: false);
     }
 
     /// <summary>Κάτω δεξιά: δείκτης έρευνας — εικονίδιο + πρόοδος %. Γκρίζο όταν δεν τρέχει έρευνα. Hint με λεπτομέρειες.</summary>
@@ -1914,10 +1936,11 @@ public class MarsGame : Microsoft.Xna.Framework.Game
     {
         _spriteBatch.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, SamplerState.PointClamp);
 
-        // Πάνω αριστερά: Sol + Sponsor (εικονίδια με hint).  Πάνω κέντρο: μπάρα πόρων.  Κάτω αριστερά: στόχοι.
+        // Πάνω αριστερά: Sol + Sponsor.  Πάνω κέντρο: μπάρα πόρων + από κάτω οι στόχοι.
+        // (Οι στόχοι ζωγραφίζονται πριν τη μπάρα ώστε το tooltip της μπάρας να μένει από πάνω.)
         DrawTopLeftStatus();
-        DrawResourceBar();
         DrawGoals();
+        DrawResourceBar();
         DrawResearchIndicator();
 
         var bottom = new List<(string text, Color color)>();
