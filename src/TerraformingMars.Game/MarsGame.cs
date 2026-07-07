@@ -163,6 +163,7 @@ public class MarsGame : Microsoft.Xna.Framework.Game
     private bool _loadScreenOpen;
     private int _loadScroll, _loadScrollMax;
     private int _previewIndex = -1;                      // -1 = λίστα· >=0 = μεγάλο preview της εγγραφής
+    private int _deleteConfirmIndex = -1;                // >=0 = ανοιχτός διάλογος επιβεβαίωσης διαγραφής
     private List<SaveEntry> _saveEntries = new();
 
     // Reclaim (ανακύκλωση κτιρίων για credits) — ξεκλειδώνει με την τεχνολογία "reclaim"
@@ -344,6 +345,7 @@ public class MarsGame : Microsoft.Xna.Framework.Game
         _saveEntries.Clear();
         _loadScreenOpen = false;
         _previewIndex = -1;
+        _deleteConfirmIndex = -1;
     }
 
     /// <summary>Σκανάρει τον φάκελο SavedGames: metadata + thumbnail κάθε save, ταξινομημένα (νεότερα πρώτα).</summary>
@@ -430,11 +432,32 @@ public class MarsGame : Microsoft.Xna.Framework.Game
         return new Rectangle(p.Center.X - bw / 2, p.Bottom - bh - 16, bw, bh);
     }
 
+    private Rectangle DeleteConfirmPanel()
+    {
+        int vw = GraphicsDevice.Viewport.Width, vh = GraphicsDevice.Viewport.Height;
+        const int w = 440, h = 170;
+        return new Rectangle((vw - w) / 2, (vh - h) / 2, w, h);
+    }
+    private Rectangle DeleteConfirmBtn() { var p = DeleteConfirmPanel(); return new Rectangle(p.Center.X - 190, p.Bottom - 20 - 40, 180, 40); }
+    private Rectangle DeleteCancelBtn() { var p = DeleteConfirmPanel(); return new Rectangle(p.Center.X + 10, p.Bottom - 20 - 40, 180, 40); }
+
     // ---- Είσοδος οθόνης Load ----
     private void UpdateLoadScreen(KeyboardState keys, MouseState mouse)
     {
         _uiClick = false;
         bool click = mouse.LeftButton == ButtonState.Released && _prevMouse.LeftButton == ButtonState.Pressed;
+
+        // Επιβεβαίωση διαγραφής (πάνω από όλα): Delete / Cancel-Esc / κλικ έξω.
+        if (_deleteConfirmIndex >= 0)
+        {
+            if (KeyPressed(keys, Keys.Escape) || (click && DeleteCancelBtn().Contains(mouse.X, mouse.Y)))
+            { _deleteConfirmIndex = -1; _audio.Blip(); return; }
+            if (click && DeleteConfirmBtn().Contains(mouse.X, mouse.Y))
+            { int idx = _deleteConfirmIndex; _deleteConfirmIndex = -1; DeleteSaveEntry(idx); return; }
+            if (click && !DeleteConfirmPanel().Contains(mouse.X, mouse.Y))
+            { _deleteConfirmIndex = -1; _audio.Blip(); }
+            return;
+        }
 
         // Μεγάλο preview: Load / Close(X)/Esc / κλικ έξω.
         if (_previewIndex >= 0)
@@ -459,7 +482,7 @@ public class MarsGame : Microsoft.Xna.Framework.Game
             {
                 if (LoadThumbRect(i).Contains(mouse.X, mouse.Y)) { _previewIndex = i; _audio.Blip(); return; }
                 if (LoadRowLoadBtn(i).Contains(mouse.X, mouse.Y)) { LoadSlot(_saveEntries[i].Slug); return; }
-                if (LoadRowDelBtn(i).Contains(mouse.X, mouse.Y)) { DeleteSaveEntry(i); return; }
+                if (LoadRowDelBtn(i).Contains(mouse.X, mouse.Y)) { _deleteConfirmIndex = i; _audio.Blip(); return; }
             }
     }
 
@@ -534,6 +557,34 @@ public class MarsGame : Microsoft.Xna.Framework.Game
         _spriteBatch.End();
 
         if (_previewIndex >= 0 && _previewIndex < _saveEntries.Count) DrawPreview(ms);
+        if (_deleteConfirmIndex >= 0 && _deleteConfirmIndex < _saveEntries.Count) DrawDeleteConfirm(ms);
+        else _deleteConfirmIndex = -1;
+    }
+
+    /// <summary>Διάλογος επιβεβαίωσης διαγραφής ενός save (Delete / Cancel).</summary>
+    private void DrawDeleteConfirm(MouseState ms)
+    {
+        int vw = GraphicsDevice.Viewport.Width, vh = GraphicsDevice.Viewport.Height;
+        var e = _saveEntries[_deleteConfirmIndex];
+        var panel = DeleteConfirmPanel();
+
+        _spriteBatch.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, SamplerState.PointClamp);
+        _spriteBatch.Draw(_pixel, new Rectangle(0, 0, vw, vh), new Color(0, 0, 0, 200));
+        _spriteBatch.Draw(_pixel, panel, new Color(20, 18, 22, 252));
+        DrawRectOutline(panel, new Color(230, 120, 110));
+
+        const string q = "Delete this save?";
+        var qsz = _font.MeasureString(q) * 1.1f;
+        _spriteBatch.DrawString(_font, q, new Vector2(panel.Center.X - qsz.X / 2f, panel.Y + 20),
+            HudWhite, 0f, Vector2.Zero, 1.1f, SpriteEffects.None, 0f);
+
+        string sub = $"{e.Name}   ·   {e.When:dd MMM yyyy  HH:mm}";
+        var ssz = _font.MeasureString(sub);
+        _spriteBatch.DrawString(_font, sub, new Vector2(panel.Center.X - ssz.X / 2f, panel.Y + 20 + qsz.Y + 8), HudDim);
+
+        DrawSmallButton(DeleteConfirmBtn(), "Delete", new Color(230, 120, 110), ms);
+        DrawSmallButton(DeleteCancelBtn(), "Cancel", new Color(180, 190, 205), ms);
+        _spriteBatch.End();
     }
 
     /// <summary>Μικρό κουμπί κειμένου (Load/Delete) με highlight στο hover.</summary>
