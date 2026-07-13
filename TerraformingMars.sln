@@ -13,6 +13,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TerraformingMars.Game", "sr
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "docs", "docs", "{B59DAE68-7D22-4145-B001-53C473D23E49}"
 	ProjectSection(SolutionItems) = preProject
+		GAMEPLAY.md = GAMEPLAY.md
+		Phase2.md = Phase2.md
 		TerraformingMars_Spec.md = TerraformingMars_Spec.md
 	EndProjectSection
 EndProject
