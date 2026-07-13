@@ -40,6 +40,14 @@ public static class SaveSystem
         var colony = world.Colony;
         var p = world.Planet;
 
+        // Terrain που έχει αλλάξει από τον αρχικό (seed-generated) χάρτη — ώστε ΟΛΕΣ οι μετατροπές
+        // tiles (λιώσιμο/πλημμύρα/βλάστηση ΚΑΙ εξάτμιση/μαράζωμα της Φάσης 2 πίσω σε Flatland) να
+        // επιβιώνουν του load. Αλλιώς ένα vaporized/withered tile ξαναγεννιέται ως seed terrain
+        // (π.χ. PolarIce) και ξαναλιώνει, «θεραπεύοντας» σιωπηλά τη ζημιά του runaway.
+        var pristine = new MapGenerator(new MapGenerationSettings
+            { Width = world.Map.Width, Height = world.Map.Height, Seed = world.Map.Seed })
+            .Generate().Tiles.ToDictionary(t => t.Coord, t => t.Terrain);
+
         return new SaveGame
         {
             Seed = world.Map.Seed,
@@ -49,6 +57,8 @@ public static class SaveSystem
             Speed = world.Clock.Speed.ToString(),
             SponsorId = sponsor.Id,
             Crew = colony.Crew,
+            Population = colony.Population,
+            Phase2Active = world.Phase2Active,
             HasCaveShelter = world.HasCaveShelter,
             SolarEfficiency = world.SolarEfficiency,
             Planet = new PlanetSave
@@ -63,7 +73,8 @@ public static class SaveSystem
             {
                 Researched = colony.Tech.Researched.ToList(),
                 Current = colony.Tech.CurrentTarget,
-                Progress = colony.Tech.CurrentProgress
+                Progress = colony.Tech.CurrentProgress,
+                Phase2Unlocked = colony.Tech.Phase2Unlocked
             },
             Buildings = colony.Buildings.Select(b => new BuildingSave
             {
@@ -78,7 +89,7 @@ public static class SaveSystem
                 AssignmentIndex = c.Assignment is null ? -1 : colony.Buildings.IndexOf(c.Assignment)
             }).ToList(),
             TileOverrides = world.Map.Tiles
-                .Where(t => t.Terrain is TerrainType.Water or TerrainType.Vegetation
+                .Where(t => (pristine.TryGetValue(t.Coord, out var terr) && t.Terrain != terr)
                             || t.RemainingDeposit < t.Deposit.Amount - 1e-6)
                 .Select(t => new TileSave
                 {
@@ -108,8 +119,9 @@ public static class SaveSystem
         var colony = new Colony();
         foreach (var (k, cap) in save.Capacities) colony.Ledger.AddCapacity(Enum.Parse<ResourceKind>(k), cap);
         foreach (var (k, amt) in save.Resources) colony.Ledger.Set(Enum.Parse<ResourceKind>(k), amt);
-        colony.Tech.Restore(save.Tech.Researched, save.Tech.Current, save.Tech.Progress);
+        colony.Tech.Restore(save.Tech.Researched, save.Tech.Current, save.Tech.Progress, save.Tech.Phase2Unlocked);
         colony.Crew = save.Crew;
+        colony.Population = save.Population;
 
         foreach (var bs in save.Buildings)
         {
@@ -149,6 +161,7 @@ public static class SaveSystem
             new ResearchSystem(),
             new PlanetSystem(),
             new BiosphereSystem(),
+            new Phase2System(),
             new PopulationSystem(map.Seed),
             new LifeSupportSystem()
         };
@@ -159,6 +172,18 @@ public static class SaveSystem
         world.Clock.Speed = Enum.Parse<GameSpeed>(save.Speed);
         world.HasCaveShelter = save.HasCaveShelter;
         world.SolarEfficiency = save.SolarEfficiency;
+        world.Phase2Active = save.Phase2Active;
+
+        // Παλιό (προ-Φάσης-2) save που ήταν ήδη terraformed: μπες σιωπηλά στη Φάση 2 κατά το load,
+        // ώστε το World.Tick να ΜΗΝ ξαναπυροδοτήσει τον εορτασμό/chime στο πρώτο tick.
+        if (!world.Phase2Active && world.Planet.IsTerraformed)
+        {
+            world.Phase2Active = true;
+            colony.Tech.UnlockPhase2();
+            if (colony.Population < World.Phase2StartingPopulation)
+                colony.Population = World.Phase2StartingPopulation;
+        }
+
         foreach (var es in save.Events)
             world.ActiveEvents.Add(new ActiveEvent(Enum.Parse<EventType>(es.Type), es.TicksRemaining));
 

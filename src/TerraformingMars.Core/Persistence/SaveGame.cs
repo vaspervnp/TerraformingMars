@@ -3,7 +3,7 @@ namespace TerraformingMars.Core.Persistence;
 /// <summary>Serializable στιγμιότυπο παιχνιδιού (JSON). Ο χάρτης ανακατασκευάζεται από το seed + overrides.</summary>
 public sealed class SaveGame
 {
-    public int Version { get; set; } = 2;
+    public int Version { get; set; } = 3;
 
     /// <summary>Εμφανιζόμενο όνομα του save (π.χ. "Save" ή "Auto 1"). Κενό για παλιά αρχεία.</summary>
     public string Name { get; set; } = "";
@@ -18,6 +18,12 @@ public sealed class SaveGame
     public string Speed { get; set; } = "Normal";
     public string SponsorId { get; set; } = "normal";
     public int Crew { get; set; }
+
+    /// <summary>Ενεργή Φάση 2 (latched μετά την ολοκλήρωση terraforming). Παλιά saves → false.</summary>
+    public bool Phase2Active { get; set; }
+    /// <summary>Αφηρημένος μεταναστευτικός πληθυσμός Φάσης 2. Παλιά saves → 0.</summary>
+    public double Population { get; set; }
+
     public bool HasCaveShelter { get; set; }
     public double SolarEfficiency { get; set; } = 1.0;
 
@@ -45,6 +51,9 @@ public sealed class TechSave
     public List<string> Researched { get; set; } = new();
     public string? Current { get; set; }
     public double Progress { get; set; }
+
+    /// <summary>Ξεκλειδωμένο tech tier Φάσης 2. Παλιά saves → false.</summary>
+    public bool Phase2Unlocked { get; set; }
 }
 
 public sealed class BuildingSave

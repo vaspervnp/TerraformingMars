@@ -87,6 +87,7 @@ public static class ColonyFactory
         systems.Add(new ResearchSystem());
         systems.Add(new PlanetSystem());
         systems.Add(new BiosphereSystem());
+        systems.Add(new Phase2System());
         systems.Add(new PopulationSystem(map.Seed));
         systems.Add(new LifeSupportSystem());
         return new World(map, colony, systems);

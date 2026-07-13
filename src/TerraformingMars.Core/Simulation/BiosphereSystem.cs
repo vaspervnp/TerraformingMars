@@ -11,6 +11,7 @@ namespace TerraformingMars.Core.Simulation;
 public sealed class BiosphereSystem : ISimulationSystem
 {
     private const double MinTemperature = 0.0;
+    private const double MaxTemperature = 40.0;   // πάνω από αυτό (hot runaway) η βλάστηση δεν απλώνεται
     private const double MinWaterCoverage = 0.05;
 
     private List<HexTile>? _queue;
@@ -22,6 +23,9 @@ public sealed class BiosphereSystem : ISimulationSystem
     {
         EnsureQueue(world);
 
+        // authoritative κάθε tick, ώστε το μαράζωμα (Phase2System: Vegetation→Flatland) να μειώνει το Biomass.
+        _vegetation = world.Map.Tiles.Count(t => t.Terrain == TerrainType.Vegetation);
+
         double spread = 0;
         foreach (var b in world.Colony.Buildings)
         {
@@ -30,7 +34,8 @@ public sealed class BiosphereSystem : ISimulationSystem
         }
 
         var planet = world.Planet;
-        bool canGrow = spread > 0 && planet.Temperature >= MinTemperature && planet.WaterCoverage >= MinWaterCoverage;
+        bool canGrow = spread > 0 && planet.Temperature >= MinTemperature
+            && planet.Temperature <= MaxTemperature && planet.WaterCoverage >= MinWaterCoverage;
 
         if (canGrow)
         {
@@ -56,7 +61,9 @@ public sealed class BiosphereSystem : ISimulationSystem
 
     private void EnsureQueue(World world)
     {
-        if (_queue is not null) return;
+        // Ξαναχτίζεται και όταν αδειάσει, ώστε tiles που μαράθηκαν από runaway (Vegetation→Flatland)
+        // να ξαναμπαίνουν στην ουρά και να αναγεννώνται μόλις το κλίμα επιστρέψει στο habitable band.
+        if (_queue is { Count: > 0 }) return;
 
         _total = world.Map.Count;
         _vegetation = world.Map.Tiles.Count(t => t.Terrain == TerrainType.Vegetation);

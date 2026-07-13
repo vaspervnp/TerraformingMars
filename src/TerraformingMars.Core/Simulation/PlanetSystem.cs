@@ -40,9 +40,26 @@ public sealed class PlanetSystem : ISimulationSystem
             foreach (var (metric, delta) in building.Definition.PlanetEffects)
             {
                 if (metric == PlanetMetric.Water)
+                {
                     _floodAccumulator += delta * eff;       // νερό κομητών → πλημμύρα χαμηλών εδαφών
-                else
-                    planet.Add(metric, delta * eff * Saturation(metric, planet.Get(metric)));
+                    continue;
+                }
+
+                double value = planet.Get(metric);
+                if (delta >= 0)
+                {
+                    // Στη Φάση 2 αφήνουμε Temperature/Pressure να ξεπεράσουν τον στόχο (runaway greenhouse).
+                    bool runawayMetric = world.Phase2Active &&
+                        (metric == PlanetMetric.Temperature || metric == PlanetMetric.Pressure);
+                    double s = runawayMetric ? 1.0 : Saturation(metric, value);
+                    planet.Add(metric, delta * eff * s);
+                }
+                else if (value > TargetFor(metric))
+                {
+                    // Αρνητικά effects (cryo-carbon sink): πλήρης ισχύς πάνω από τον στόχο,
+                    // με φυσικό deadband stop όταν φτάσει το sweet spot.
+                    planet.Add(metric, delta * eff);
+                }
             }
         }
 
@@ -50,6 +67,10 @@ public sealed class PlanetSystem : ISimulationSystem
         if (!shielded) planet.Add(PlanetMetric.Pressure, -PressureLeakPerTick);
 
         EnsureQueues(world);
+
+        // Ο μετρητής νερού γίνεται authoritative κάθε tick, ώστε η εξάτμιση tiles από το
+        // Phase2System (Water→Flatland) να μετράει αντί να επαναφέρεται από τον increment-only counter.
+        _waterTiles = world.Map.Tiles.Count(t => t.Terrain == TerrainType.Water);
 
         // Λιώσιμο πολικού πάγου ανάλογα με τη θερμοκρασία.
         if (planet.Temperature > MeltStartTemperature)
@@ -66,14 +87,24 @@ public sealed class PlanetSystem : ISimulationSystem
     /// Φθίνουσα απόδοση πάνω από τον στόχο (homeostasis): η επίδραση μειώνεται γραμμικά από
     /// τον στόχο μέχρι ένα soft cap, ώστε η μετρική να σταθεροποιείται αντί να εκτοξεύεται.
     /// </summary>
+    /// <summary>Ο στόχος κατοικησιμότητας μιας μετρικής (κοινός για Saturation & το deadband του sink).</summary>
+    private static double TargetFor(PlanetMetric metric) => metric switch
+    {
+        PlanetMetric.Temperature => PlanetState.TargetTemperature,
+        PlanetMetric.Pressure => PlanetState.TargetPressure,
+        PlanetMetric.Oxygen => PlanetState.TargetOxygen,
+        _ => 0.0
+    };
+
     private static double Saturation(PlanetMetric metric, double value)
     {
-        (double target, double softCap) = metric switch
+        double target = TargetFor(metric);
+        double softCap = metric switch
         {
-            PlanetMetric.Temperature => (PlanetState.TargetTemperature, 25.0),
-            PlanetMetric.Pressure => (PlanetState.TargetPressure, 30.0),
-            PlanetMetric.Oxygen => (PlanetState.TargetOxygen, 30.0),
-            _ => (0.0, 1.0)
+            PlanetMetric.Temperature => 25.0,
+            PlanetMetric.Pressure => 30.0,
+            PlanetMetric.Oxygen => 30.0,
+            _ => 1.0
         };
         if (value <= target) return 1.0;
         return Math.Clamp(1.0 - (value - target) / (softCap - target), 0.0, 1.0);

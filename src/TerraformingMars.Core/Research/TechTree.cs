@@ -12,6 +12,10 @@ public sealed class TechTree
     public string? CurrentTarget { get; private set; }
     public double CurrentProgress { get; private set; }
 
+    /// <summary>Ξεκλειδώθηκε το tech tier της Φάσης 2; τεχνολογίες με <see cref="TechDefinition.RequiresPhase2"/> γίνονται διαθέσιμες.</summary>
+    public bool Phase2Unlocked { get; private set; }
+    public void UnlockPhase2() => Phase2Unlocked = true;
+
     public TechTree(TechCatalog? catalog = null) => _catalog = catalog ?? TechCatalog.LoadDefault();
 
     public TechCatalog Catalog => _catalog;
@@ -22,7 +26,9 @@ public sealed class TechTree
     public bool ArePrerequisitesMet(TechDefinition tech) => tech.Prerequisites.All(IsResearched);
 
     public bool CanResearch(TechDefinition tech) =>
-        !Researched.Contains(tech.Id) && ArePrerequisitesMet(tech);
+        !Researched.Contains(tech.Id)
+        && (!tech.RequiresPhase2 || Phase2Unlocked)
+        && ArePrerequisitesMet(tech);
 
     /// <summary>Τεχνολογίες που μπορούν να ερευνηθούν τώρα (prereqs met, όχι ήδη researched).</summary>
     public IEnumerable<TechDefinition> Available =>
@@ -57,12 +63,13 @@ public sealed class TechTree
     }
 
     /// <summary>Επαναφορά κατάστασης έρευνας (για load παιχνιδιού).</summary>
-    public void Restore(IEnumerable<string> researched, string? current, double progress)
+    public void Restore(IEnumerable<string> researched, string? current, double progress, bool phase2Unlocked = false)
     {
         Researched.Clear();
         foreach (var id in researched) Researched.Add(id);
         CurrentTarget = current;
         CurrentProgress = progress;
+        Phase2Unlocked = phase2Unlocked;
     }
 
     /// <summary>Building ids που έχουν ξεκλειδωθεί από τις researched τεχνολογίες.</summary>

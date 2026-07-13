@@ -12,4 +12,9 @@
     <EmbeddedResource Include="Data\*.json" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- Τα tests χρειάζονται πρόσβαση σε internal setters (π.χ. HexTile.Terrain) για στήσιμο σεναρίων. -->
+    <InternalsVisibleTo Include="TerraformingMars.Core.Tests" />
+  </ItemGroup>
+
 </Project>

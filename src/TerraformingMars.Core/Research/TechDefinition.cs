@@ -12,6 +12,9 @@ public sealed class TechDefinition
     public string Description { get; init; } = "";
     public int Phase { get; init; } = 1;
 
+    /// <summary>Αν true, η τεχνολογία ξεκλειδώνει μόνο αφού ξεκινήσει η Φάση 2 (ολοκλήρωση terraforming).</summary>
+    public bool RequiresPhase2 { get; init; } = false;
+
     /// <summary>Research points που χρειάζονται.</summary>
     public double Cost { get; init; } = 100;
 

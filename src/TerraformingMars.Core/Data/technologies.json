@@ -122,5 +122,17 @@
     "Cost": 1000,
     "Prerequisites": [ "gm_trees", "artificial_magnetosphere" ],
     "Unlocks": [ "domeless_city" ]
+  },
+
+  // ---------- Phase 5: Φάση 2A — Σταθεροποίηση (ξεκλειδώνει μετά την ολοκλήρωση terraforming) ----------
+  {
+    "Id": "atmosphere_sink_arrays",
+    "Name": "Atmosphere Sink Arrays",
+    "Description": "Cryogenic carbon-capture arrays that pull excess CO2 and heat back out of a runaway atmosphere.",
+    "Phase": 5,
+    "RequiresPhase2": true,
+    "Cost": 550,
+    "Prerequisites": [ "greenhouse_gas_production" ],
+    "Unlocks": [ "cryo_carbon_capturer" ]
   }
 ]

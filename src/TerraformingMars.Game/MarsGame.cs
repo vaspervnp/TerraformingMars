@@ -109,6 +109,7 @@ public class MarsGame : Microsoft.Xna.Framework.Game
     private string _lastNotification = "";
     private bool _prevWon;
     private bool _prevLost;
+    private bool _phase2Celebrating;   // ανοιχτό modal εορτασμού μετάβασης στη Φάση 2
     private bool _uiClick;
     private bool _hasActiveGame;
     private Dictionary<string, Texture2D> _icons = null!;
@@ -632,7 +633,8 @@ public class MarsGame : Microsoft.Xna.Framework.Game
     {
         _prevResearchedCount = _world.Colony.Tech.Researched.Count;
         _lastNotification = _world.EventNotifications.Count > 0 ? _world.EventNotifications[^1] : "";
-        _prevWon = false;
+        _prevWon = _world.Phase2Active;   // load Φάσης-2 save: μην ξαναπαίξει το chime ούτε το popup
+        _phase2Celebrating = false;
         _prevLost = false;
 
         // Οι ήδη ερευνημένες (π.χ. από load) δεν βγάζουν popup — μόνο όσες ολοκληρωθούν από εδώ κι εμπρός.
@@ -661,7 +663,7 @@ public class MarsGame : Microsoft.Xna.Framework.Game
         if (last.Length > 0 && last != _lastNotification) _audio.Alert();
         _lastNotification = last;
 
-        bool won = _world.IsTerraformed;
+        bool won = _world.Phase2Active;   // latched: το chime παίζει μία φορά στη μετάβαση στη Φάση 2
         if (won && !_prevWon) _audio.Win();
         _prevWon = won;
 
@@ -1269,6 +1271,76 @@ public class MarsGame : Microsoft.Xna.Framework.Game
         _spriteBatch.End();
     }
 
+    // -------- Popup εορτασμού μετάβασης στη Φάση 2 (modal, «X» πάνω δεξιά) --------
+
+    private List<string> Phase2Body(int textW)
+    {
+        var paras = new List<string>
+        {
+            "Congratulations - Mars is now habitable. All four terraforming goals are met, and the first great migration from Earth has begun.",
+            "",
+            "But a living world is volatile. If your greenhouse factories and orbital mirrors keep running, temperature and pressure overshoot the sweet spot - a RUNAWAY GREENHOUSE that withers plants, boils off water and sickens your people.",
+            "",
+            "New tech unlocked: Atmosphere Sink Arrays. Build Cryo-Carbon Capturers to pull the climate back into balance - and watch your growing population grow.",
+        };
+        var lines = new List<string>();
+        foreach (var p in paras)
+        {
+            if (p.Length == 0) lines.Add("");
+            else WrapText(lines, p, textW);
+        }
+        return lines;
+    }
+
+    private Rectangle Phase2PanelRect()
+    {
+        int vw = GraphicsDevice.Viewport.Width, vh = GraphicsDevice.Viewport.Height;
+        int lineH = _font.LineSpacing;
+        const int padTop = 16, titleGap = 14, padBottom = 20, padX = 24;
+        int titleH = (int)(lineH * 1.3f);
+        int w = Math.Min(vw - 40, 580);
+        int bodyCount = Phase2Body(w - padX * 2).Count;
+        int h = padTop + titleH + titleGap + bodyCount * lineH + padBottom;
+        h = Math.Min(h, vh - 40);
+        return new Rectangle((vw - w) / 2, (vh - h) / 2, w, h);
+    }
+
+    private Rectangle Phase2CloseRect() => _phase2Celebrating ? CloseButtonRect(Phase2PanelRect()) : Rectangle.Empty;
+
+    /// <summary>Modal εορτασμού: ανακοινώνει τη Φάση 2, το runaway greenhouse και το νέο tech.</summary>
+    private void DrawPhase2Overlay()
+    {
+        int vw = GraphicsDevice.Viewport.Width, vh = GraphicsDevice.Viewport.Height;
+        var ms = Mouse.GetState();
+        var panel = Phase2PanelRect();
+        int lineH = _font.LineSpacing;
+        const int padX = 24, padTop = 16, titleGap = 14;
+        int titleH = (int)(lineH * 1.3f);
+
+        _spriteBatch.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, SamplerState.PointClamp);
+        _spriteBatch.Draw(_pixel, new Rectangle(0, 0, vw, vh), new Color(0, 0, 0, 190));
+        _spriteBatch.Draw(_pixel, panel, new Color(16, 20, 28, 252));
+        DrawRectOutline(panel, new Color(120, 210, 150));
+
+        const string title = "PHASE 2 - THE LIVING PLANET";
+        var tsz = _font.MeasureString(title) * 1.3f;
+        _spriteBatch.DrawString(_font, title, new Vector2(panel.Center.X - tsz.X / 2f, panel.Y + padTop),
+            new Color(150, 230, 150), 0f, Vector2.Zero, 1.3f, SpriteEffects.None, 0f);
+
+        int bodyY = panel.Y + padTop + titleH + titleGap;
+        var body = Phase2Body(panel.Width - padX * 2);
+        for (int i = 0; i < body.Count; i++)
+            if (body[i].Length > 0)
+                _spriteBatch.DrawString(_font, body[i], new Vector2(panel.X + padX, bodyY + i * lineH), HudWhite);
+
+        DrawCloseButton(Phase2CloseRect(), ms);
+        _spriteBatch.End();
+    }
+
+    /// <summary>Συμπαγής μορφή μεγάλου αριθμού για το HUD (π.χ. 12.3k, 4.5M).</summary>
+    private static string FormatCompact(double v) =>
+        v >= 1_000_000 ? $"{v / 1_000_000:0.#}M" : v >= 1_000 ? $"{v / 1_000:0.#}k" : $"{v:0}";
+
     private void DrawCentered(string text, float y, float scale, Color color)
     {
         var size = _font.MeasureString(text);
@@ -1383,6 +1455,23 @@ public class MarsGame : Microsoft.Xna.Framework.Game
             if (KeyPressed(keys, Keys.Escape) || (click && CatalogHelpCloseRect().Contains(mouse.X, mouse.Y)))
             {
                 _catalogHelp = CatalogHelp.None;
+                _audio.Blip();
+            }
+            _prevMouse = mouse;
+            _prevKeys = keys;
+            base.Update(gameTime);
+            return;
+        }
+
+        // Popup εορτασμού μετάβασης στη Φάση 2: modal — «X»/Esc/Enter κλείνει.
+        if (_state == GameState.Playing && _phase2Celebrating)
+        {
+            _uiClick = false;
+            bool click = mouse.LeftButton == ButtonState.Released && _prevMouse.LeftButton == ButtonState.Pressed;
+            if (KeyPressed(keys, Keys.Escape) || KeyPressed(keys, Keys.Enter)
+                || (click && Phase2CloseRect().Contains(mouse.X, mouse.Y)))
+            {
+                _phase2Celebrating = false;
                 _audio.Blip();
             }
             _prevMouse = mouse;
@@ -1557,6 +1646,9 @@ public class MarsGame : Microsoft.Xna.Framework.Game
         }
 
         CheckAudioTransitions();
+
+        // Μετάβαση στη Φάση 2 → one-time modal εορτασμού (celebrate-then-continue).
+        if (_world.ConsumePhase2Celebration()) _phase2Celebrating = true;
 
         // Τεχνολογίες που μόλις ολοκληρώθηκαν → modal popup (μία-μία, με «X» πάνω δεξιά).
         foreach (var id in _world.Colony.Tech.Researched)
@@ -2098,6 +2190,7 @@ public class MarsGame : Microsoft.Xna.Framework.Game
         if (_showHelp) DrawHelpOverlay();
         if (_catalogHelp != CatalogHelp.None) DrawCatalogHelpOverlay();
         if (_techDone.Count > 0) DrawTechDoneOverlay();
+        if (_phase2Celebrating) DrawPhase2Overlay();
 
         if (capturing)
         {
@@ -2756,6 +2849,11 @@ public class MarsGame : Microsoft.Xna.Framework.Game
         int idle = _world.Colony.IdleColonists.Count();
         chips.Add(("crew", crew.ToString(), $"Crew   {crew} / {_world.Colony.Housing} housing   idle {idle}", HudWhite));
 
+        // Στη Φάση 2: αφηρημένος πληθυσμός (ξεχωριστός από το πλήρωμα).
+        if (_world.Phase2Active)
+            chips.Add(("crew", FormatCompact(_world.Colony.Population),
+                $"Population   {_world.Colony.Population:N0}", new Color(150, 200, 245)));
+
         // Μέτρησε πλάτη ανά chip για οριζόντιο κεντράρισμα.
         var widths = new float[chips.Count];
         float total = 0;
@@ -2991,6 +3089,8 @@ public class MarsGame : Microsoft.Xna.Framework.Game
             bottom.Add(($"{_depletedCount} building{(_depletedCount == 1 ? "" : "s")} out of resources   (, to find)", new Color(240, 170, 80)));
 
         // Κρίσιμα alerts (μεταφέρθηκαν από το πρώην πάνω HUD ώστε να μη χάνονται).
+        if (_world.RunawayActive)
+            bottom.Add(("!! RUNAWAY GREENHOUSE - temp/pressure overshoot - build a Cryo-Carbon Capturer !!", HudWarn));
         if (_world.Colony.LifeSupportFailing) bottom.Add(("!! LIFE SUPPORT FAILURE !!", HudWarn));
         foreach (var ev in _world.ActiveEvents)
             bottom.Add(($"!! {EventLabel(ev.Type)}  {ev.TicksRemaining / 4}s", HudWarn));
@@ -3016,9 +3116,9 @@ public class MarsGame : Microsoft.Xna.Framework.Game
         if (!IsPointerOverToolbar(Mouse.GetState().X, Mouse.GetState().Y))
             DrawHoverHint();
 
-        if (_world.IsTerraformed)
-            DrawCenterBanner("***  PLANET TERRAFORMED  ***", new Color(120, 230, 120));
-        else if (_world.IsLost)
+        // Η ολοκλήρωση terraforming δεν είναι πλέον τέλος: εορτάζεται μία φορά (DrawPhase2Overlay)
+        // και το παιχνίδι συνεχίζει στη Φάση 2. Κρατάμε μόνο το banner ήττας.
+        if (_world.IsLost)
             DrawCenterBanner("***  COLONY LOST - press Esc  ***", new Color(255, 90, 80));
 
         DrawEventPopup();

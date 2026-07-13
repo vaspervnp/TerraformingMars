@@ -16,6 +16,11 @@ public sealed class Colony
     public ResourceLedger Ledger { get; } = new();
     public TechTree Tech { get; } = new();
     public int Crew { get; set; }
+
+    /// <summary>Συνολικός (αφηρημένος) μεταναστευτικός πληθυσμός της Φάσης 2 — ξεχωριστός από τους
+    /// επώνυμους <see cref="Colonists"/>/<see cref="Crew"/>. double ώστε να συσσωρεύεται κλασματικά.</summary>
+    public double Population { get; set; }
+
     public List<Building> Buildings { get; } = new();
     public List<Colonist> Colonists { get; } = new();
 

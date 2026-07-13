@@ -259,5 +259,17 @@
     "HousingCapacity": 30,
     "Cost": { "Materials": 200, "Credits": 25000 },
     "Production": { "Energy": -2.0 }
+  },
+  {
+    "Id": "cryo_carbon_capturer",
+    "Name": "Cryo-Carbon Capturer",
+    "Description": "Freezes out CO2 and vents heat, gently pulling temperature and pressure back toward the sweet spot.",
+    "Category": "Planetary",
+    "RequiredTech": "atmosphere_sink_arrays",
+    "BuildTimeTicks": 150,
+    "MaxWorkers": 0,
+    "Cost": { "Materials": 110, "Credits": 10000 },
+    "Production": { "Energy": -1.8 },
+    "PlanetEffects": { "Temperature": -0.025, "Pressure": -0.012 }
   }
 ]
