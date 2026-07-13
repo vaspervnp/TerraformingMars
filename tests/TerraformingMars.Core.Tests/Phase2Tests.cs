@@ -405,10 +405,26 @@ public class Phase2SocietyTests
         var arco = BuildingCatalog.LoadDefault().Get("high_density_arcology");
         var tile = map.Tiles.First(t => t.IsBuildable);
 
-        Assert.False(colony.TryPlaceBuilding(arco, tile.Coord, map).Success); // pop 0 < 10000
+        Assert.False(colony.TryPlaceBuilding(arco, tile.Coord, map).Success); // peak 0 < 10000
 
-        colony.Population = 10_000;
+        colony.PeakPopulation = 10_000;
         Assert.True(colony.TryPlaceBuilding(arco, tile.Coord, map).Success);
+    }
+
+    // Review finding: το arcology ΔΕΝ πρέπει να ξανακλειδώνει αν ο πληθυσμός πέσει κάτω από 10k (peak latch).
+    [Fact]
+    public void Arcology_Stays_Unlocked_After_Population_Dips_Below_Threshold()
+    {
+        var map = Map();
+        var colony = new Colony();
+        colony.Ledger.Set(ResourceKind.Credits, 100_000);
+        var arco = BuildingCatalog.LoadDefault().Get("high_density_arcology");
+        var tile = map.Tiles.First(t => t.IsBuildable);
+
+        colony.PeakPopulation = 12_000; // έφτασε κάποτε τα 12k
+        colony.Population = 8_000;       // ...αλλά τώρα έπεσε (κρίση/stagnation)
+
+        Assert.True(colony.TryPlaceBuilding(arco, tile.Coord, map).Success); // παραμένει ξεκλείδωτο
     }
 
     [Fact]
@@ -436,6 +452,111 @@ public class Phase2SocietyTests
         var arco = catalog.Get("high_density_arcology");
         var tile = loaded.Map.Tiles.First(t => t.IsBuildable && !loaded.Colony.IsOccupied(t.Coord));
         Assert.True(loaded.Colony.TryPlaceBuilding(arco, tile.Coord, loaded.Map).Success);
+    }
+}
+
+public class Phase2FactionTests
+{
+    private static HexMap Map() =>
+        new MapGenerator(new MapGenerationSettings { Width = 24, Height = 24, Seed = 11 }).Generate();
+
+    private static void ToTargets(World w) =>
+        w.Planet.Restore(PlanetState.TargetTemperature, PlanetState.TargetPressure,
+            PlanetState.TargetOxygen, PlanetState.TargetWater, 0);
+
+    [Fact]
+    public void Low_Approval_Strikes_Only_The_Right_Building_Category()
+    {
+        var colony = new Colony();
+        var world = new World(Map(), colony, new ISimulationSystem[] { new FactionSystem() });
+        ToTargets(world);
+        world.Tick(); // μετάβαση στη Φάση 2
+        colony.EcologistApproval = 0.05;
+        colony.IndustrialistApproval = 0.9;
+        world.Tick(); // η FactionSystem υπολογίζει απεργίες
+
+        Assert.True(world.EcologistStrike);
+        Assert.False(world.IndustrialStrike);
+
+        var catalog = BuildingCatalog.LoadDefault();
+        Assert.True(world.IsOnStrike(catalog.Get("gm_forest")));    // Biosphere → σταματά
+        Assert.False(world.IsOnStrike(catalog.Get("iron_mine")));   // Industry → όχι
+        Assert.False(world.IsOnStrike(catalog.Get("solar_panel"))); // Power → ποτέ
+    }
+
+    [Fact]
+    public void Ecologist_Strike_Stops_Vegetation_Spread()
+    {
+        var map = Map();
+        var colony = new Colony();
+        var catalog = BuildingCatalog.LoadDefault();
+        var forest = new Building(catalog.Get("gm_forest"), map.Tiles.First().Coord, startOperational: true);
+        colony.AddBuilding(forest);
+        var botanist = new Colonist("B", Specialty.Botanist);
+        colony.Colonists.Add(botanist);
+        colony.Assign(botanist, forest);
+        for (int i = 0; i < 5; i++) // 5 ορυχεία κρατούν χαμηλά την έγκριση Οικολόγων (μόνιμη απεργία)
+            colony.AddBuilding(new Building(catalog.Get("iron_mine"), map.Tiles.ElementAt(i + 1).Coord, startOperational: true));
+
+        var world = new World(map, colony, new ISimulationSystem[] { new BiosphereSystem(), new FactionSystem() });
+        world.Planet.Restore(10, 12, 16, 0.35, 0); // terraformed (→Φάση 2) & ζεστά/υγρά για βλάστηση
+        world.Tick();
+        colony.EcologistApproval = 0.05;
+        for (int i = 0; i < 30; i++) world.Tick();   // η απεργία εδραιώνεται
+        Assert.True(world.EcologistStrike);
+
+        int before = map.Tiles.Count(t => t.Terrain == TerrainType.Vegetation);
+        for (int i = 0; i < 1000; i++) world.Tick();
+        Assert.Equal(before, map.Tiles.Count(t => t.Terrain == TerrainType.Vegetation)); // παγωμένη εξάπλωση
+    }
+
+    [Fact]
+    public void Town_Halls_Keep_Approval_Above_Strike_Threshold()
+    {
+        var map = Map();
+        var colony = new Colony();
+        var catalog = BuildingCatalog.LoadDefault();
+        for (int i = 0; i < 5; i++) // βαριά βιομηχανία → πιέζει τους Οικολόγους
+            colony.AddBuilding(new Building(catalog.Get("iron_mine"), map.Tiles.ElementAt(i).Coord, startOperational: true));
+        for (int i = 0; i < 2; i++) // ...αλλά η διακυβέρνηση τους κρατά ικανοποιημένους
+            colony.AddBuilding(new Building(catalog.Get("district_town_hall"), map.Tiles.ElementAt(i + 5).Coord, startOperational: true));
+
+        var world = new World(map, colony, new ISimulationSystem[] { new FactionSystem() });
+        ToTargets(world);
+        world.Tick();
+        for (int i = 0; i < 1000; i++) world.Tick();
+
+        Assert.False(world.EcologistStrike);
+        Assert.True(colony.EcologistApproval > 0.35);
+    }
+
+    [Fact]
+    public void District_Town_Hall_Gated_By_Tech()
+    {
+        var map = Map();
+        var colony = new Colony();
+        colony.Ledger.Set(ResourceKind.Credits, 100_000);
+        var hall = BuildingCatalog.LoadDefault().Get("district_town_hall");
+        var tile = map.Tiles.First(t => t.IsBuildable);
+
+        Assert.False(colony.TryPlaceBuilding(hall, tile.Coord, map).Success); // locked
+
+        colony.Tech.Researched.Add("socio_political_synthesis");
+        Assert.True(colony.TryPlaceBuilding(hall, tile.Coord, map).Success);
+    }
+
+    [Fact]
+    public void Faction_Approval_Round_Trips_Through_Save()
+    {
+        var catalog = BuildingCatalog.LoadDefault();
+        var sponsors = SponsorCatalog.LoadDefault();
+        var colony = new Colony { IndustrialistApproval = 0.33, EcologistApproval = 0.77 };
+        var world = new World(Map(), colony, System.Array.Empty<ISimulationSystem>());
+
+        var loaded = SaveSystem.Load(SaveSystem.ToJson(world, sponsors.Get("normal")), catalog, sponsors, out _);
+
+        Assert.Equal(0.33, loaded.Colony.IndustrialistApproval, 3);
+        Assert.Equal(0.77, loaded.Colony.EcologistApproval, 3);
     }
 }
 

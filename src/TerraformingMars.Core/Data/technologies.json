@@ -134,5 +134,15 @@
     "Cost": 550,
     "Prerequisites": [ "greenhouse_gas_production" ],
     "Unlocks": [ "cryo_carbon_capturer" ]
+  },
+  {
+    "Id": "socio_political_synthesis",
+    "Name": "Socio-Political Synthesis",
+    "Description": "Governance frameworks that let district town halls balance the demands of rival political factions.",
+    "Phase": 5,
+    "RequiresPhase2": true,
+    "Cost": 500,
+    "Prerequisites": [],
+    "Unlocks": [ "district_town_hall" ]
   }
 ]

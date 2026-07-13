@@ -24,8 +24,15 @@ public sealed class SaveGame
     /// <summary>Αφηρημένος μεταναστευτικός πληθυσμός Φάσης 2. Παλιά saves → 0.</summary>
     public double Population { get; set; }
 
+    /// <summary>Μέγιστος πληθυσμός που επιτεύχθηκε ποτέ (για μόνιμο ξεκλείδωμα κατωφλιών). Παλιά saves → 0.</summary>
+    public double PeakPopulation { get; set; }
+
     /// <summary>Έφτασε το κατώφλι Urbanization (10k) — latched. Παλιά saves → false.</summary>
     public bool UrbanizationReached { get; set; }
+
+    /// <summary>Έγκριση παρατάξεων Φάσης 2 (0..1). Παλιά saves → 0.6 (ουδέτερο, όχι απεργία).</summary>
+    public double IndustrialistApproval { get; set; } = 0.6;
+    public double EcologistApproval { get; set; } = 0.6;
 
     public bool HasCaveShelter { get; set; }
     public double SolarEfficiency { get; set; } = 1.0;

@@ -75,6 +75,17 @@ public sealed class World
         return true;
     }
 
+    // --- Phase 2A: Πολιτικές παρατάξεις (factions) ---
+    /// <summary>Εφήμερο (δεν σώζεται): οι Βιομηχανικοί απεργούν — τα κτίρια κατηγορίας "Industry" σταματούν.</summary>
+    public bool IndustrialStrike { get; internal set; }
+    /// <summary>Εφήμερο (δεν σώζεται): οι Οικολόγοι απεργούν — τα κτίρια κατηγορίας "Biosphere" σταματούν.</summary>
+    public bool EcologistStrike { get; internal set; }
+
+    /// <summary>True αν το κτίριο είναι σε απεργία της παράταξής του (σταματά παραγωγή/επιδράσεις/βλάστηση).</summary>
+    public bool IsOnStrike(Buildings.BuildingDefinition def) =>
+        (IndustrialStrike && def.Category == "Industry") ||
+        (EcologistStrike && def.Category == "Biosphere");
+
     /// <summary>Γεγονότα που μόλις ξεκίνησαν αυτό το βήμα· τα «καταναλώνει» το UI για popup (εφήμερο, δεν σώζεται).</summary>
     public List<EventStart> StartedEvents { get; } = new();
 

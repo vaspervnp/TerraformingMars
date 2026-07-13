@@ -30,6 +30,7 @@ public sealed class BiosphereSystem : ISimulationSystem
         foreach (var b in world.Colony.Buildings)
         {
             if (b.State != BuildingState.Operational || b.Definition.VegetationSpreadPerTick <= 0) continue;
+            if (world.IsOnStrike(b.Definition)) continue;   // απεργία Οικολόγων → σταματά η εξάπλωση βλάστησης
             spread += b.Definition.VegetationSpreadPerTick * b.WorkerEfficiency();
         }
 

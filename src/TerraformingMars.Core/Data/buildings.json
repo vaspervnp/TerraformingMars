@@ -286,5 +286,16 @@
     "PopulationCapacity": 30000,
     "Cost": { "Materials": 300, "Credits": 40000 },
     "Production": { "Energy": -6.0 }
+  },
+  {
+    "Id": "district_town_hall",
+    "Name": "District Town Hall",
+    "Description": "Local governance that keeps rival factions content, lowering the risk of strikes.",
+    "Category": "Civic",
+    "RequiredTech": "socio_political_synthesis",
+    "BuildTimeTicks": 120,
+    "MaxWorkers": 0,
+    "Cost": { "Materials": 80, "Credits": 8000 },
+    "Production": { "Energy": -0.5 }
   }
 ]

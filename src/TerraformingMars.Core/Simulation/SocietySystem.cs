@@ -64,7 +64,10 @@ public sealed class SocietySystem : ISimulationSystem
             colony.Population = Math.Min(cap, pop + GrowthPerTick);
         }
 
-        if (!world.UrbanizationReached && colony.Population >= World.UrbanizationThreshold)
+        // Monotonic peak → μόνιμο ξεκλείδωμα πληθυσμιακών κατωφλιών (δεν ξανακλειδώνει σε πτώση).
+        colony.PeakPopulation = Math.Max(colony.PeakPopulation, colony.Population);
+
+        if (!world.UrbanizationReached && colony.PeakPopulation >= World.UrbanizationThreshold)
         {
             world.UrbanizationReached = true;
             world.UrbanizationPending = true;

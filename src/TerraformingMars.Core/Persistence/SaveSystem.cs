@@ -58,8 +58,11 @@ public static class SaveSystem
             SponsorId = sponsor.Id,
             Crew = colony.Crew,
             Population = colony.Population,
+            PeakPopulation = colony.PeakPopulation,
             Phase2Active = world.Phase2Active,
             UrbanizationReached = world.UrbanizationReached,
+            IndustrialistApproval = colony.IndustrialistApproval,
+            EcologistApproval = colony.EcologistApproval,
             HasCaveShelter = world.HasCaveShelter,
             SolarEfficiency = world.SolarEfficiency,
             Planet = new PlanetSave
@@ -123,6 +126,9 @@ public static class SaveSystem
         colony.Tech.Restore(save.Tech.Researched, save.Tech.Current, save.Tech.Progress, save.Tech.Phase2Unlocked);
         colony.Crew = save.Crew;
         colony.Population = save.Population;
+        colony.PeakPopulation = save.PeakPopulation;
+        colony.IndustrialistApproval = save.IndustrialistApproval;
+        colony.EcologistApproval = save.EcologistApproval;
 
         foreach (var bs in save.Buildings)
         {
@@ -165,7 +171,8 @@ public static class SaveSystem
             new Phase2System(),
             new PopulationSystem(map.Seed),
             new LifeSupportSystem(),
-            new SocietySystem()
+            new SocietySystem(),
+            new FactionSystem()
         };
 
         var world = new World(map, colony, systems);

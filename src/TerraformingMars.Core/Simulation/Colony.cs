@@ -21,6 +21,15 @@ public sealed class Colony
     /// επώνυμους <see cref="Colonists"/>/<see cref="Crew"/>. double ώστε να συσσωρεύεται κλασματικά.</summary>
     public double Population { get; set; }
 
+    /// <summary>Μέγιστος πληθυσμός που έχει επιτευχθεί ποτέ (monotonic) — ξεκλειδώνει μόνιμα τα
+    /// πληθυσμιακά κατώφλια (π.χ. arcology), ώστε να μην «ξανακλειδώνουν» αν ο πληθυσμός πέσει.</summary>
+    public double PeakPopulation { get; set; }
+
+    /// <summary>Έγκριση (0..1) της πολιτικής παράταξης των Βιομηχανικών (Φάση 2). Χαμηλή → απεργία.</summary>
+    public double IndustrialistApproval { get; set; } = 0.6;
+    /// <summary>Έγκριση (0..1) της πολιτικής παράταξης των Οικολόγων (Φάση 2). Χαμηλή → απεργία.</summary>
+    public double EcologistApproval { get; set; } = 0.6;
+
     public List<Building> Buildings { get; } = new();
     public List<Colonist> Colonists { get; } = new();
 
@@ -88,7 +97,7 @@ public sealed class Colony
     {
         if (!def.Buildable) return PlacementResult.Fail("not buildable");
         if (!Tech.IsResearched(def.RequiredTech)) return PlacementResult.Fail("locked (needs research)");
-        if (def.RequiresPopulation > 0 && Population < def.RequiresPopulation)
+        if (def.RequiresPopulation > 0 && PeakPopulation < def.RequiresPopulation)
             return PlacementResult.Fail($"needs population {def.RequiresPopulation:N0}");
 
         var tile = map.GetTile(hex);

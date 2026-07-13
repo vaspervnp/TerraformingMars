@@ -1596,7 +1596,7 @@ public class MarsGame : Microsoft.Xna.Framework.Game
         // Διαθέσιμα κτίρια = όσα έχουν ξεκλειδωθεί από έρευνα ΚΑΙ από το πληθυσμιακό κατώφλι
         _buildables = _catalog.Buildables
             .Where(d => _world.Colony.Tech.IsResearched(d.RequiredTech)
-                        && _world.Colony.Population >= d.RequiresPopulation)
+                        && _world.Colony.PeakPopulation >= d.RequiresPopulation)
             .ToList();
         if (_buildIndex >= _buildables.Count) _buildIndex = 0;
 
@@ -3105,6 +3105,13 @@ public class MarsGame : Microsoft.Xna.Framework.Game
             bottom.Add(("!! RUNAWAY GREENHOUSE - temp/pressure overshoot - build a Cryo-Carbon Capturer !!", HudWarn));
         if (_world.StagnationActive)
             bottom.Add(("!! SYSTEMIC STAGNATION - population outgrew its food/water/housing - expand infrastructure !!", HudWarn));
+        if (_world.Phase2Active)
+            bottom.Add(($"Factions: Industry {_world.Colony.IndustrialistApproval * 100:0}%   Ecology {_world.Colony.EcologistApproval * 100:0}%",
+                _world.IndustrialStrike || _world.EcologistStrike ? HudWarn : HudDim));
+        if (_world.IndustrialStrike)
+            bottom.Add(("!! INDUSTRIALIST STRIKE - mines & factories halted - build a District Town Hall !!", HudWarn));
+        if (_world.EcologistStrike)
+            bottom.Add(("!! ECOLOGIST STRIKE - biosphere halted - build a District Town Hall !!", HudWarn));
         if (_world.Colony.LifeSupportFailing) bottom.Add(("!! LIFE SUPPORT FAILURE !!", HudWarn));
         foreach (var ev in _world.ActiveEvents)
             bottom.Add(($"!! {EventLabel(ev.Type)}  {ev.TicksRemaining / 4}s", HudWarn));

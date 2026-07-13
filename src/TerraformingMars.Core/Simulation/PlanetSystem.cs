@@ -33,6 +33,7 @@ public sealed class PlanetSystem : ISimulationSystem
             if (building.State != BuildingState.Operational) continue;
             if (building.Definition.ShieldsAtmosphere) shielded = true;
 
+            if (world.IsOnStrike(building.Definition)) continue;   // απεργία → σταματούν οι πλανητικές επιδράσεις
             if (building.Definition.PlanetEffects.Count == 0) continue;
             double eff = building.WorkerEfficiency();
             if (eff <= 0) continue;

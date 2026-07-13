@@ -91,6 +91,7 @@ public static class ColonyFactory
         systems.Add(new PopulationSystem(map.Seed));
         systems.Add(new LifeSupportSystem());
         systems.Add(new SocietySystem());
+        systems.Add(new FactionSystem());
         return new World(map, colony, systems);
     }
 
