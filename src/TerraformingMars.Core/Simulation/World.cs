@@ -86,6 +86,9 @@ public sealed class World
         (IndustrialStrike && def.Category == "Industry") ||
         (EcologistStrike && def.Category == "Biosphere");
 
+    /// <summary>Εφήμερο (δεν σώζεται): συνολικός δείκτης ρύπανσης 0..1 — τον διαβάζουν HUD & FactionSystem.</summary>
+    public double PollutionLevel { get; internal set; }
+
     /// <summary>Γεγονότα που μόλις ξεκίνησαν αυτό το βήμα· τα «καταναλώνει» το UI για popup (εφήμερο, δεν σώζεται).</summary>
     public List<EventStart> StartedEvents { get; } = new();
 

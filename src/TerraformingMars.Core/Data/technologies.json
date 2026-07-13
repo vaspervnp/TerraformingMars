@@ -144,5 +144,15 @@
     "Cost": 500,
     "Prerequisites": [],
     "Unlocks": [ "district_town_hall" ]
+  },
+  {
+    "Id": "atmospheric_scrubbing",
+    "Name": "Atmospheric Scrubbing",
+    "Description": "Filtration towers that draw industrial pollution out of the air across nearby hexes.",
+    "Phase": 5,
+    "RequiresPhase2": true,
+    "Cost": 450,
+    "Prerequisites": [],
+    "Unlocks": [ "atmospheric_scrubber" ]
   }
 ]

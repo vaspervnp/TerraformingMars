@@ -90,7 +90,8 @@
     "RequiresDeposit": "Regolith",
     "ExtractionPerTick": 1.0,
     "Cost": { "Materials": 20, "Credits": 2000 },
-    "Production": { "Materials": 0.5, "Energy": -0.4 }
+    "Production": { "Materials": 0.5, "Energy": -0.4 },
+    "PollutionPerTick": 0.02
   },
   {
     "Id": "research_lab",
@@ -127,7 +128,8 @@
     "MaxWorkers": 1,
     "OptimalSpecialty": "Geologist",
     "Cost": { "Materials": 40, "Credits": 3000 },
-    "Production": { "Materials": 1.2, "Energy": -0.5 }
+    "Production": { "Materials": 1.2, "Energy": -0.5 },
+    "PollutionPerTick": 0.02
   },
   {
     "Id": "silicon_mine",
@@ -141,7 +143,8 @@
     "MaxWorkers": 1,
     "OptimalSpecialty": "Geologist",
     "Cost": { "Materials": 45, "Credits": 3000 },
-    "Production": { "Silicon": 1.0, "Energy": -0.5 }
+    "Production": { "Silicon": 1.0, "Energy": -0.5 },
+    "PollutionPerTick": 0.02
   },
   {
     "Id": "export_terminal",
@@ -167,7 +170,8 @@
     "OptimalSpecialty": "Climatologist",
     "Cost": { "Materials": 100, "Credits": 9000 },
     "Production": { "Energy": -1.5 },
-    "PlanetEffects": { "Temperature": 0.020, "Pressure": 0.010 }
+    "PlanetEffects": { "Temperature": 0.020, "Pressure": 0.010 },
+    "PollutionPerTick": 0.03
   },
   {
     "Id": "orbital_mirror",
@@ -297,5 +301,17 @@
     "MaxWorkers": 0,
     "Cost": { "Materials": 80, "Credits": 8000 },
     "Production": { "Energy": -0.5 }
+  },
+  {
+    "Id": "atmospheric_scrubber",
+    "Name": "Atmospheric Scrubber",
+    "Description": "Draws industrial pollution out of the surrounding hexes so vegetation can recover nearby.",
+    "Category": "Civic",
+    "RequiredTech": "atmospheric_scrubbing",
+    "BuildTimeTicks": 100,
+    "MaxWorkers": 0,
+    "ScrubsPollution": true,
+    "Cost": { "Materials": 70, "Credits": 6000 },
+    "Production": { "Energy": -1.0 }
   }
 ]

@@ -95,6 +95,9 @@ public sealed class TileSave
     public int R { get; set; }
     public string Terrain { get; set; } = "Flatland";
     public double Remaining { get; set; }
+
+    /// <summary>Τοπική ρύπανση (Φάση 2). Παλιά saves → 0.</summary>
+    public double Pollution { get; set; }
 }
 
 public sealed class EventSave

@@ -17,6 +17,9 @@ public sealed class HexTile
     /// <summary>Εναπομείναν κοίτασμα (μειώνεται από την εξόρυξη). Αρχικά = <see cref="ResourceDeposit.Amount"/>.</summary>
     public double RemainingDeposit { get; internal set; }
 
+    /// <summary>Τοπική ρύπανση (Φάση 2) από βαριά βιομηχανία· υψηλή τιμή μαραίνει τη γειτονική βλάστηση.</summary>
+    public double Pollution { get; internal set; }
+
     // Runtime state (επόμενες φάσεις)
     public bool Discovered { get; set; }
 

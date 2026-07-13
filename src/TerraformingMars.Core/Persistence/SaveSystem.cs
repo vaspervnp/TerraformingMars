@@ -94,10 +94,12 @@ public static class SaveSystem
             }).ToList(),
             TileOverrides = world.Map.Tiles
                 .Where(t => (pristine.TryGetValue(t.Coord, out var terr) && t.Terrain != terr)
-                            || t.RemainingDeposit < t.Deposit.Amount - 1e-6)
+                            || t.RemainingDeposit < t.Deposit.Amount - 1e-6
+                            || t.Pollution > 1e-6)
                 .Select(t => new TileSave
                 {
-                    Q = t.Coord.Q, R = t.Coord.R, Terrain = t.Terrain.ToString(), Remaining = t.RemainingDeposit
+                    Q = t.Coord.Q, R = t.Coord.R, Terrain = t.Terrain.ToString(),
+                    Remaining = t.RemainingDeposit, Pollution = t.Pollution
                 }).ToList(),
             Events = world.ActiveEvents.Select(e => new EventSave
             {
@@ -118,6 +120,7 @@ public static class SaveSystem
             {
                 tile.Terrain = Enum.Parse<TerrainType>(ts.Terrain);
                 tile.RemainingDeposit = ts.Remaining;
+                tile.Pollution = ts.Pollution;
             }
 
         var colony = new Colony();
@@ -172,6 +175,7 @@ public static class SaveSystem
             new PopulationSystem(map.Seed),
             new LifeSupportSystem(),
             new SocietySystem(),
+            new PollutionSystem(),
             new FactionSystem()
         };
 

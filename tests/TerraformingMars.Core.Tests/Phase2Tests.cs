@@ -560,6 +560,136 @@ public class Phase2FactionTests
     }
 }
 
+public class Phase2PollutionTests
+{
+    private static HexMap Map() =>
+        new MapGenerator(new MapGenerationSettings { Width = 24, Height = 24, Seed = 11 }).Generate();
+
+    private static void ToTargets(World w) =>
+        w.Planet.Restore(PlanetState.TargetTemperature, PlanetState.TargetPressure,
+            PlanetState.TargetOxygen, PlanetState.TargetWater, 0);
+
+    // regolith_printer = MaxWorkers 0 (auto, eff 1.0) & PollutionPerTick 0.02 → ρυπαίνει αξιόπιστα σε test.
+    private static Building Polluter(HexMap map, int index) =>
+        new(BuildingCatalog.LoadDefault().Get("regolith_printer"), map.Tiles.ElementAt(index).Coord, startOperational: true);
+
+    [Fact]
+    public void Heavy_Industry_Emits_Pollution()
+    {
+        var map = Map();
+        var colony = new Colony();
+        var mine = Polluter(map, 0);
+        colony.AddBuilding(mine);
+        var world = new World(map, colony, new ISimulationSystem[] { new PollutionSystem() });
+        ToTargets(world);
+        world.Tick(); // → Φάση 2
+        for (int i = 0; i < 50; i++) world.Tick();
+
+        Assert.True(map.GetTile(mine.Location)!.Pollution > 0);
+        Assert.True(world.PollutionLevel > 0);
+    }
+
+    [Fact]
+    public void Pollution_Does_Not_Accumulate_Before_Phase2()
+    {
+        var map = Map();
+        var colony = new Colony();
+        colony.AddBuilding(Polluter(map, 0));
+        var world = new World(map, colony, new ISimulationSystem[] { new PollutionSystem() });
+        for (int i = 0; i < 100; i++) world.Tick(); // ΟΧΙ terraformed → όχι Φάση 2
+
+        Assert.Equal(0, world.PollutionLevel);
+        Assert.Equal(0, map.Tiles.Sum(t => t.Pollution), 6);
+    }
+
+    [Fact]
+    public void High_Pollution_Withers_Adjacent_Vegetation()
+    {
+        var map = Map();
+        var mineTile = map.Tiles.First(t => t.IsBuildable);
+        HexTile? veg = null;
+        for (int s = 0; s < 6; s++)
+            if (map.GetTile(mineTile.Coord.Neighbor(s)) is { } n) { n.Terrain = TerrainType.Vegetation; veg = n; break; }
+        Assert.NotNull(veg);
+
+        var colony = new Colony();
+        colony.AddBuilding(new Building(BuildingCatalog.LoadDefault().Get("regolith_printer"), mineTile.Coord, startOperational: true));
+        var world = new World(map, colony, new ISimulationSystem[] { new PollutionSystem() });
+        ToTargets(world);
+        world.Tick();
+        for (int i = 0; i < 300; i++) world.Tick(); // η ρύπανση ξεπερνά το κατώφλι
+
+        Assert.NotEqual(TerrainType.Vegetation, veg!.Terrain); // μαράθηκε
+    }
+
+    [Fact]
+    public void Scrubber_Reduces_Nearby_Pollution()
+    {
+        var map = Map();
+        var mineTile = map.Tiles.First(t => t.IsBuildable);
+        var colony = new Colony();
+        colony.AddBuilding(new Building(BuildingCatalog.LoadDefault().Get("regolith_printer"), mineTile.Coord, startOperational: true));
+        var world = new World(map, colony, new ISimulationSystem[] { new PollutionSystem() });
+        ToTargets(world);
+        world.Tick();
+        for (int i = 0; i < 300; i++) world.Tick();
+        double before = map.GetTile(mineTile.Coord)!.Pollution;
+        Assert.True(before > 0);
+
+        // Scrubber σε γειτονικό hex.
+        var neighbor = mineTile.Coord.Neighbor(0);
+        colony.AddBuilding(new Building(BuildingCatalog.LoadDefault().Get("atmospheric_scrubber"), neighbor, startOperational: true));
+        for (int i = 0; i < 300; i++) world.Tick();
+
+        Assert.True(map.GetTile(mineTile.Coord)!.Pollution < before);
+    }
+
+    [Fact]
+    public void Pollution_Lowers_Ecologist_Approval()
+    {
+        var map = Map();
+        var colony = new Colony();
+        for (int i = 0; i < 3; i++) colony.AddBuilding(Polluter(map, i));
+        var world = new World(map, colony, new ISimulationSystem[] { new PollutionSystem(), new FactionSystem() });
+        ToTargets(world);
+        world.Tick();
+        for (int i = 0; i < 1000; i++) world.Tick();
+
+        Assert.True(world.PollutionLevel > 0);
+        Assert.True(colony.EcologistApproval < 0.5); // ρύπανση + βιομηχανία → οι Οικολόγοι δυσαρεστούνται
+    }
+
+    [Fact]
+    public void Pollution_Round_Trips_Through_Save()
+    {
+        var map = Map();
+        var catalog = BuildingCatalog.LoadDefault();
+        var sponsors = SponsorCatalog.LoadDefault();
+        var tile = map.Tiles.First(t => t.IsBuildable);
+        tile.Pollution = 3.0;
+        var world = new World(map, new Colony(), System.Array.Empty<ISimulationSystem>());
+
+        var loaded = SaveSystem.Load(SaveSystem.ToJson(world, sponsors.Get("normal")), catalog, sponsors, out _);
+
+        Assert.Equal(3.0, loaded.Map.GetTile(tile.Coord)!.Pollution, 3);
+    }
+
+    [Fact]
+    public void Atmospheric_Scrubber_Gated_By_Tech()
+    {
+        var map = Map();
+        var colony = new Colony();
+        colony.Ledger.Set(ResourceKind.Credits, 100_000);
+        var scrubber = BuildingCatalog.LoadDefault().Get("atmospheric_scrubber");
+        var tile = map.Tiles.First(t => t.IsBuildable);
+
+        Assert.False(colony.TryPlaceBuilding(scrubber, tile.Coord, map).Success); // locked
+
+        colony.Tech.Researched.Add("atmospheric_scrubbing");
+        Assert.True(colony.TryPlaceBuilding(scrubber, tile.Coord, map).Success);
+    }
+}
+
 // Παλινδρομήσεις για τα ευρήματα του adversarial review.
 public class Phase2ReviewRegressionTests
 {

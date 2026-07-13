@@ -18,6 +18,7 @@ public sealed class FactionSystem : ISimulationSystem
     private const double GovernancePerHall = 0.15;
     private const double MaxGovernance = 0.30;
     private const double RunawayEcologistPenalty = 0.30;
+    private const double PollutionEcologistPenalty = 0.50;   // η ρύπανση θυμώνει τους Οικολόγους
     private const int IndustryForFullScore = 5;     // πλήθος ενεργών Industry κτιρίων για score 1.0
 
     public void Tick(World world)
@@ -40,7 +41,9 @@ public sealed class FactionSystem : ISimulationSystem
         double gov = Math.Min(MaxGovernance, GovernancePerHall * townHalls);
 
         double indTarget = Clamp01(0.5 + BalanceWeight * balance + gov);
-        double ecoTarget = Clamp01(0.5 - BalanceWeight * balance + gov - (world.RunawayActive ? RunawayEcologistPenalty : 0));
+        double ecoTarget = Clamp01(0.5 - BalanceWeight * balance + gov
+            - (world.RunawayActive ? RunawayEcologistPenalty : 0)
+            - PollutionEcologistPenalty * world.PollutionLevel);
 
         colony.IndustrialistApproval = Drift(colony.IndustrialistApproval, indTarget);
         colony.EcologistApproval = Drift(colony.EcologistApproval, ecoTarget);

@@ -73,6 +73,12 @@ public sealed class BuildingDefinition
     /// <summary>Ελάχιστος αφηρημένος πληθυσμός για ξεκλείδωμα (threshold gate, π.χ. arcology στα 10.000). 0 = χωρίς όριο.</summary>
     public int RequiresPopulation { get; init; } = 0;
 
+    /// <summary>Ρύπανση που εκπέμπει/tick στο hex του (Φάση 2, βαριά βιομηχανία). 0 = καθαρό.</summary>
+    public double PollutionPerTick { get; init; } = 0.0;
+
+    /// <summary>Αν true, καθαρίζει ρύπανση στο hex του και στα γειτονικά (μονάδα αντιρρύπανσης).</summary>
+    public bool ScrubsPollution { get; init; } = false;
+
     /// <summary>Αν true, τοποθετείται μόνο δίπλα σε υπάρχον κτίριο-κατοικία (Category "Habitat") —
     /// ώστε οι νέες κατοικίες να παραμένουν συνδεδεμένες με το δίκτυο της κάψουλας προσγείωσης.</summary>
     public bool RequiresHabitatLink { get; init; } = false;
