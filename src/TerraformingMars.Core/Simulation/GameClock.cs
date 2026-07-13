@@ -10,13 +10,14 @@ public sealed class GameClock
     /// <summary>Ticks ανά πραγματικό δευτερόλεπτο στο ×1.</summary>
     public const double TicksPerSecondAtNormal = 4.0;
 
-    /// <summary>In-game λεπτά ανά tick (144 ticks ≈ 1 Sol 24h).</summary>
-    public const double InGameMinutesPerTick = 10.0;
+    /// <summary>
+    /// Μήκος ενός Sol σε ticks — για μηχανισμούς της σιμουλασιόν (π.χ. φθορά reclaim ανά Sol).
+    /// Αμετάβλητο: ο ρυθμός της σιμουλασιόν μένει ίδιος· αλλάζει μόνο η ένδειξη του ρολογιού.
+    /// </summary>
+    public const double TicksPerSol = 144.0;
 
-    private const double MinutesPerSol = 24 * 60;
-
-    /// <summary>Ticks που αντιστοιχούν σε ένα Sol (144).</summary>
-    public const double TicksPerSol = MinutesPerSol / InGameMinutesPerTick;
+    /// <summary>Ώρες που δείχνει το ρολόι ανά tick — η ένδειξη προχωρά σε βήματα 1 ώρας.</summary>
+    public const int DisplayHoursPerTick = 1;
 
     public GameSpeed Speed { get; set; } = GameSpeed.Normal;
     public long TotalTicks { get; private set; }
@@ -49,8 +50,9 @@ public sealed class GameClock
     /// <summary>Επαναφορά μετρητή ticks (για load παιχνιδιού).</summary>
     public void RestoreTicks(long ticks) => TotalTicks = ticks;
 
-    public double TotalInGameMinutes => TotalTicks * InGameMinutesPerTick;
-    public int Sol => (int)(TotalInGameMinutes / MinutesPerSol) + 1;          // 1-based
-    public int HourOfSol => (int)(TotalInGameMinutes / 60 % 24);
-    public int MinuteOfHour => (int)(TotalInGameMinutes % 60);
+    // --- Ένδειξη ρολογιού: κάθε tick προχωρά τον χρόνο κατά 1 ώρα (24 ώρες = 1 Sol) ---
+    public long TotalDisplayHours => TotalTicks * DisplayHoursPerTick;
+    public int Sol => (int)(TotalDisplayHours / 24) + 1;                      // 1-based
+    public int HourOfSol => (int)(TotalDisplayHours % 24);
+    public int MinuteOfHour => 0;                                            // ακέραιες ώρες
 }

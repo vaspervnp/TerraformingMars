@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 17
-VisualStudioVersion = 17.0.31903.59
+# Visual Studio Version 18
+VisualStudioVersion = 18.7.11925.98 stable
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{827E0CD3-B72D-47B6-A68D-7590B98EB39B}"
 EndProject
@@ -10,6 +10,11 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TerraformingMars.Core.Tests", "tests\TerraformingMars.Core.Tests\TerraformingMars.Core.Tests.csproj", "{B14344E5-5151-4B53-A1BB-F5F818FDF525}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TerraformingMars.Game", "src\TerraformingMars.Game\TerraformingMars.Game.csproj", "{60C365BF-E3BF-452E-8769-F61F4CEFB389}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "docs", "docs", "{B59DAE68-7D22-4145-B001-53C473D23E49}"
+	ProjectSection(SolutionItems) = preProject
+		TerraformingMars_Spec.md = TerraformingMars_Spec.md
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -65,5 +70,8 @@ Global
 		{42556B78-1B35-46F4-93BC-30732CB5FCC9} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 		{B14344E5-5151-4B53-A1BB-F5F818FDF525} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 		{60C365BF-E3BF-452E-8769-F61F4CEFB389} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {922480E5-DA29-4EDF-AD78-8AB7E9A584CA}
 	EndGlobalSection
 EndGlobal
