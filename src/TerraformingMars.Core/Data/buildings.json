@@ -17,6 +17,7 @@
     "Category": "Habitat",
     "RequiresHabitatLink": true,
     "HousingCapacity": 6,
+    "PopulationCapacity": 1200,
     "BuildTimeTicks": 110,
     "MaxWorkers": 0,
     "Cost": { "Materials": 70, "Credits": 5000 },
@@ -257,6 +258,7 @@
     "BuildTimeTicks": 250,
     "MaxWorkers": 0,
     "HousingCapacity": 30,
+    "PopulationCapacity": 6000,
     "Cost": { "Materials": 200, "Credits": 25000 },
     "Production": { "Energy": -2.0 }
   },
@@ -271,5 +273,18 @@
     "Cost": { "Materials": 110, "Credits": 10000 },
     "Production": { "Energy": -1.8 },
     "PlanetEffects": { "Temperature": -0.025, "Pressure": -0.012 }
+  },
+  {
+    "Id": "high_density_arcology",
+    "Name": "High-Density Arcology",
+    "Description": "A vertical mega-city that houses tens of thousands in a compact footprint. Unlocks once your population reaches 10,000.",
+    "Category": "Habitat",
+    "RequiresPopulation": 10000,
+    "BuildTimeTicks": 300,
+    "MaxWorkers": 0,
+    "HousingCapacity": 40,
+    "PopulationCapacity": 30000,
+    "Cost": { "Materials": 300, "Credits": 40000 },
+    "Production": { "Energy": -6.0 }
   }
 ]

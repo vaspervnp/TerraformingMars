@@ -90,6 +90,7 @@ public static class ColonyFactory
         systems.Add(new Phase2System());
         systems.Add(new PopulationSystem(map.Seed));
         systems.Add(new LifeSupportSystem());
+        systems.Add(new SocietySystem());
         return new World(map, colony, systems);
     }
 

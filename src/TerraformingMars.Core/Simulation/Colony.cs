@@ -27,10 +27,18 @@ public sealed class Colony
     /// <summary>Βασική στέγαση (από τον χορηγό/δυσκολία) — προστίθεται στη χωρητικότητα των habitat κτιρίων.</summary>
     public int BaseHousing { get; set; }
 
-    /// <summary>Συνολικό όριο πληθυσμού: βάση χορηγού + HousingCapacity όλων των operational κτιρίων.</summary>
+    /// <summary>Συνολικό όριο επώνυμου πληθυσμού: βάση χορηγού + HousingCapacity όλων των operational κτιρίων.</summary>
     public int Housing => BaseHousing + Buildings
         .Where(b => b.State == BuildingState.Operational)
         .Sum(b => b.Definition.HousingCapacity);
+
+    /// <summary>Βασική χωρητικότητα αφηρημένου πληθυσμού (Φάση 2) από τις υπάρχουσες υποδομές της αποικίας.</summary>
+    public const double AggregateHousingBase = 3000;
+
+    /// <summary>Συνολικό όριο αφηρημένου πληθυσμού (Φάση 2): βάση + PopulationCapacity όλων των operational κτιρίων.</summary>
+    public double AggregateHousing => AggregateHousingBase + Buildings
+        .Where(b => b.State == BuildingState.Operational)
+        .Sum(b => (double)b.Definition.PopulationCapacity);
 
     public bool LifeSupportFailing { get; set; }
     public int LifeSupportFailingTicks { get; internal set; }
@@ -80,6 +88,8 @@ public sealed class Colony
     {
         if (!def.Buildable) return PlacementResult.Fail("not buildable");
         if (!Tech.IsResearched(def.RequiredTech)) return PlacementResult.Fail("locked (needs research)");
+        if (def.RequiresPopulation > 0 && Population < def.RequiresPopulation)
+            return PlacementResult.Fail($"needs population {def.RequiresPopulation:N0}");
 
         var tile = map.GetTile(hex);
         if (tile is null) return PlacementResult.Fail("outside map");

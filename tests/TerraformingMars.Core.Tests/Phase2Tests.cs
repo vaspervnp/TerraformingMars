@@ -39,9 +39,12 @@ public class Phase2TransitionTests
     [Fact]
     public void Phase2_Migration_Grows_Population_Each_Tick()
     {
-        var world = new World(Map(), new Colony(), new ISimulationSystem[] { new Phase2System() });
+        var world = new World(Map(), new Colony(), new ISimulationSystem[] { new SocietySystem() });
+        world.Colony.Ledger.Set(ResourceKind.Food, 10_000);   // πλεόνασμα ώστε να μεγαλώνει, όχι να συρρικνώνεται
+        world.Colony.Ledger.Set(ResourceKind.Water, 10_000);
+        world.Colony.Ledger.Set(ResourceKind.Energy, 10_000);
         RestoreToTargets(world);
-        world.Tick(); // μετάβαση, Population = 1000
+        world.Tick(); // μετάβαση, Population = 1000 (η SocietySystem δεν έχει τρέξει ακόμα σε Φάση 2)
         double afterTransition = world.Colony.Population;
 
         for (int i = 0; i < 50; i++) world.Tick();
@@ -300,6 +303,139 @@ public class Phase2SaveTests
         Assert.False(loaded.Phase2Active);
         Assert.Equal(0, loaded.Colony.Population);
         Assert.False(loaded.Colony.Tech.Phase2Unlocked);
+    }
+}
+
+public class Phase2SocietyTests
+{
+    private static HexMap Map() =>
+        new MapGenerator(new MapGenerationSettings { Width = 24, Height = 24, Seed = 11 }).Generate();
+
+    private static void ToTargets(World w) =>
+        w.Planet.Restore(PlanetState.TargetTemperature, PlanetState.TargetPressure,
+            PlanetState.TargetOxygen, PlanetState.TargetWater, 0);
+
+    private static World Phase2World(Colony colony, out HexMap map)
+    {
+        map = Map();
+        var w = new World(map, colony, new ISimulationSystem[] { new SocietySystem() });
+        colony.Ledger.Set(ResourceKind.Food, 100_000);
+        colony.Ledger.Set(ResourceKind.Water, 100_000);
+        colony.Ledger.Set(ResourceKind.Energy, 100_000);
+        ToTargets(w);
+        w.Tick(); // μετάβαση στη Φάση 2 (Population = 1000)
+        return w;
+    }
+
+    [Fact]
+    public void Population_Grows_Toward_Housing_Cap_Then_Stops()
+    {
+        var colony = new Colony();
+        var world = Phase2World(colony, out _);
+        Assert.Equal(World.Phase2StartingPopulation, colony.Population, 3);
+
+        for (int i = 0; i < 5000; i++) world.Tick();
+
+        // Χωρίς extra κτίρια, το cap είναι η βάση (3000)· ο πληθυσμός φτάνει εκεί και σταματά.
+        Assert.Equal(Colony.AggregateHousingBase, colony.Population, 1);
+        Assert.False(world.StagnationActive);
+    }
+
+    [Fact]
+    public void Overcapacity_Triggers_Stagnation_Decline_And_Production_Penalty()
+    {
+        var colony = new Colony();
+        var world = Phase2World(colony, out _);
+        colony.Population = 5000; // πάνω από το base cap (3000)
+
+        world.Tick();
+
+        Assert.True(world.StagnationActive);
+        Assert.True(world.ProductionEfficiency < 1.0);
+        Assert.True(colony.Population < 5000); // συρρικνώνεται προς το βιώσιμο
+    }
+
+    [Fact]
+    public void Resource_Shortfall_Triggers_Stagnation()
+    {
+        var colony = new Colony();
+        var world = Phase2World(colony, out _);
+        colony.Population = 2000;                       // κάτω από το cap...
+        colony.Ledger.Set(ResourceKind.Food, 0);       // ...αλλά χωρίς τροφή
+
+        world.Tick();
+
+        Assert.True(world.StagnationActive);
+        Assert.True(colony.Population < 2000);
+    }
+
+    [Fact]
+    public void Reaching_10k_Fires_Urbanization_And_Unlocks_Arcology()
+    {
+        var map = Map();
+        var colony = new Colony();
+        // Στέγαση αρκετή για >10k: 2 domeless cities (6000 έκαστη) + base 3000 = 15000.
+        var catalog = BuildingCatalog.LoadDefault();
+        colony.AddBuilding(new Building(catalog.Get("domeless_city"), map.Tiles.ElementAt(0).Coord, startOperational: true));
+        colony.AddBuilding(new Building(catalog.Get("domeless_city"), map.Tiles.ElementAt(1).Coord, startOperational: true));
+        var world = new World(map, colony, new ISimulationSystem[] { new SocietySystem() });
+        colony.Ledger.Set(ResourceKind.Food, 100_000);
+        colony.Ledger.Set(ResourceKind.Water, 100_000);
+        colony.Ledger.Set(ResourceKind.Energy, 100_000);
+        ToTargets(world);
+        world.Tick();                 // → Φάση 2
+        colony.Population = 9999;
+        world.Tick();                 // μεγαλώνει σε >10000 → latch
+
+        Assert.True(world.UrbanizationReached);
+
+        // Το arcology είναι πλέον τοποθετήσιμο.
+        colony.Ledger.Set(ResourceKind.Credits, 100_000);
+        var arco = catalog.Get("high_density_arcology");
+        var tile = map.Tiles.First(t => t.IsBuildable && !colony.IsOccupied(t.Coord));
+        Assert.True(colony.TryPlaceBuilding(arco, tile.Coord, map).Success);
+    }
+
+    [Fact]
+    public void Arcology_Placement_Gated_By_Population()
+    {
+        var map = Map();
+        var colony = new Colony();
+        colony.Ledger.Set(ResourceKind.Credits, 100_000);
+        var arco = BuildingCatalog.LoadDefault().Get("high_density_arcology");
+        var tile = map.Tiles.First(t => t.IsBuildable);
+
+        Assert.False(colony.TryPlaceBuilding(arco, tile.Coord, map).Success); // pop 0 < 10000
+
+        colony.Population = 10_000;
+        Assert.True(colony.TryPlaceBuilding(arco, tile.Coord, map).Success);
+    }
+
+    [Fact]
+    public void UrbanizationReached_Round_Trips_Through_Save()
+    {
+        var map = Map();
+        var catalog = BuildingCatalog.LoadDefault();
+        var sponsors = SponsorCatalog.LoadDefault();
+        var colony = new Colony();
+        colony.AddBuilding(new Building(catalog.Get("domeless_city"), map.Tiles.ElementAt(0).Coord, startOperational: true));
+        colony.AddBuilding(new Building(catalog.Get("domeless_city"), map.Tiles.ElementAt(1).Coord, startOperational: true));
+        var world = new World(map, colony, new ISimulationSystem[] { new SocietySystem() });
+        colony.Ledger.Set(ResourceKind.Food, 100_000);
+        colony.Ledger.Set(ResourceKind.Water, 100_000);
+        colony.Ledger.Set(ResourceKind.Energy, 100_000);
+        ToTargets(world);
+        world.Tick();
+        colony.Population = 10_500;
+        world.Tick();
+        Assert.True(world.UrbanizationReached);
+
+        var loaded = SaveSystem.Load(SaveSystem.ToJson(world, sponsors.Get("normal")), catalog, sponsors, out _);
+        Assert.True(loaded.UrbanizationReached);
+        loaded.Colony.Ledger.Set(ResourceKind.Credits, 100_000);
+        var arco = catalog.Get("high_density_arcology");
+        var tile = loaded.Map.Tiles.First(t => t.IsBuildable && !loaded.Colony.IsOccupied(t.Coord));
+        Assert.True(loaded.Colony.TryPlaceBuilding(arco, tile.Coord, loaded.Map).Success);
     }
 }
 

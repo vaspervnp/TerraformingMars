@@ -59,6 +59,7 @@ public static class SaveSystem
             Crew = colony.Crew,
             Population = colony.Population,
             Phase2Active = world.Phase2Active,
+            UrbanizationReached = world.UrbanizationReached,
             HasCaveShelter = world.HasCaveShelter,
             SolarEfficiency = world.SolarEfficiency,
             Planet = new PlanetSave
@@ -163,7 +164,8 @@ public static class SaveSystem
             new BiosphereSystem(),
             new Phase2System(),
             new PopulationSystem(map.Seed),
-            new LifeSupportSystem()
+            new LifeSupportSystem(),
+            new SocietySystem()
         };
 
         var world = new World(map, colony, systems);
@@ -173,6 +175,7 @@ public static class SaveSystem
         world.HasCaveShelter = save.HasCaveShelter;
         world.SolarEfficiency = save.SolarEfficiency;
         world.Phase2Active = save.Phase2Active;
+        world.UrbanizationReached = save.UrbanizationReached;
 
         // Παλιό (προ-Φάσης-2) save που ήταν ήδη terraformed: μπες σιωπηλά στη Φάση 2 κατά το load,
         // ώστε το World.Tick να ΜΗΝ ξαναπυροδοτήσει τον εορτασμό/chime στο πρώτο tick.

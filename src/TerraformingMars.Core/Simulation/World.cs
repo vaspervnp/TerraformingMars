@@ -55,6 +55,26 @@ public sealed class World
     /// <summary>Αρχικός πληθυσμός τη στιγμή της μετάβασης στη Φάση 2.</summary>
     public const double Phase2StartingPopulation = 1000;
 
+    // --- Phase 2A: Κοινωνία & πληθυσμιακή κλίμακα ---
+    /// <summary>Εφήμερο (δεν σώζεται): true όταν ο πληθυσμός ξεπερνά τη στέγαση ή λείπουν πόροι (systemic stagnation).</summary>
+    public bool StagnationActive { get; internal set; }
+    /// <summary>Εφήμερο (δεν σώζεται): πολλαπλασιαστής παραγωγής (1.0 κανονικά, &lt;1 σε stagnation). Το διαβάζει το ProductionSystem.</summary>
+    public double ProductionEfficiency { get; internal set; } = 1.0;
+    /// <summary>Latched (σώζεται): έχει φτάσει το κατώφλι Urbanization (10.000) — ξεκλειδώνει το arcology.</summary>
+    public bool UrbanizationReached { get; internal set; }
+    /// <summary>Εφήμερο one-shot (δεν σώζεται): το UI το «καταναλώνει» για την ειδοποίηση Urbanization.</summary>
+    public bool UrbanizationPending { get; internal set; }
+    /// <summary>Πληθυσμιακό κατώφλι της εποχής Urbanization (Threshold 1).</summary>
+    public const int UrbanizationThreshold = 10000;
+
+    /// <summary>Καταναλώνει (μία φορά) το σήμα Urbanization από το UI.</summary>
+    public bool ConsumeUrbanization()
+    {
+        if (!UrbanizationPending) return false;
+        UrbanizationPending = false;
+        return true;
+    }
+
     /// <summary>Γεγονότα που μόλις ξεκίνησαν αυτό το βήμα· τα «καταναλώνει» το UI για popup (εφήμερο, δεν σώζεται).</summary>
     public List<EventStart> StartedEvents { get; } = new();
 

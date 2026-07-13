@@ -1593,8 +1593,11 @@ public class MarsGame : Microsoft.Xna.Framework.Game
         if (KeyPressed(keys, Keys.D2)) _world.Clock.Speed = GameSpeed.Fast;
         if (KeyPressed(keys, Keys.D3)) _world.Clock.Speed = GameSpeed.Ultra;
 
-        // Διαθέσιμα κτίρια = όσα έχουν ξεκλειδωθεί από έρευνα
-        _buildables = _catalog.Buildables.Where(d => _world.Colony.Tech.IsResearched(d.RequiredTech)).ToList();
+        // Διαθέσιμα κτίρια = όσα έχουν ξεκλειδωθεί από έρευνα ΚΑΙ από το πληθυσμιακό κατώφλι
+        _buildables = _catalog.Buildables
+            .Where(d => _world.Colony.Tech.IsResearched(d.RequiredTech)
+                        && _world.Colony.Population >= d.RequiresPopulation)
+            .ToList();
         if (_buildIndex >= _buildables.Count) _buildIndex = 0;
 
         // Επιλογή έρευνας: T κυκλώνει τα διαθέσιμα techs ως target
@@ -1649,6 +1652,14 @@ public class MarsGame : Microsoft.Xna.Framework.Game
 
         // Μετάβαση στη Φάση 2 → one-time modal εορτασμού (celebrate-then-continue).
         if (_world.ConsumePhase2Celebration()) _phase2Celebrating = true;
+
+        // Κατώφλι Urbanization (10k) → ξεκλειδώνει το High-Density Arcology.
+        if (_world.ConsumeUrbanization())
+        {
+            _status = "URBANIZATION ERA - population 10,000 - High-Density Arcology unlocked";
+            _statusTimer = 5.0;
+            _audio.Chime();
+        }
 
         // Τεχνολογίες που μόλις ολοκληρώθηκαν → modal popup (μία-μία, με «X» πάνω δεξιά).
         foreach (var id in _world.Colony.Tech.Researched)
@@ -2849,10 +2860,11 @@ public class MarsGame : Microsoft.Xna.Framework.Game
         int idle = _world.Colony.IdleColonists.Count();
         chips.Add(("crew", crew.ToString(), $"Crew   {crew} / {_world.Colony.Housing} housing   idle {idle}", HudWhite));
 
-        // Στη Φάση 2: αφηρημένος πληθυσμός (ξεχωριστός από το πλήρωμα).
+        // Στη Φάση 2: αφηρημένος πληθυσμός / χωρητικότητα (ξεχωριστός από το πλήρωμα)· κόκκινο σε stagnation.
         if (_world.Phase2Active)
             chips.Add(("crew", FormatCompact(_world.Colony.Population),
-                $"Population   {_world.Colony.Population:N0}", new Color(150, 200, 245)));
+                $"Population   {_world.Colony.Population:N0} / {_world.Colony.AggregateHousing:N0} housing",
+                _world.StagnationActive ? falling : new Color(150, 200, 245)));
 
         // Μέτρησε πλάτη ανά chip για οριζόντιο κεντράρισμα.
         var widths = new float[chips.Count];
@@ -3091,6 +3103,8 @@ public class MarsGame : Microsoft.Xna.Framework.Game
         // Κρίσιμα alerts (μεταφέρθηκαν από το πρώην πάνω HUD ώστε να μη χάνονται).
         if (_world.RunawayActive)
             bottom.Add(("!! RUNAWAY GREENHOUSE - temp/pressure overshoot - build a Cryo-Carbon Capturer !!", HudWarn));
+        if (_world.StagnationActive)
+            bottom.Add(("!! SYSTEMIC STAGNATION - population outgrew its food/water/housing - expand infrastructure !!", HudWarn));
         if (_world.Colony.LifeSupportFailing) bottom.Add(("!! LIFE SUPPORT FAILURE !!", HudWarn));
         foreach (var ev in _world.ActiveEvents)
             bottom.Add(($"!! {EventLabel(ev.Type)}  {ev.TicksRemaining / 4}s", HudWarn));

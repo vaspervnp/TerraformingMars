@@ -4,17 +4,15 @@ using TerraformingMars.Core.Planet;
 namespace TerraformingMars.Core.Simulation;
 
 /// <summary>
-/// Ο βρόχος της Φάσης 2 («The Living Planet»): αφηρημένη μετανάστευση πληθυσμού και το
-/// <b>runaway greenhouse</b> — όταν Temperature/Pressure ξεπερνούν αισθητά τον στόχο (επειδή τα
-/// macro-engineering κτίρια μένουν αναμμένα), προκαλείται κλιμακούμενη ζημιά: φθορά υγείας
-/// αποίκων, μαράζωμα βλάστησης και εξάτμιση νερού. Ο παίκτης το αντιμετωπίζει με Cryo-Carbon
-/// Capturers. Τρέχει ΜΕΤΑ τα PlanetSystem/BiosphereSystem ώστε να διαβάζει τις τελικές τιμές του tick.
+/// Το κλιματικό σκέλος της Φάσης 2: το <b>runaway greenhouse</b> — όταν Temperature/Pressure
+/// ξεπερνούν αισθητά τον στόχο (επειδή τα macro-engineering κτίρια μένουν αναμμένα), προκαλείται
+/// κλιμακούμενη ζημιά: φθορά υγείας αποίκων, μαράζωμα βλάστησης και εξάτμιση νερού. Ο παίκτης το
+/// αντιμετωπίζει με Cryo-Carbon Capturers. Τρέχει ΜΕΤΑ τα PlanetSystem/BiosphereSystem ώστε να
+/// διαβάζει τις τελικές τιμές του tick. (Ο πληθυσμός διαχειρίζεται από το <see cref="SocietySystem"/>.)
 /// Ντετερμινιστικό (καμία τυχαιότητα): οι επιλογές tiles γίνονται με ταξινόμηση υψομέτρου.
 /// </summary>
 public sealed class Phase2System : ISimulationSystem
 {
-    private const double MigrationPerTick = 2.0;          // ~288 άτομα/Sol (144 ticks/Sol)
-
     private const double RunawayTempThreshold = 4.0;      // °C πάνω από τον στόχο για έναρξη runaway
     private const double RunawayPressureThreshold = 4.0;  // kPa πάνω από τον στόχο για έναρξη runaway
     private const double SeverityScale = 15.0;            // overshoot που δίνει severity 1.0
@@ -36,9 +34,6 @@ public sealed class Phase2System : ISimulationSystem
 
         var colony = world.Colony;
         var planet = world.Planet;
-
-        // Μετανάστευση: ο αφηρημένος πληθυσμός μεγαλώνει (κλασματικά, σώζεται ως double στο Colony).
-        colony.Population += MigrationPerTick;
 
         double tempOver = Math.Max(0, planet.Temperature - PlanetState.TargetTemperature);
         double pressOver = Math.Max(0, planet.Pressure - PlanetState.TargetPressure);

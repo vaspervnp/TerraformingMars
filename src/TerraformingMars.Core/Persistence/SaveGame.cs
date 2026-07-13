@@ -24,6 +24,9 @@ public sealed class SaveGame
     /// <summary>Αφηρημένος μεταναστευτικός πληθυσμός Φάσης 2. Παλιά saves → 0.</summary>
     public double Population { get; set; }
 
+    /// <summary>Έφτασε το κατώφλι Urbanization (10k) — latched. Παλιά saves → false.</summary>
+    public bool UrbanizationReached { get; set; }
+
     public bool HasCaveShelter { get; set; }
     public double SolarEfficiency { get; set; } = 1.0;
 

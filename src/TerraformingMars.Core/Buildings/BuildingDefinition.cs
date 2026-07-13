@@ -64,8 +64,14 @@ public sealed class BuildingDefinition
     /// <summary>Tiles βλάστησης που απλώνει/tick (βιόσφαιρα — απαιτεί ζεστασιά & νερό).</summary>
     public double VegetationSpreadPerTick { get; init; } = 0.0;
 
-    /// <summary>Πόσους αποίκους μπορεί να στεγάσει (όριο πληθυσμού).</summary>
+    /// <summary>Πόσους αποίκους μπορεί να στεγάσει (όριο επώνυμου πληθυσμού).</summary>
     public int HousingCapacity { get; init; } = 0;
+
+    /// <summary>Χωρητικότητα αφηρημένου πληθυσμού Φάσης 2 (arcologies) — ξεχωριστή από το <see cref="HousingCapacity"/>.</summary>
+    public int PopulationCapacity { get; init; } = 0;
+
+    /// <summary>Ελάχιστος αφηρημένος πληθυσμός για ξεκλείδωμα (threshold gate, π.χ. arcology στα 10.000). 0 = χωρίς όριο.</summary>
+    public int RequiresPopulation { get; init; } = 0;
 
     /// <summary>Αν true, τοποθετείται μόνο δίπλα σε υπάρχον κτίριο-κατοικία (Category "Habitat") —
     /// ώστε οι νέες κατοικίες να παραμένουν συνδεδεμένες με το δίκτυο της κάψουλας προσγείωσης.</summary>
