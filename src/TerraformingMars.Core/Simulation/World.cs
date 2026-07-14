@@ -105,6 +105,12 @@ public sealed class World
     /// <summary>Εφήμερο (δεν σώζεται): συνολικός δείκτης ρύπανσης 0..1 — τον διαβάζουν HUD & FactionSystem.</summary>
     public double PollutionLevel { get; internal set; }
 
+    // --- Phase 2B: Σεισμική αστάθεια (deep core extraction) ---
+    /// <summary>Συσσωρευμένη σεισμική αστάθεια (σώζεται)· όταν ξεπεράσει το κατώφλι → marsquake.</summary>
+    public double SeismicStress { get; internal set; }
+    /// <summary>Εφήμερο (δεν σώζεται): 0..1 δείκτης εγγύτητας σε marsquake — για το HUD.</summary>
+    public double SeismicLevel { get; internal set; }
+
     /// <summary>Γεγονότα που μόλις ξεκίνησαν αυτό το βήμα· τα «καταναλώνει» το UI για popup (εφήμερο, δεν σώζεται).</summary>
     public List<EventStart> StartedEvents { get; } = new();
 

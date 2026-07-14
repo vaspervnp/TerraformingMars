@@ -82,6 +82,9 @@ public sealed class BuildingDefinition
     /// <summary>Ρύπανση που εκπέμπει/tick στο hex του (Φάση 2, βαριά βιομηχανία). 0 = καθαρό.</summary>
     public double PollutionPerTick { get; init; } = 0.0;
 
+    /// <summary>Σεισμική αστάθεια που προσθέτει/tick (Φάση 2B, deep core drilling). Υψηλή συσσώρευση → marsquake.</summary>
+    public double SeismicPerTick { get; init; } = 0.0;
+
     /// <summary>Αν true, καθαρίζει ρύπανση στο hex του και στα γειτονικά (μονάδα αντιρρύπανσης).</summary>
     public bool ScrubsPollution { get; init; } = false;
 

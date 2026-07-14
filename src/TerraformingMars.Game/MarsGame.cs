@@ -3118,6 +3118,8 @@ public class MarsGame : Microsoft.Xna.Framework.Game
                 _world.IndustrialStrike || _world.EcologistStrike ? HudWarn : HudDim));
         if (_world.PollutionLevel > 0.5)
             bottom.Add(("!! HEAVY POLLUTION - industry is withering nearby vegetation - build Atmospheric Scrubbers !!", HudWarn));
+        if (_world.SeismicLevel > 0.7)
+            bottom.Add(("!! SEISMIC INSTABILITY - marsquake imminent - space out your Deep Core Drills !!", HudWarn));
         if (_world.IndustrialStrike)
             bottom.Add(("!! INDUSTRIALIST STRIKE - mines & factories halted - build a District Town Hall !!", HudWarn));
         if (_world.EcologistStrike)

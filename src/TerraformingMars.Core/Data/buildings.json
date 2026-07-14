@@ -339,5 +339,19 @@
     "MaterialsExportPerTick": 2.0,
     "Cost": { "Materials": 150, "Credits": 30000 },
     "Production": { "Energy": -8.0 }
+  },
+  {
+    "Id": "deep_core_drill",
+    "Name": "Deep Core Plasma Drill",
+    "Description": "Bores into the mantle for a limitless supply of iron and silicon - but the deep drilling destabilises the crust, risking marsquakes that crack nearby buildings.",
+    "Category": "Industry",
+    "RequiredTech": "core_mantle_penetration",
+    "BuildTimeTicks": 200,
+    "MaxWorkers": 1,
+    "OptimalSpecialty": "Geologist",
+    "SeismicPerTick": 0.05,
+    "PollutionPerTick": 0.03,
+    "Cost": { "Materials": 120, "Credits": 15000 },
+    "Production": { "Materials": 2.0, "Silicon": 1.5, "Energy": -4.0 }
   }
 ]

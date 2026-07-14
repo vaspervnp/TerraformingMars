@@ -33,6 +33,9 @@ public sealed class SaveGame
     /// <summary>Έφτασε το κατώφλι Industrial Shift (50k) — latched. Παλιά saves → false.</summary>
     public bool IndustrialShiftReached { get; set; }
 
+    /// <summary>Συσσωρευμένη σεισμική αστάθεια (Φάση 2B). Παλιά saves → 0.</summary>
+    public double SeismicStress { get; set; }
+
     /// <summary>Έγκριση παρατάξεων Φάσης 2 (0..1). Παλιά saves → 0.6 (ουδέτερο, όχι απεργία).</summary>
     public double IndustrialistApproval { get; set; } = 0.6;
     public double EcologistApproval { get; set; } = 0.6;

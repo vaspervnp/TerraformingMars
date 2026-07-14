@@ -166,5 +166,15 @@
     "Cost": 700,
     "Prerequisites": [ "mass_driver" ],
     "Unlocks": [ "quantum_processor_plant" ]
+  },
+  {
+    "Id": "core_mantle_penetration",
+    "Name": "Core-Mantle Penetration",
+    "Description": "Plasma drills that reach the mantle for near-limitless metals - at the cost of seismic instability.",
+    "Phase": 6,
+    "RequiresPhase2": true,
+    "Cost": 800,
+    "Prerequisites": [ "heavy_metallurgy" ],
+    "Unlocks": [ "deep_core_drill" ]
   }
 ]

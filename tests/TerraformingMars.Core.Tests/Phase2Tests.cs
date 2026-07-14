@@ -2,6 +2,7 @@ using TerraformingMars.Core.Buildings;
 using TerraformingMars.Core.Colonists;
 using TerraformingMars.Core.Events;
 using TerraformingMars.Core.Generation;
+using TerraformingMars.Core.Grid;
 using TerraformingMars.Core.Map;
 using TerraformingMars.Core.Persistence;
 using TerraformingMars.Core.Planet;
@@ -813,6 +814,117 @@ public class Phase2BEconomyTests
         var loaded = SaveSystem.Load(SaveSystem.ToJson(world, sponsors.Get("normal")), catalog, sponsors, out _);
 
         Assert.True(loaded.IndustrialShiftReached);
+    }
+}
+
+public class Phase2BSeismicTests
+{
+    private static HexMap Map() =>
+        new MapGenerator(new MapGenerationSettings { Width = 24, Height = 24, Seed = 11 }).Generate();
+
+    private static void ToTargets(World w) =>
+        w.Planet.Restore(PlanetState.TargetTemperature, PlanetState.TargetPressure,
+            PlanetState.TargetOxygen, PlanetState.TargetWater, 0);
+
+    private static Building StaffedDrill(Colony colony, HexMap map, Hex at)
+    {
+        var drill = new Building(BuildingCatalog.LoadDefault().Get("deep_core_drill"), at, startOperational: true);
+        colony.AddBuilding(drill);
+        var geo = new Colonist("G", Specialty.Geologist);
+        colony.Colonists.Add(geo);
+        colony.Assign(geo, drill);
+        return drill;
+    }
+
+    [Fact]
+    public void Deep_Core_Drilling_Builds_Seismic_Stress()
+    {
+        var map = Map();
+        var colony = new Colony();
+        StaffedDrill(colony, map, map.Tiles.First(t => t.IsBuildable).Coord);
+        var world = new World(map, colony, new ISimulationSystem[] { new SeismicSystem() });
+        ToTargets(world);
+        world.Tick(); // → Φάση 2
+        for (int i = 0; i < 20; i++) world.Tick();
+
+        Assert.True(world.SeismicStress > 0);
+        Assert.True(world.SeismicLevel > 0);
+    }
+
+    [Fact]
+    public void Seismic_Stress_Does_Not_Build_Before_Phase2()
+    {
+        var map = Map();
+        var colony = new Colony();
+        StaffedDrill(colony, map, map.Tiles.First(t => t.IsBuildable).Coord);
+        var world = new World(map, colony, new ISimulationSystem[] { new SeismicSystem() });
+        for (int i = 0; i < 100; i++) world.Tick(); // ΟΧΙ terraformed
+
+        Assert.Equal(0, world.SeismicStress, 6);
+    }
+
+    [Fact]
+    public void Marsquake_Cracks_Nearby_Buildings()
+    {
+        var map = Map();
+        var drillTile = map.Tiles.First(t => t.IsBuildable && map.GetTile(t.Coord.Neighbor(0)) is { IsBuildable: true });
+        var neighbor = drillTile.Coord.Neighbor(0);
+        var colony = new Colony();
+        StaffedDrill(colony, map, drillTile.Coord);
+        var solar = new Building(BuildingCatalog.LoadDefault().Get("solar_panel"), neighbor, startOperational: true);
+        colony.AddBuilding(solar);
+        var world = new World(map, colony, new ISimulationSystem[] { new SeismicSystem() });
+        ToTargets(world);
+        world.Tick();
+        for (int i = 0; i < 400; i++) world.Tick(); // η πίεση ξεπερνά το κατώφλι → marsquake
+
+        Assert.Equal(BuildingState.Disabled, solar.State);        // ράγισε το γειτονικό
+        Assert.True(solar.RepairTicksRemaining > 0);
+        Assert.Contains(world.EventNotifications, n => n.Contains("Marsquake"));
+    }
+
+    [Fact]
+    public void Deep_Core_Drill_Produces_Metals_Without_A_Deposit()
+    {
+        var map = Map();
+        var colony = new Colony();
+        StaffedDrill(colony, map, map.Tiles.First(t => t.IsBuildable).Coord);
+        colony.Ledger.Set(ResourceKind.Energy, 100_000);
+        var world = new World(map, colony, new ISimulationSystem[] { new ProductionSystem() });
+
+        for (int i = 0; i < 10; i++) world.Tick();
+
+        Assert.True(colony.Ledger.Get(ResourceKind.Materials) > 0);
+        Assert.True(colony.Ledger.Get(ResourceKind.Silicon) > 0);
+    }
+
+    [Fact]
+    public void Deep_Core_Drill_Gated_By_Tech()
+    {
+        var map = Map();
+        var colony = new Colony();
+        colony.Ledger.Set(ResourceKind.Credits, 100_000);
+        var drill = BuildingCatalog.LoadDefault().Get("deep_core_drill");
+        var tile = map.Tiles.First(t => t.IsBuildable);
+
+        Assert.False(colony.TryPlaceBuilding(drill, tile.Coord, map).Success); // locked
+
+        colony.Tech.Researched.Add("core_mantle_penetration");
+        Assert.True(colony.TryPlaceBuilding(drill, tile.Coord, map).Success);
+    }
+
+    [Fact]
+    public void Seismic_Stress_Round_Trips_Through_Save()
+    {
+        var map = Map();
+        var catalog = BuildingCatalog.LoadDefault();
+        var sponsors = SponsorCatalog.LoadDefault();
+        var world = new World(map, new Colony(), System.Array.Empty<ISimulationSystem>());
+        world.SeismicStress = 10.0;
+
+        var loaded = SaveSystem.Load(SaveSystem.ToJson(world, sponsors.Get("normal")), catalog, sponsors, out _);
+
+        Assert.Equal(10.0, loaded.SeismicStress, 3);
     }
 }
 
