@@ -1,272 +1,275 @@
-# Terraforming Mars — Οδηγός Παιχνιδιού (Gameplay)
+# Terraforming Mars — Gameplay Guide
 
-## Τι είναι αυτό το παιχνίδι
+**🇬🇧 English** · [🇬🇷 Ελληνικά](GAMEPLAY.el.md)
 
-Είσαι ο επικεφαλής μιας αποικίας στον **Άρη**. Ξεκινάς με μια μικρή κάψουλα προσγείωσης, μια χούφτα αποίκους και λίγα εφόδια — και η αποστολή σου είναι μεγαλειώδης: να μετατρέψεις έναν παγωμένο, άψυχο πλανήτη σε έναν κόσμο όπου οι άνθρωποι μπορούν να ζήσουν στο ύπαιθρο, χωρίς στολή.
+## What this game is
 
-Είναι ένα παιχνίδι **στρατηγικής και διαχείρισης** σε πραγματικό χρόνο (με δυνατότητα παύσης). Χτίζεις κτήρια, διαχειρίζεσαι πόρους, φροντίζεις το πλήρωμά σου, ερευνάς νέες τεχνολογίες και σιγά-σιγά «ζεσταίνεις» και «ζωντανεύεις» ολόκληρο τον πλανήτη. Δεν υπάρχουν αντίπαλοι παίκτες — ο πραγματικός αντίπαλος είναι η φύση του Άρη: το κρύο, η αραιή ατμόσφαιρα, η ακτινοβολία και η έλλειψη πόρων.
+You are in charge of a colony on **Mars**. You begin with a small landing capsule, a handful of colonists and a few supplies — and your mission is enormous: to turn a frozen, lifeless planet into a world where people can walk outside without a suit.
 
----
-
-## Ο μεγάλος στόχος: να «τερραφορμάρεις» τον Άρη
-
-Στην κορυφή της οθόνης υπάρχουν **τέσσερις μετρητές-στόχοι**. Για να κερδίσεις, πρέπει και οι τέσσερις να φτάσουν στο **100%**:
-
-- **🌡️ Θερμοκρασία (Temperature)** — ζεσταίνεις τον πλανήτη με θερμοκήπια αερίων, τεράστιους τροχιακούς καθρέφτες που εστιάζουν το φως του ήλιου, κ.λπ.
-- **🎈 Πίεση (Pressure)** — πυκνώνεις την ατμόσφαιρα ώστε να μπορεί να κρατήσει θερμότητα και αέρα.
-- **💨 Οξυγόνο (Oxygen)** — γεμίζεις τον αέρα με αναπνεύσιμο οξυγόνο, κυρίως μέσω φυτών και μικροοργανισμών.
-- **💧 Νερό (Water)** — λιώνεις πάγους και ρίχνεις κομήτες ώστε να καλυφθεί η επιφάνεια με υγρό νερό.
-
-Όταν και τα τέσσερα χτυπήσουν 100% — **και το πλήρωμά σου είναι ζωντανό** — έχεις νικήσει: ο Άρης έγινε κατοικήσιμος.
-
-**Χάνεις** αν η αποικία καταρρεύσει: αν τελειώσει η υποστήριξη ζωής και οι άποικοι δεν έχουν αέρα, νερό ή τροφή για να επιβιώσουν.
-
-Είναι ένα μακρύ ταξίδι: ξεκινάς κρατώντας ζωντανούς λίγους ανθρώπους και καταλήγεις να αναδιαμορφώνεις έναν ολόκληρο πλανήτη.
-
-> ### 🌍 Και μετά;
-> Η νίκη **δεν είναι το τέλος του παιχνιδιού**. Τη στιγμή που ο Άρης γίνεται κατοικήσιμος, ξεκινά η
-> **Φάση 2: Ο Ζωντανός Πλανήτης** — ένα ολόκληρο δεύτερο μισό, όπου ο κόσμος που έφτιαξες αρχίζει να
-> έχει δική του ζωή, δικά του προβλήματα και δική του θέληση. Δες παρακάτω.
+It is a real-time **strategy and management** game (pausable at any moment). You put up buildings, manage resources, look after your crew, research new technologies, and gradually warm and awaken an entire planet. There are no rival players — your real opponent is Mars itself: the cold, the thin air, the radiation and the scarcity.
 
 ---
 
-## Ο πλανήτης και ο χάρτης
+## The big goal: terraforming Mars
 
-Παίζεις πάνω σε έναν χάρτη από **εξάγωνα** (hexes). Κάθε εξάγωνο έχει:
+At the top of the screen sit **four target gauges**. To win, all four must reach **100%**:
 
-- **Έδαφος** — πεδιάδες, χαμηλώματα, υψώματα, κρατήρες. Καθώς τερραφορμάρεις, εμφανίζεται **νερό** και αργότερα **βλάστηση**.
-- **Υψόμετρο** — επηρεάζει πού μπορείς να χτίσεις και πού θα «πλημμυρίσει» το νερό.
-- **Κοιτάσματα** — κρυμμένοι θησαυροί κάτω από την επιφάνεια, που φαίνονται ως χρωματιστά διαμάντια:
-  - **Πάγος (H₂O)** → νερό
-  - **Σίδηρος (Fe)** → υλικά
-  - **Πυρίτιο (Si)** → ηλεκτρονικά & εξαγωγές
-  - **Ρεγόλιθος (Rg)** → πρώτη ύλη για υλικά
+- **🌡️ Temperature** — you warm the planet with greenhouse-gas factories, vast orbital mirrors that focus sunlight, and so on.
+- **🎈 Pressure** — you thicken the atmosphere so that it can hold onto heat and air.
+- **💨 Oxygen** — you fill the air with breathable oxygen, mostly through plants and microorganisms.
+- **💧 Water** — you melt the ice caps and drop comets until liquid water covers the surface.
 
-Μπορείς να κινείς την κάμερα και να κάνεις zoom για να εξερευνήσεις τον χάρτη και να βρεις τα καλύτερα σημεία για τα ορυχεία σου.
+When all four hit 100% — **and your crew is still alive** — you have won: Mars is habitable.
 
----
+**You lose** if the colony collapses: if life support runs dry and your colonists have no air, water or food left.
 
-## Οι πόροι σου
+It is a long journey: you start by keeping a few people alive, and you end up reshaping an entire planet.
 
-Η αποικία λειτουργεί με μια «οικονομία» πόρων. Στη μπάρα στην κορυφή βλέπεις πόσα έχεις από το καθένα — και οι αριθμοί γίνονται **κόκκινοι όταν μειώνονται**, για να σε προειδοποιήσουν.
-
-- **⚡ Ενέργεια (Energy)** — «ρεύμα» για όλα τα κτήρια. Αν τελειώσει, πέφτει «μπλακ-άουτ» και σταματούν να δουλεύουν.
-- **💧 Νερό (Water)** — για το πλήρωμα και για την καλλιέργεια τροφής.
-- **💨 Οξυγόνο (Oxygen)** — για να αναπνέουν οι άποικοι (ξεχωριστό από το ατμοσφαιρικό οξυγόνο-στόχο).
-- **🍎 Τροφή (Food)** — για να τρέφεται το πλήρωμα.
-- **📦 Υλικά (Materials)** — «τούβλα & μέταλλα» για την κατασκευή κτηρίων.
-- **🔷 Πυρίτιο (Silicon)** — για προηγμένα κτήρια και για πώληση στη Γη.
-- **💰 Credits** — το χρήμα· το ξοδεύεις για να χτίσεις και το κερδίζεις από εξαγωγές.
-- **👷 Πλήρωμα (Crew)** — οι άνθρωποί σου (βλ. παρακάτω).
-
-Η κάψουλα προσγείωσης είναι η κεντρική **αποθήκη**: όλα τα εφόδια μαζεύονται εκεί. Κάθε κτήριο είτε **παράγει** είτε **καταναλώνει** πόρους κάθε στιγμή, οπότε το κόλπο είναι να κρατάς την ισορροπία θετική.
+> ### 🌍 And then?
+> Winning **is not the end of the game**. The moment Mars becomes habitable, **Phase 2: The Living
+> Planet** begins — an entire second half, in which the world you built starts to have a life, a set of
+> problems, and a will of its own. See below.
 
 ---
 
-## Το πλήρωμα (οι άποικοι)
+## The planet and the map
 
-Οι άποικοι είναι πολύτιμοι. Καθένας έχει μια **ειδικότητα**, και όταν τον βάζεις να δουλέψει στο «σωστό» κτήριο, αυτό αποδίδει καλύτερα:
+You play on a map of **hexagons**. Each hex has:
 
-- **Γεωλόγος (Geologist)** — καλύτερος στα ορυχεία & γεωτρήσεις, εντοπίζει κρυμμένα κοιτάσματα.
-- **Μηχανικός (Engineer)** — πιο γρήγορες κατασκευές, καλύτερα εργοστάσια, λιγότερες βλάβες.
-- **Βοτανολόγος (Botanist)** — περισσότερη τροφή και ταχύτερη ανάπτυξη βλάστησης.
-- **Κλιματολόγος (Climatologist)** — μπόνους στα μεγάλα έργα πλανητικής μηχανικής.
-- **Γιατρός (Doctor)** — εμφανίζεται στη **Φάση 2**· στελεχώνει τα Νοσοκομεία Απομόνωσης και είναι η μόνη σου άμυνα απέναντι στην **Άρεια Πανώλη**.
+- **Terrain** — plains, lowlands, highlands, craters. As you terraform, **water** appears, and later **vegetation**.
+- **Elevation** — it decides where you can build and where the water will flood.
+- **Deposits** — buried treasure, shown as coloured diamonds:
+  - **Ice (H₂O)** → water
+  - **Iron (Fe)** → materials
+  - **Silicon (Si)** → electronics & exports
+  - **Regolith (Rg)** → raw feedstock for materials
 
-**Πώς τους διαχειρίζεσαι:** κάνεις δεξί κλικ σε ένα κτήριο για να το επιλέξεις, και μετά με τα κουμπιά **[+] / [–]** (ή τα πλήκτρα +/–) αναθέτεις ή αφαιρείς εργαζόμενους. Ένα κτήριο με προσωπικό παράγει περισσότερα από ένα άδειο.
-
-Ο πληθυσμός **μεγαλώνει με τον χρόνο**, αρκεί να υπάρχει στέγη (κατοικίες) και οι συνθήκες ζωής (τροφή, υγεία, ηθικό) να είναι καλές.
-
----
-
-## Τα κτήρια
-
-Χτίζεις πατώντας το εικονίδιο των κτηρίων στην κάτω μπάρα, διαλέγεις ένα κτήριο και μετά κλικ σε ένα εξάγωνο. Κάθε κτήριο κοστίζει **Credits άμεσα**, συν **Υλικά όσο κατασκευάζεται**. Τα ορυχεία πρέπει να μπουν πάνω στο κατάλληλο κοίτασμα.
-
-Οι βασικές κατηγορίες:
-
-- **🏠 Κατοικία** — κάψουλα προσγείωσης, στεγαστικές μονάδες, και αργότερα ολόκληρες «πόλεις χωρίς θόλο» για τεράστιο πληθυσμό όταν ο αέρας γίνει αναπνεύσιμος.
-- **⚡ Ενέργεια** — ηλιακά πάνελ (αδυνατίζουν στις αμμοθύελλες), μπαταρίες (αποθήκευση), και πυρηνικοί αντιδραστήρες (σταθερή ισχύ ανεξάρτητη από τον ήλιο).
-- **🫧 Υποστήριξη Ζωής** — ανακυκλωτές οξυγόνου, γεωτρύπανα πάγου για νερό.
-- **🌱 Τροφή** — υδροπονικοί θάλαμοι.
-- **🏭 Βιομηχανία** — επεξεργαστές ρεγόλιθου, ορυχεία σιδήρου/πυριτίου, και τερματικά εξαγωγής (πουλάνε πυρίτιο στη Γη για σταθερό εισόδημα).
-- **🔬 Έρευνα** — εργαστήρια που παράγουν πόντους έρευνας.
-- **🪐 Πλανητική Μηχανική** (τα «μεγάλα όπλα» του τερραφορμινγκ) — εργοστάσια αερίων θερμοκηπίου, τροχιακοί καθρέφτες, σταθμός τεχνητής μαγνητόσφαιρας (προστατεύει την ατμόσφαιρα), εκτροπείς κομητών (φέρνουν νερό & πίεση).
-- **🌳 Βιόσφαιρα** — κυανοβακτήρια, γενετικά τροποποιημένα δάση, καταφύγια άγριας ζωής· παράγουν οξυγόνο και **απλώνουν βλάστηση** στην επιφάνεια.
+You can pan and zoom the camera to scout the map and find the best spots for your mines.
 
 ---
 
-## Έρευνα & Τεχνολογία
+## Your resources
 
-Τα εργαστήριά σου παράγουν **πόντους έρευνας**. Ανοίγεις το μενού έρευνας, διαλέγεις μια τεχνολογία και περιμένεις να συγκεντρωθούν αρκετοί πόντοι για να την ξεκλειδώσεις. Νέες τεχνολογίες ξεκλειδώνουν **νέα κτήρια** και δυνατότητες.
+The colony runs on a resource "economy". The bar at the top shows how much of each you hold — and the numbers turn **red when they are falling**, to warn you.
 
-Η τεχνολογία εξελίσσεται σε **φάσεις**:
+- **⚡ Energy** — the "power" behind every building. If it runs out, you get a blackout and things stop working.
+- **💧 Water** — for the crew and for growing food.
+- **💨 Oxygen** — for your colonists to breathe (separate from the atmospheric-oxygen target).
+- **🍎 Food** — to feed the crew.
+- **📦 Materials** — the "bricks and metal" that buildings are made of.
+- **🔷 Silicon** — for advanced buildings, and to sell to Earth.
+- **💰 Credits** — money; you spend it to build and earn it from exports.
+- **👷 Crew** — your people (see below).
 
-1. **Επιβίωση** — τη γνωρίζεις ήδη από την αρχή (τα βασικά κτήρια).
-2. **Βιομηχανική Επέκταση** — πυρηνική ενέργεια, μεταλλουργία, εξόρυξη πυριτίου, εξαγωγές, εργοστάσια αερίων θερμοκηπίου.
-3. **Πλανητική Μηχανική** — τροχιακοί καθρέφτες, τεχνητή μαγνητόσφαιρα, εκτροπή κομητών.
-4. **Βιόσφαιρα & Οικοσύστημα** — μικροοργανισμοί, ανθεκτικά δέντρα, και τελικά πόλεις στο ύπαιθρο.
-
-Και δύο ακόμη βαθμίδες που **ξεκλειδώνουν μόνο αφού τερραφορμάρεις τον πλανήτη** (Φάση 2):
-
-5. **Κοινωνία & Κλίμα** — δέσμευση διοξειδίου, πολιτική διακυβέρνηση, αντιρρύπανση, μακρο-επιδημιολογία.
-6. **Υποδομές & Αυτοματισμός** — κβαντικοί επεξεργαστές, γεωτρήσεις μανδύα, σμήνη drones, αντιθυελλική θωράκιση, γενετικά αρχεία, μαγνητικά τρένα κενού.
-
-Κάθε τεχνολογία έχει **προαπαιτούμενα**, οπότε προχωράς σαν σε δέντρο, από τα βασικά προς τα εντυπωσιακά. Όταν ολοκληρώνεται μια έρευνα, εμφανίζεται ένα παράθυρο που σου λέει τι μόλις έγινε διαθέσιμο.
-
-### Ανακύκλωση (Reclaim)
-Μια ειδική τεχνολογία σου επιτρέπει να **διαλύεις κτήρια** και να παίρνεις πίσω μέρος από τα Credits και τα Υλικά τους — χρήσιμο για να ξηλώνεις ένα ορυχείο που εξάντλησε το κοίτασμά του και να αξιοποιείς αλλού τους πόρους.
+The landing capsule is the central **warehouse**: everything is pooled there. Every building either **produces** or **consumes** resources every moment, so the trick is to keep the balance positive.
 
 ---
 
-## Ο χρόνος στα χέρια σου
+## The crew (your colonists)
 
-Ελέγχεις τον ρυθμό της προσομοίωσης:
+Colonists are precious. Each has a **specialty**, and putting them in the "right" building makes it perform better:
 
-- **Παύση** — για να σκεφτείς με την ησυχία σου.
-- **x1 / x2 / x4** — κανονικά, γρήγορα, πολύ γρήγορα, όταν απλώς περιμένεις να «ψηθεί» ο πλανήτης.
+- **Geologist** — better at mines & drills, spots hidden deposits.
+- **Engineer** — faster construction, better factories, fewer breakdowns.
+- **Botanist** — more food and faster-spreading vegetation.
+- **Climatologist** — a bonus to the great planetary-engineering works.
+- **Doctor** — appears in **Phase 2**; staffs the Isolation Hospitals and is your only defence against the **Martian Plague**.
 
-Το τερραφορμινγκ είναι αργή διαδικασία, οπότε συχνά θα ανεβάζεις ταχύτητα και θα επεμβαίνεις όποτε χρειάζεται.
+**How you manage them:** right-click a building to select it, then use the **[+] / [–]** buttons (or the +/– keys) to assign or remove workers. A staffed building produces far more than an empty one.
 
----
-
-## Απρόβλεπτα γεγονότα & απειλές
-
-Ο Άρης δεν σε αφήνει ήσυχο. Κατά καιρούς συμβαίνουν **τυχαία γεγονότα** (με ενημερωτικό παράθυρο):
-
-- **🌪️ Αμμοθύελλα** — ρίχνει δραστικά την ηλιακή παραγωγή· αν βασίζεσαι μόνο σε ηλιακά, κινδυνεύεις με μπλακ-άουτ.
-- **☀️ Ηλιακή έκλαμψη** — ακτινοβολία που αρρωσταίνει τους αποίκους και καίει ηλεκτρονικά, εκτός αν έχεις **μαγνητόσφαιρα** ή φυσικό **σπήλαιο-καταφύγιο**.
-- **🔧 Βλάβη υποστήριξης ζωής** — ένα σύστημα οξυγόνου/νερού χαλάει και χρειάζεται **Μηχανικό** για επισκευή.
-- **🕳️ Ανακάλυψη σπηλιάς** — (θετικό!) φυσική θωράκιση από την ακτινοβολία.
-
-Παράλληλα, πρέπει να προσέχεις μόνιμους κινδύνους: χαμηλή **ενέργεια** (brownout), πτώση **υγείας πληρώματος**, και την **απώλεια ατμόσφαιρας** (που σταματά μόλις χτίσεις μαγνητόσφαιρα). Στο κάτω μέρος της οθόνης εμφανίζονται προειδοποιήσεις, καθώς και **πόσα κτήρια χρειάζονται προσωπικό** ή **έμειναν από κοίτασμα** — για να τρέχεις εκεί που σε χρειάζονται.
-
-Στη **Φάση 2** η ίδια γραμμή προειδοποιήσεων γεμίζει με νέα, πιο απειλητικά μηνύματα: *runaway greenhouse*, *στασιμότητα*, *απεργία*, *βαριά ρύπανση*, *επικείμενος σεισμός*, *υπερκαταιγίδα*, *εισβλητικά είδη*, *πανώλη*, *logistics blackout*. Το καθένα σου λέει ακριβώς **τι να χτίσεις** για να το σταματήσεις — αν το διαβάσεις εγκαίρως.
+The population **grows over time**, as long as there is housing and living conditions (food, health, morale) are good.
 
 ---
 
-# 🌍 Φάση 2: Ο Ζωντανός Πλανήτης
+## The buildings
 
-Μόλις και οι τέσσερις μετρητές χτυπήσουν 100%, το παιχνίδι **δεν τελειώνει** — αλλάζει χαρακτήρα.
+You build by clicking the buildings icon on the bottom bar, picking a building, then clicking a hex. Every building costs **Credits up front**, plus **Materials while it is being built**. Mines must be placed on top of the right deposit.
 
-Μέχρι τώρα ο Άρης ήταν ένας νεκρός βράχος που τον έσπρωχνες. Τώρα είναι ένας **ζωντανός πλανήτης**: έχει ατμόσφαιρα που κινείται, θάλασσες που φουσκώνουν, οικοσυστήματα που εξελίσσονται και — το πιο επικίνδυνο απ' όλα — **δεκάδες χιλιάδες ανθρώπους με δική τους γνώμη**.
+The main categories:
 
-Δύο πράγματα αλλάζουν αμέσως:
-
-- **Ο πληθυσμός εκτοξεύεται.** Δεν μετράς πια δώδεκα αποίκους ονομαστικά. Καράβια από τη Γη φέρνουν **χιλιάδες** μετανάστες σε έναν πλανήτη που επιτέλους είναι κατοικήσιμος — και ο αριθμός τους ανεβαίνει σε **δεκάδες χιλιάδες**. Στο HUD εμφανίζεται νέος μετρητής πληθυσμού (κάτοικοι / στέγαση).
-- **Ξεκλειδώνουν δύο νέες βαθμίδες τεχνολογίας** και **12 νέα κτήρια**, φτιαγμένα αποκλειστικά για να αντιμετωπίζεις τα προβλήματα ενός κόσμου που πλέον ζει.
-
-Και τα προβλήματα έρχονται. Το καθένα έχει την απάντησή του — αλλά πρέπει να το δεις να έρχεται.
-
-## Οι κρίσεις της Φάσης 2
-
-### 🔥 Το φαινόμενο του θερμοκηπίου ξεφεύγει
-Τα εργοστάσια αερίων και οι καθρέφτες που σε **έφεραν στη νίκη** δεν σταματούν μόνα τους. Η θερμοκρασία και η πίεση συνεχίζουν να ανεβαίνουν, ξεπερνούν τον στόχο, οι **ωκεανοί αρχίζουν να εξατμίζονται** και το πλήρωμα αρρωσταίνει.
-> **Η απάντηση:** ο **Δεσμευτής Κρυο-Άνθρακα** ρουφάει το πλεονάζον CO₂ και το παγώνει σε ξηρό πάγο. Ή απλά ξήλωσε μερικά εργοστάσια — δική σου επιλογή.
-
-### 🏙️ Η Μεγάλη Μετανάστευση
-Κύματα μεταναστών φτάνουν χωρίς προειδοποίηση. Αν ο πληθυσμός ξεπεράσει τη **στέγαση** που έχεις, η κοινωνία μπαίνει σε **στασιμότητα**: οι άνθρωποι στριμώχνονται, το ηθικό πέφτει και η παραγωγή **όλης** της αποικίας σέρνεται.
-> **Η απάντηση:** **Αρκολογίες Υψηλής Πυκνότητας** — κάθετες μεγαπόλεις που στεγάζουν δεκάδες χιλιάδες.
-
-### ⚖️ Πολιτική: Βιομήχανοι εναντίον Οικολόγων
-Οι κάτοικοι χωρίζονται σε δύο παρατάξεις. Οι **Βιομήχανοι** θέλουν ορυχεία, εργοστάσια, ανάπτυξη. Οι **Οικολόγοι** θέλουν καθαρό αέρα και δάση. Ό,τι ευχαριστεί τη μία, εξοργίζει την άλλη — και η ρύπανση εξοργίζει ιδιαίτερα τους Οικολόγους.
-Αν η έγκριση μιας παράταξης πέσει πολύ χαμηλά, κηρύσσει **απεργία**: τα ορυχεία και τα εργοστάσιά σου (ή αντίστοιχα όλη η βιόσφαιρα) **σταματούν να δουλεύουν**.
-> **Η απάντηση:** το **Δημαρχείο Περιφέρειας** — διακυβέρνηση που κατευνάζει και τις δύο πλευρές.
-
-### 🏭 Ρύπανση
-Η βαριά βιομηχανία δεν μολύνει πια αφηρημένα: **λερώνει συγκεκριμένα εξάγωνα**. Όπου μαζευτεί πολλή ρύπανση, η **βλάστηση γύρω μαραίνεται και πεθαίνει** — και το οξυγόνο πέφτει.
-> **Η απάντηση:** **Πύργοι Καθαρισμού Ατμόσφαιρας** που φιλτράρουν τα γύρω εξάγωνα. Ή μετακόμισε τα εργοστάσια μακριά από τα δάση σου.
-
-### ☣️ Η Άρεια Πανώλη
-Τώρα που ο πλανήτης έχει **ωκεανούς**, κάτι ξυπνά μέσα τους: μεταλλαγμένα παθογόνα που η Γη δεν έχει ξαναδεί. Η μόλυνση απλώνεται αργά και το **εργατικό δυναμικό αρρωσταίνει** — η παραγωγή πέφτει σταθερά όσο την αγνοείς.
-Έχεις μια περίοδο χάριτος για να προετοιμαστείς. Μετά, χωρίς ιατρική υποδομή, η παραγωγή σου μπορεί να πέσει στο **μισό**.
-> **Η απάντηση:** **Πλανητικό Νοσοκομείο Απομόνωσης** — αλλά **πρέπει να το στελεχώσεις**. Ένα άδειο νοσοκομείο δεν θεραπεύει κανέναν, και οι σκόρπιοι γιατροί χωρίς νοσοκομείο δεν αρκούν. **Γιατροί μέσα στο νοσοκομείο** — αυτό είναι το φάρμακο.
-
-## Η Έκρηξη των Υποδομών
-
-Όταν ο πληθυσμός φτάσει σε τεράστια νούμερα, ανοίγει μια δεύτερη εποχή: μια οικονομία-κολοσσός.
-
-### 💹 Το μονοπώλιο του πυριτίου
-Σταμάτα να πουλάς φτηνό, ακατέργαστο πυρίτιο στη Γη. **Μεταποίησέ** το: το **Εργοστάσιο Κβαντικών Επεξεργαστών** πολλαπλασιάζει την αξία του **δεκαπλάσια**, και το **Διαπλανητικό Χρηματιστήριο** πουλά και το πλεόνασμα υλικών σου.
-
-### 🌋 Γεωτρήσεις στον μανδύα
-Το **Γεωτρύπανο Βαθέος Πυρήνα** φτάνει στον μανδύα του πλανήτη και βγάζει **ανεξάντλητα** μέταλλα — δεν χρειάζεται καν κοίτασμα.
-Το τίμημα: **σεισμική αστάθεια**. Όσο περισσότερα γεωτρύπανα, τόσο πιο κοντά ο επόμενος **σεισμός**, που ραγίζει και ακινητοποιεί κτήρια γύρω του.
-> **Η συμβουλή:** **άπλωσέ** τα. Μη στοιβάζεις γεωτρύπανα στο ίδιο σημείο.
-
-### 🤖 Σμήνη Drones
-Η **Κυψέλη AI Drones** αναλαμβάνει τα βαριά βιομηχανικά κτήρια: δουλεύουν στο 100% **χωρίς κανέναν άνθρωπο**. Ελευθερώνει το πλήρωμά σου για πιο σημαντικές δουλειές.
-
-### 🌀 Ακραίος καιρός
-Πυκνός αέρας + ωκεανοί = **υπερκαταιγίδες**. Όταν μαζευτεί αρκετή ενέργεια, ξεσπά **τυφώνας** που σαρώνει τα **ηλιακά πάνελ** και **πλημμυρίζει** ό,τι είναι χτισμένο χαμηλά, αχρηστεύοντάς τα μέχρι να επισκευαστούν.
-> **Η απάντηση:** **Θαλάσσια Τείχη** που θωρακίζουν τα γύρω κτήρια.
-
-### 🐛 Εισβλητικά είδη
-Τα φορτία από τη Γη φέρνουν λαθρεπιβάτες: **παράσιτα**. Σε έναν πλανήτη γεμάτο ζωή βρίσκουν παράδεισο — **τρώνε τις σοδειές σου** και **μαραίνουν τη βλάστηση**. Όσο πλουσιότερη η βιόσφαιρα, τόσο χειρότερη η εισβολή.
-> **Η απάντηση:** **Γενετικό Θησαυροφυλάκιο** και Καταφύγια Άγριας Ζωής — βιοποικιλότητα που κρατά την ισορροπία.
-
-### 🚄 Δίκτυο Hyperloop
-Η αυτοκρατορία σου έχει απλωθεί. Τα **μακρινά ορυχεία** δεν εφοδιάζονται πια σωστά και δουλεύουν στη **μισή απόδοση**.
-Το **Τερματικό Hyperloop** τα ξανασυνδέει με τον πυρήνα της αποικίας — και μπορείς να **αλυσιδώσεις** τερματικά, το ένα μετά το άλλο, για να φτάσεις στην άκρη του χάρτη.
-> **Η παγίδα:** αν ένας **τυφώνας ρίξει έναν κόμβο**, όλα τα ορυχεία που τροφοδοτούσε πέφτουν **ακαριαία σε blackout** — μέχρι να επισκευαστεί. Το δίκτυο είναι δύναμη, αλλά και ευθύνη.
+- **🏠 Housing** — the landing capsule, habitat modules, and later whole "domeless cities" for a huge population once the air is breathable.
+- **⚡ Power** — solar panels (which fade in dust storms), batteries (storage), and fission reactors (steady power, independent of the sun).
+- **🫧 Life Support** — oxygen recyclers, ice drills for water.
+- **🌱 Food** — hydroponics bays.
+- **🏭 Industry** — regolith printers, iron/silicon mines, and export terminals (which sell silicon to Earth for steady income).
+- **🔬 Research** — laboratories that generate research points.
+- **🪐 Planetary Engineering** (the "big guns" of terraforming) — greenhouse-gas factories, orbital mirrors, an artificial magnetosphere station (which protects the atmosphere), comet redirectors (which bring water & pressure).
+- **🌳 Biosphere** — cyanobacteria, genetically modified forests, wildlife reserves; they produce oxygen and **spread vegetation** across the surface.
 
 ---
 
-## Χορηγοί (επίπεδα δυσκολίας)
+## Research & Technology
 
-Πριν ξεκινήσεις, διαλέγεις **χορηγό**, που καθορίζει πόσο εύκολο ή δύσκολο θα είναι:
+Your laboratories generate **research points**. You open the research menu, choose a technology, and wait for enough points to accumulate to unlock it. New technologies unlock **new buildings** and abilities.
 
-- **Tech Billionaire** (εύκολο) — άφθονο αρχικό κεφάλαιο, ήπιες συνθήκες, σπάνια γεγονότα.
-- **United Space Agency** (κανονικό) — ισορροπημένη εμπειρία, ρεαλιστική φθορά, φυσιολογικά γεγονότα.
-- **Private Crowdfunding** (δύσκολο) — ελάχιστοι πόροι, μεγάλες αμμοθύελλες, γρήγορη φθορά εξοπλισμού.
+Technology advances in **tiers**:
 
-Ο χορηγός αλλάζει το πόσα εφόδια ξεκινάς, πόσο συχνά χτυπούν οι καταστροφές και πόσο γρήγορα φθείρεται ο εξοπλισμός σου.
+1. **Survival** — you know this from the start (the basic buildings).
+2. **Industrial Expansion** — fission power, metallurgy, silicon extraction, exports, greenhouse-gas factories.
+3. **Planetary Engineering** — orbital mirrors, artificial magnetosphere, comet redirection.
+4. **Biosphere & Ecosystem** — microorganisms, hardy trees, and finally open-air cities.
 
----
+Plus two more tiers that **unlock only after you have terraformed the planet** (Phase 2):
 
-## Πώς κυλάει μια τυπική παρτίδα
+5. **Society & Climate** — carbon capture, political governance, pollution scrubbing, macro-epidemiology.
+6. **Infrastructure & Automation** — quantum processors, mantle drilling, drone swarms, storm hardening, gene banks, maglev vacuum trains.
 
-1. **Στήσιμο επιβίωσης** — σιγουρεύεσαι ότι έχεις ενέργεια, νερό, οξυγόνο και τροφή σε θετική ροή, ώστε το πλήρωμα να μην κινδυνεύει.
-2. **Ανάπτυξη οικονομίας** — χτίζεις ορυχεία πάνω σε κοιτάσματα, μαζεύεις Υλικά και Credits, και στήνεις εργαστήρια για έρευνα.
-3. **Τεχνολογική άνοδος** — ξεκλειδώνεις πυρηνική ενέργεια (σταθερό ρεύμα) και βιομηχανία, για να αντέξεις τα μεγάλα έργα.
-4. **Πλανητική μηχανική** — αρχίζεις να ζεσταίνεις και να πυκνώνεις την ατμόσφαιρα με εργοστάσια αερίων, καθρέφτες και κομήτες. Οι μετρητές-στόχοι αρχίζουν να ανεβαίνουν.
-5. **Βιόσφαιρα** — φυτεύεις μικρόβια και δάση· το οξυγόνο ανεβαίνει και ο πλανήτης «πρασινίζει».
-6. **Νίκη** — και οι τέσσερις στόχοι στο 100%. Ο Άρης έγινε ένας ζωντανός κόσμος.
+Every technology has **prerequisites**, so you climb a tree from the basics towards the spectacular. When a piece of research completes, a window tells you what has just become available.
 
-Και μετά αρχίζει η **δεύτερη πράξη**:
+### Reclaim
 
-7. **Η πρώτη κρίση** — το θερμοκήπιο ξεφεύγει και τα καράβια των μεταναστών φτάνουν ταυτόχρονα. Σταθεροποιείς κλίμα και στέγαση πριν σου φύγει από τα χέρια.
-8. **Κοινωνία** — μαθαίνεις να ζεις με τις παρατάξεις, τη ρύπανση και την πανώλη· χτίζεις διακυβέρνηση, αντιρρύπανση και νοσοκομεία.
-9. **Η αυτοκρατορία** — κβαντική βιομηχανία, γεωτρήσεις στον μανδύα, drones, δίκτυο Hyperloop· η οικονομία σου γίνεται κολοσσός.
-10. **Συντήρηση** — τυφώνες, σεισμοί και παράσιτα δεν σταματούν ποτέ. Ο ζωντανός πλανήτης θέλει φροντιστή, όχι κατακτητή.
-
-Δεν υπάρχει ένας μόνο «σωστός» δρόμος — ισορροπείς συνεχώς ανάμεσα στο να κρατάς τους ανθρώπους ζωντανούς **τώρα** και στο να επενδύεις στο μεγάλο όνειρο για **μετά**.
+A special technology lets you **dismantle buildings** and get back part of their Credits and Materials — handy for tearing down a mine that has exhausted its deposit and putting those resources to work elsewhere.
 
 ---
 
-## Χειριστήρια (συνοπτικά)
+## Time is in your hands
 
-- **Κίνηση χάρτη:** WASD / βελάκια / σύρσιμο με το ποντίκι — **Zoom:** ροδάκι
-- **Επιλογή κτηρίου/πλακιδίου:** δεξί κλικ
-- **Κτήρια:** πλήκτρο **B** ή το εικονίδιο — **Έρευνα:** **T** ή το εικονίδιο
-- **Ταχύτητα:** Space (παύση) και **1 / 2 / 3**
-- **Κεντράρισμα στη βάση:** **H** — **Επόμενο κτήριο που θέλει προσωπικό:** `.` — **Εξαντλημένο κοίτασμα:** `,`
-- **Ανακύκλωση:** **R** (αφού ξεκλειδωθεί) — **Σίγαση ήχου:** **U**
-- **Μενού / πίσω:** **Esc**
-- **Βοήθεια:** το κουμπί «Help» στο μενού και τα «?» μέσα στις παλέτες
+You control the pace of the simulation:
+
+- **Pause** — to think it through in peace.
+- **×1 / ×2 / ×4** — normal, fast, very fast, for when you are simply waiting for the planet to "cook".
+
+Terraforming is a slow process, so you will often speed things up and step in only when needed.
 
 ---
 
-## Αποθήκευση, φόρτωση & εκμάθηση
+## Events & threats
 
-- **Πολλαπλά saves** — κάθε αποθήκευση κρατάει και ένα **στιγμιότυπο (screenshot)** της οθόνης. Στην οθόνη «Load Game» βλέπεις μια λίστα με τις εικόνες, την ημερομηνία και την ώρα κάθε αποθήκευσης, μπορείς να δεις κάθε εικόνα μεγαλωμένη, και να διαλέξεις ποιο θα φορτώσεις.
-- **Αυτόματη αποθήκευση** — το παιχνίδι σώζει μόνο του κάθε 5 λεπτά, κυκλικά σε 3 θέσεις (Auto 1/2/3).
-- **Tutorial** — από το κεντρικό μενού, ένας οδηγός βήμα-βήμα που σε μαθαίνει τις βασικές λειτουργίες (κίνηση, χτίσιμο, επιλογή, έρευνα, ταχύτητα) καθώς τις εκτελείς. Βγαίνεις όποτε θες με **Esc**.
+Mars does not leave you alone. **Random events** strike from time to time (announced in a popup):
+
+- **🌪️ Dust storm** — solar output collapses; if you rely on solar alone, a blackout is coming.
+- **☀️ Solar flare** — radiation that sickens colonists and fries electronics, unless you have a **magnetosphere** or a natural **cave shelter**.
+- **🔧 Life-support failure** — an oxygen/water system breaks and needs an **Engineer** to repair it.
+- **🕳️ Cave discovery** — (a good one!) natural shielding against radiation.
+
+Alongside those, you must watch the standing dangers: low **energy** (brownout), falling **crew health**, and **atmospheric loss** (which stops once you build a magnetosphere). Warnings appear along the bottom of the screen, together with **how many buildings need crew** or **have run out of deposit** — so you can rush to wherever you are needed.
+
+In **Phase 2** that same warning line fills up with new, nastier messages: *runaway greenhouse*, *stagnation*, *strike*, *heavy pollution*, *imminent marsquake*, *super-storm*, *invasive species*, *plague*, *logistics blackout*. Each one tells you exactly **what to build** to stop it — if you read it in time.
 
 ---
 
-*Με δυο λόγια: κρατάς λίγους ανθρώπους ζωντανούς σε έναν εχθρικό πλανήτη, χτίζεις μια οικονομία, ανεβάζεις την τεχνολογία σου, και σιγά-σιγά μετατρέπεις έναν παγωμένο βράχο σε έναν δεύτερο, ζωντανό κόσμο.*
+# 🌍 Phase 2: The Living Planet
 
-*Και μετά ανακαλύπτεις το δυσκολότερο κομμάτι: ένας ζωντανός κόσμος **δεν σου ανήκει**. Έχει δικές του καταιγίδες, δικές του αρρώστιες, δική του πολιτική. Το να τον φτιάξεις ήταν το μισό παιχνίδι — το να ζήσεις μαζί του είναι το άλλο μισό.*
+The moment all four gauges hit 100%, the game **doesn't end** — it changes character.
 
-*Αυτό είναι το Terraforming Mars.*
+Until now Mars was a dead rock you were pushing around. Now it is a **living planet**: it has an atmosphere that moves, seas that swell, ecosystems that evolve, and — most dangerous of all — **tens of thousands of people with opinions of their own**.
+
+Two things change immediately:
+
+- **The population explodes.** You are no longer counting a dozen colonists by name. Ships from Earth pour **thousands** of migrants onto a planet that is finally habitable — and the number climbs into the **tens of thousands**. A new population counter appears on the HUD (residents / housing).
+- **Two new tech tiers and 12 new buildings unlock**, built for one purpose: to deal with the problems of a world that is now alive.
+
+And the problems do come. Each has an answer — but you have to see it coming.
+
+## The crises of Phase 2
+
+### 🔥 The greenhouse runs away
+The gas factories and mirrors that **won you the game** don't switch themselves off. Temperature and pressure keep climbing past the target, the **oceans begin to boil away**, and the crew falls ill.
+> **The answer:** the **Cryo-Carbon Capturer** sucks the excess CO₂ out of the air and freezes it into dry ice. Or just tear down a few factories — your call.
+
+### 🏙️ The Great Migration
+Waves of migrants arrive without warning. If the population outgrows your **housing**, society falls into **stagnation**: people are packed in, morale drops, and production across the **entire** colony grinds down.
+> **The answer:** **High-Density Arcologies** — vertical megacities that house tens of thousands.
+
+### ⚖️ Politics: Industrialists vs Ecologists
+Your residents split into two factions. The **Industrialists** want mines, factories, growth. The **Ecologists** want clean air and forests. Whatever pleases one enrages the other — and pollution enrages the Ecologists especially.
+If a faction's approval falls too low, it goes on **strike**: your mines and factories (or your entire biosphere) simply **stop working**.
+> **The answer:** the **District Town Hall** — governance that placates both sides.
+
+### 🏭 Pollution
+Heavy industry no longer pollutes in the abstract: it **contaminates specific hexes**. Where pollution builds up, the **vegetation around it withers and dies** — and your oxygen falls with it.
+> **The answer:** **Atmospheric Scrubbers** that filter the surrounding hexes. Or move your factories away from your forests.
+
+### ☣️ The Martian Plague
+Now that the planet has **oceans**, something wakes up in them: mutated pathogens Earth has never seen. The infection spreads slowly and your **workforce sickens** — production sags steadily for as long as you ignore it.
+You get a grace period to prepare. After that, with no medical infrastructure, your output can fall to **half**.
+> **The answer:** a **Planetary Isolation Hospital** — but you **must staff it**. An empty hospital cures nobody, and loose doctors with no hospital aren't enough either. **Doctors inside the hospital** — that is the cure.
+
+## The Infrastructure Boom
+
+Once the population reaches serious numbers, a second era opens up: an economy on an industrial scale.
+
+### 💹 The silicon monopoly
+Stop selling cheap, raw silicon to Earth. **Process** it instead: the **Quantum Processor Plant** multiplies its value roughly **tenfold**, and the **Interplanetary Stock Exchange** sells off your surplus materials too.
+
+### 🌋 Drilling into the mantle
+The **Deep Core Drill** reaches the planet's mantle and pulls up **limitless** metals — it doesn't even need a deposit.
+The price: **seismic instability**. The more drills you run, the closer the next **marsquake**, which cracks and disables the buildings around it.
+> **The tip:** **spread them out.** Don't stack drills in one place.
+
+### 🤖 Drone swarms
+The **AI Drone Hive** takes over your heavy industrial buildings: they run at 100% with **no humans at all**, freeing your crew for more important work.
+
+### 🌀 Extreme weather
+Thick air + oceans = **super-storms**. Once enough energy builds up, a **hurricane** breaks out, sweeping away **solar panels** and **flooding** anything built low, knocking them out until they are repaired.
+> **The answer:** **Sea Walls**, which shield the buildings around them.
+
+### 🐛 Invasive species
+Cargo from Earth brings stowaways: **pests**. On a planet full of life they find paradise — they **eat your crops** and **wither your vegetation**. The richer the biosphere, the worse the invasion.
+> **The answer:** the **Genetic Vault** and Wildlife Reserves — biodiversity that keeps the balance.
+
+### 🚄 The Hyperloop network
+Your empire has sprawled. The **distant mines** can no longer be supplied properly and run at **half output**.
+The **Hyperloop Terminal** reconnects them to the colony's core — and you can **chain** terminals, one after another, to reach the far edge of the map.
+> **The trap:** if a **hurricane takes down a node**, every mine it was feeding drops **instantly into blackout** — until it is repaired. The network is power, but it is also responsibility.
+
+---
+
+## Sponsors (difficulty levels)
+
+Before you start, you pick a **sponsor**, which sets how easy or hard the run will be:
+
+- **Tech Billionaire** (easy) — plenty of starting capital, mild conditions, rare events.
+- **United Space Agency** (normal) — a balanced experience, realistic wear, ordinary event frequency.
+- **Private Crowdfunding** (hard) — minimal resources, huge dust storms, fast equipment decay.
+
+The sponsor changes how many supplies you start with, how often disasters hit, and how quickly your equipment wears out.
+
+---
+
+## How a typical run goes
+
+1. **Secure survival** — make sure energy, water, oxygen and food are all in positive flow, so the crew is never at risk.
+2. **Grow the economy** — build mines on deposits, stockpile Materials and Credits, and set up labs for research.
+3. **Climb the tech tree** — unlock fission power (steady electricity) and industry, so you can afford the big works.
+4. **Planetary engineering** — start warming and thickening the atmosphere with gas factories, mirrors and comets. The target gauges begin to climb.
+5. **Biosphere** — seed microbes and forests; oxygen rises and the planet turns green.
+6. **Victory** — all four targets at 100%. Mars is a living world.
+
+And then the **second act** begins:
+
+7. **The first crisis** — the greenhouse runs away and the migrant ships arrive at the same time. Stabilise climate and housing before it gets away from you.
+8. **Society** — you learn to live with factions, pollution and plague; you build governance, scrubbers and hospitals.
+9. **The empire** — quantum industry, mantle drilling, drones, a Hyperloop network; your economy becomes a colossus.
+10. **Stewardship** — hurricanes, marsquakes and pests never stop. A living planet needs a caretaker, not a conqueror.
+
+There is no single "right" path — you are constantly balancing keeping people alive **now** against investing in the great dream for **later**.
+
+---
+
+## Controls (at a glance)
+
+- **Move the map:** WASD / arrows / mouse drag — **Zoom:** wheel
+- **Select a building/tile:** right click
+- **Buildings:** **B** or the icon — **Research:** **T** or the icon
+- **Speed:** Space (pause) and **1 / 2 / 3**
+- **Centre on base:** **H** — **Next building that needs crew:** `.` — **Exhausted deposit:** `,`
+- **Reclaim:** **R** (once unlocked) — **Mute:** **U**
+- **Menu / back:** **Esc**
+- **Help:** the "Help" button in the menu, and the "?" buttons inside the palettes
+
+---
+
+## Saving, loading & learning
+
+- **Multiple saves** — every save also keeps a **screenshot** of the screen. On the "Load Game" screen you see a list with those images, the date and time of each save; you can enlarge any image, and choose which one to load.
+- **Autosave** — the game saves itself every 5 minutes, cycling through 3 slots (Auto 1/2/3).
+- **Tutorial** — from the main menu, a step-by-step guide that teaches you the basics (movement, building, selection, research, speed) as you actually perform them. Leave any time with **Esc**.
+
+---
+
+*In short: you keep a few people alive on a hostile planet, you build an economy, you climb a tech tree, and slowly you turn a frozen rock into a second living world.*
+
+*And then you discover the hardest part: a living world **does not belong to you**. It has its own storms, its own diseases, its own politics. Building it was half the game — living with it is the other half.*
+
+*That is Terraforming Mars.*

@@ -1,15 +1,18 @@
 # 🔴 Terraforming Mars
 
-**Χτίσε μια αποικία στον Άρη. Μετά κάνε τον Άρη κατοικήσιμο. Μετά κράτησέ τον έτσι.**
+**🇬🇧 English** · [🇬🇷 Ελληνικά](README.el.md)
 
-Open-source base-building / simulation παιχνίδι σε **C# / .NET 9 + MonoGame**, με procedurally-generated
-hex χάρτη και real-time προσομοίωση. Ξεκινάς με μια κάψουλα προσεδάφισης, τέσσερις αποίκους και έναν
-νεκρό, παγωμένο πλανήτη. Εξορύσσεις, χτίζεις, ερευνάς — και σιγά σιγά ανεβάζεις θερμοκρασία, πίεση,
-οξυγόνο και νερό, μέχρι ο πάγος να λιώσει σε θάλασσες και η βλάστηση να απλωθεί στις πεδιάδες.
+**Build a colony on Mars. Then make Mars habitable. Then keep it that way.**
 
-Και τότε αρχίζει το δεύτερο μισό: ένας **ζωντανός πλανήτης** που σου αντιστέκεται.
+An open-source base-building / simulation game written in **C# / .NET 9 + MonoGame**, with a
+procedurally generated hex map and a real-time simulation. You start with a landing capsule, four
+colonists and a dead, frozen planet. You mine, you build, you research — and slowly you push up the
+temperature, pressure, oxygen and water, until the ice melts into seas and vegetation creeps across
+the plains.
 
-![Η αποικία](docs/screenshots/colony.png)
+And then the second half begins: a **living planet** that pushes back.
+
+![The colony](docs/screenshots/colony.png)
 
 ---
 
@@ -17,66 +20,66 @@ hex χάρτη και real-time προσομοίωση. Ξεκινάς με μι
 
 | | |
 |---|---|
-| ![Μενού](docs/screenshots/menu.png) <br> **Κεντρικό μενού** — χορηγός, seed, μουσική· ο πλανήτης στο φόντο περνά από όλα τα στάδια του terraforming | ![Κτίρια](docs/screenshots/buildings.png) <br> **Παλέτα κτιρίων** — 33 κτίρια, το καθένα με δικό του διανυσματικό εικονίδιο |
-| ![Έρευνα](docs/screenshots/research.png) <br> **Δέντρο έρευνας** — 23 τεχνολογίες, οι 10 ξεκλειδώνουν μόνο **μετά** το terraforming | ![Saves](docs/screenshots/saves.png) <br> **Load Game** — πολλαπλά saves με screenshot, ημερομηνία & 3 κυκλικά autosaves |
+| ![Main menu](docs/screenshots/menu.png) <br> **Main menu** — sponsor, seed, music; the planet in the background cycles through every stage of terraforming | ![Buildings](docs/screenshots/buildings.png) <br> **Building palette** — 33 buildings, each with its own procedurally drawn icon |
+| ![Research](docs/screenshots/research.png) <br> **Tech tree** — 23 technologies, 10 of which unlock **only after** terraforming is complete | ![Saves](docs/screenshots/saves.png) <br> **Load Game** — multiple saves with screenshots, timestamps and 3 cyclic autosaves |
 
 ---
 
-## ✨ Τι έχει το παιχνίδι
+## ✨ What's in the game
 
-### Φάση 1 — Το Terraforming
+### Phase 1 — The Terraforming
 
-* **Procedural hex χάρτης** (Perlin/fBm) με υψόμετρα, terrain και κοιτάσματα (πάγος, σίδηρος, πυρίτιο, regolith).
-* **Οικονομία & πληθυσμός:** εξόρυξη, παραγωγή, brownout όταν δεν φτάνει η ενέργεια, life-support που σκοτώνει το πλήρωμα αν το αμελήσεις. Νέοι άποικοι έρχονται όταν υπάρχει στέγαση + τροφή.
-* **Ειδικότητες:** Geologist, Engineer, Botanist, Climatologist, Doctor — ο σωστός άνθρωπος στο σωστό κτίριο δίνει +50% απόδοση.
-* **Τέσσερις πλανητικές μετρικές** (θερμοκρασία, πίεση, O₂, νερό). Ο πάγος λιώνει σε θάλασσες, η βλάστηση απλώνεται, ο χάρτης αλλάζει μπροστά σου.
-* **Γεγονότα:** αμμοθύελλες (κόβουν την ηλιακή ενέργεια), ηλιακές εκλάμψεις, βλάβες life-support, ανακάλυψη σπηλαίων.
-* **Χορηγοί** (Easy / Normal / Hard) που αλλάζουν αρχικά κεφάλαια, στέγαση, συχνότητα γεγονότων και ταχύτητα επισκευών.
-* **Εμπόριο:** πούλα πλεόνασμα πυριτίου στη Γη με Mass Driver για να χρηματοδοτήσεις τα megaprojects.
+* **Procedural hex map** (Perlin/fBm) with elevation, terrain and deposits (ice, iron, silicon, regolith).
+* **Economy & population:** mining, production, brownouts when power runs short, and life support that will kill your crew if you neglect it. New colonists arrive when there is housing and surplus food.
+* **Specialties:** Geologist, Engineer, Botanist, Climatologist, Doctor — the right person in the right building is worth +50% output.
+* **Four planetary metrics** (temperature, pressure, O₂, water). Ice melts into seas, vegetation spreads, and the map visibly changes as you play.
+* **Events:** dust storms (which cripple solar power), solar flares, life-support failures, cave discoveries.
+* **Sponsors** (Easy / Normal / Hard) that change your starting capital, housing, event frequency and repair speed.
+* **Trade:** sell surplus silicon to Earth with a Mass Driver to bankroll the megaprojects.
 
-**Νίκη** όταν και οι 4 μετρικές φτάσουν τους στόχους. Αλλά η νίκη δεν είναι το τέλος…
+**You win** when all four metrics hit their targets. But winning isn't the end…
 
-### Φάση 2 — The Living Planet 🌍
+### Phase 2 — The Living Planet 🌍
 
-Μόλις ολοκληρωθεί το terraforming, ξεκλειδώνουν **2 νέες βαθμίδες τεχνολογίας (10 τεχνολογίες,
-12 κτίρια)** και ο πλανήτης παύει να είναι παθητικός στόχος — γίνεται σύστημα που πρέπει να **συντηρείς**.
-Ο πληθυσμός εκτοξεύεται από δεκάδες αποίκους σε **δεκάδες χιλιάδες** κατοίκους.
+The moment terraforming completes, **2 new tech tiers (10 technologies, 12 buildings)** unlock and the
+planet stops being a passive target — it becomes a system you have to **maintain**. Your population
+explodes from a dozen named colonists into **tens of thousands** of residents.
 
-| Σύστημα | Τι συμβαίνει | Η απάντησή σου |
+| System | What happens | Your answer |
 |---|---|---|
-| 🔥 **Runaway Greenhouse** | Τα εργοστάσια που σε έφεραν στη νίκη συνεχίζουν να δουλεύουν — θερμοκρασία & πίεση ξεπερνούν τον στόχο, οι ωκεανοί εξατμίζονται, το πλήρωμα αρρωσταίνει | **Cryo-Carbon Capturer** |
-| 🏙️ **Urbanization** | Κύματα μεταναστών από τη Γη· αν ξεπεράσουν τη στέγαση → *systemic stagnation* και η παραγωγή πέφτει | **High-Density Arcology** |
-| ⚖️ **Faction Politics** | Βιομήχανοι vs Οικολόγοι. Χαμηλή έγκριση = **απεργία** (ορυχεία ή βιόσφαιρα σταματούν) | **District Town Hall** |
-| 🏭 **Pollution** | Η βαριά βιομηχανία μολύνει τα hexes· η βλάστηση γύρω μαραίνεται | **Atmospheric Scrubber** |
-| 💹 **Silicon Monopoly** | Σταμάτα να πουλάς φτηνό πυρίτιο — μεταποίησέ το | **Quantum Processor Plant**, **Interplanetary Stock Exchange** |
-| 🌋 **Deep Core Extraction** | Άπειρα μέταλλα από τον μανδύα — με τίμημα **σεισμική αστάθεια** και marsquakes που ραγίζουν κτίρια | Άπλωσε τα **Deep Core Drills** |
-| 🤖 **Advanced Automation** | Τα drones τρέχουν τη βαριά βιομηχανία χωρίς ανθρώπους | **AI Drone Hive** |
-| 🌀 **Extreme Weather** | Πυκνός αέρας + ωκεανοί = **super-storms**. Οι τυφώνες σαρώνουν τα ηλιακά και πλημμυρίζουν τα χαμηλά | **Sea Wall** |
-| 🐛 **Invasive Species** | Παράσιτα από τη Γη τρώνε σοδειές και μαραίνουν βλάστηση | **Genetic Vault**, Wildlife Reserves |
-| 🚄 **Hyperloop Network** | Τα μακρινά ορυχεία δουλεύουν στη μισή απόδοση — και αν ένας κόμβος σπάσει από τυφώνα, **blackout** | Αλυσίδα από **Hyperloop Terminals** |
-| ☣️ **The Martian Plague** | Στον υδάτινο πλέον πλανήτη ανθίζουν μεταλλαγμένα παθογόνα· το εργατικό δυναμικό αρρωσταίνει | **Isolation Hospital** στελεχωμένο με **Doctors** |
+| 🔥 **Runaway Greenhouse** | The factories that won you the game don't switch themselves off — temperature and pressure overshoot, the oceans start boiling away, and the crew sickens | **Cryo-Carbon Capturer** |
+| 🏙️ **Urbanization** | Waves of migrants from Earth; if they outgrow your housing → *systemic stagnation* and production crawls | **High-Density Arcology** |
+| ⚖️ **Faction Politics** | Industrialists vs Ecologists. Low approval means a **strike** — your mines (or your entire biosphere) stop working | **District Town Hall** |
+| 🏭 **Pollution** | Heavy industry contaminates individual hexes; the vegetation around them withers | **Atmospheric Scrubber** |
+| 💹 **Silicon Monopoly** | Stop selling cheap raw silicon — process it instead | **Quantum Processor Plant**, **Interplanetary Stock Exchange** |
+| 🌋 **Deep Core Extraction** | Limitless metals from the mantle — at the price of **seismic instability** and marsquakes that crack buildings | Spread your **Deep Core Drills** out |
+| 🤖 **Advanced Automation** | Drones run heavy industry with no humans at all | **AI Drone Hive** |
+| 🌀 **Extreme Weather** | Thick air + oceans = **super-storms**. Hurricanes sweep away solar arrays and flood low-lying builds | **Sea Wall** |
+| 🐛 **Invasive Species** | Earth pests eat your crops and wither your vegetation | **Genetic Vault**, Wildlife Reserves |
+| 🚄 **Hyperloop Network** | Distant mines run at half output — and if a node is broken by a hurricane, they **black out** | A chain of **Hyperloop Terminals** |
+| ☣️ **The Martian Plague** | Mutated pathogens bloom in the new oceans; your workforce sickens | **Isolation Hospital** staffed with **Doctors** |
 
 ### Quality of life
 
-* **Tutorial wizard** βήμα-βήμα (προχωράει μόνο του καθώς εκτελείς τις ενέργειες· Esc για έξοδο).
-* **Πολλαπλά saves** σε φάκελο `SavedGames`, το καθένα με **screenshot**, όνομα και ημερομηνία — λίστα με scroll, μεγάλο preview, επιβεβαίωση στο Delete.
-* **3 κυκλικά autosaves** (Auto 1/2/3) κάθε 5 λεπτά.
-* **In-game help** για κάθε κτίριο και κάθε τεχνολογία, σε παράθυρο με scroll.
-* **HUD μετρητές** για κτίρια χωρίς προσωπικό ή με εξαντλημένο κοίτασμα (με κουμπί «βρες το επόμενο»).
-* **Ήχος & μουσική** (OGG), mute με ένα κλικ.
+* **Step-by-step tutorial wizard** (it advances as you actually perform each action; Esc to leave).
+* **Multiple saves** in a `SavedGames` folder, each with a **screenshot**, name and timestamp — a scrollable list, a large preview, and a confirmation before Delete.
+* **3 cyclic autosaves** (Auto 1/2/3) every 5 minutes.
+* **In-game help** for every building and every technology, in a scrollable window.
+* **HUD counters** for buildings that need crew or have exhausted their deposit (with a "jump to the next one" button).
+* **Sound & music** (OGG), one-click mute.
 
 ---
 
 ## 🛠 Stack
 
-* **.NET 9** — καθαρό domain layer, εντελώς ανεξάρτητο από engine
-* **MonoGame (DesktopGL)** για rendering/input — τα εικονίδια παράγονται **προγραμματιστικά** (CPU rasterizer με anti-aliasing), χωρίς αρχεία assets
-* Hex grid (pointy-top, axial/cube), procedural generation με Perlin noise (fBm + quantile classification)
-* Fixed-timestep προσομοίωση (pause / ×1 / ×2 / ×4) — **1 tick = 1 ώρα**, 24 ώρες = 1 Sol
-* **Data-driven**: κτίρια, τεχνολογίες και χορηγοί ορίζονται σε JSON — προσθέτεις κτίριο χωρίς να αγγίξεις κώδικα
+* **.NET 9** — a clean domain layer, completely engine-agnostic
+* **MonoGame (DesktopGL)** for rendering/input — every icon is **generated procedurally** (a CPU rasterizer with anti-aliasing), with no asset files
+* Hex grid (pointy-top, axial/cube), procedural generation with Perlin noise (fBm + quantile classification)
+* Fixed-timestep simulation (pause / ×1 / ×2 / ×4) — **1 tick = 1 hour**, 24 hours = 1 Sol
+* **Data-driven**: buildings, technologies and sponsors are defined in JSON — you can add a building without touching code
 * **191 unit tests** (xUnit)
 
-## 📁 Δομή Solution
+## 📁 Solution layout
 
 ```
 src/TerraformingMars.Core   — domain & simulation (engine-agnostic)
@@ -86,14 +89,14 @@ src/TerraformingMars.Core   — domain & simulation (engine-agnostic)
     Simulation/  World, Colony, GameClock, ResourceLedger + 19 simulation systems:
                  Construction · Production · Market · Research · Planet · Biosphere ·
                  Population · LifeSupport · Event
-                 ── Φάση 2 ──
-                 Phase2 (runaway) · Society (πληθυσμός) · Faction (πολιτική) ·
+                 ── Phase 2 ──
+                 Phase2 (runaway) · Society (population) · Faction (politics) ·
                  Pollution · Seismic · Automation · Weather · Ecosystem ·
                  Hyperloop (logistics) · Plague
     Buildings/   BuildingDefinition, BuildingCatalog, Building
     Colonists/   Specialty, Colonist
     Research/    TechDefinition, TechCatalog, TechTree
-    Planet/      PlanetMetric, PlanetState (μετρικές terraforming)
+    Planet/      PlanetMetric, PlanetState (terraforming metrics)
     Events/      EventType, SponsorProfile, SponsorCatalog
     Persistence/ SaveSystem, SaveGame (JSON save/load)
     Data/        buildings.json (33) · technologies.json (23) · sponsors.json (3)
@@ -108,59 +111,60 @@ tests/TerraformingMars.Core.Tests — xUnit (191 tests)
 
 ```bash
 dotnet test                                    # 191 unit tests
-dotnet run --project src/TerraformingMars.Game # το παιχνίδι
+dotnet run --project src/TerraformingMars.Game # the game
 ```
 
-> **Linux:** για ήχο χρειάζεται το system OpenAL — `sudo apt install libopenal1` (το bundled libopenal
-> του MonoGame θέλει νεότερο glibc). Η μουσική είναι OGG (cross-platform μέσω `MediaPlayer`) και το HUD
-> font είναι bundled DejaVu Sans Mono.
+> **Linux:** audio needs the system OpenAL — `sudo apt install libopenal1` (MonoGame's bundled
+> libopenal wants a newer glibc). Music is OGG (cross-platform via `MediaPlayer`) and the HUD font is
+> a bundled DejaVu Sans Mono.
 
 ## ⌨ Controls
 
-Το UI είναι κυρίως με το **ποντίκι**: μια μπάρα εργαλείων κάτω + εικονίδια κατάστασης στις γωνίες.
+The UI is mostly **mouse-driven**: a toolbar along the bottom plus status icons in the corners.
 
-**Μενού:** *Load Game* · *Start Game* · **Tutorial** · *Help* · *Quit* — κλικ ή βελάκια + Enter.
-Ρυθμίσεις (χορηγός, seed, μουσική, εντάσεις) με κλικ/βελάκια· **R** = τυχαίο seed.
+**Menu:** *Load Game* · *Start Game* · **Tutorial** · *Help* · *Quit* — click, or arrow keys + Enter.
+Settings (sponsor, seed, music, volumes) via clicks/arrows; **R** = random seed.
 
-**Μπάρα εργαλείων (κάτω):**
+**Toolbar (bottom):**
 
-| Κουμπί | Δράση |
+| Button | Action |
 |---|---|
-| Κτίρια | παλέτα (2 σειρές) → διάλεξε κτίριο → κλικ σε hex = τοποθέτηση · **?** = help όλων των κτιρίων |
-| Έρευνα | λίστα διαθέσιμων τεχνολογιών → κλικ = επιλογή · **?** = help όλων των τεχνολογιών |
-| Ταχύτητα (ρολόι) | pause / ×1 / ×2 / ×4 |
-| Save (δισκέτα) | αποθήκευση (με screenshot) |
-| Mute (ηχείο) | mute/unmute |
-| Κεντράρισμα | επιστροφή κάμερας στην κάψουλα (**H**) |
-| Προσωπικό · Κοίτασμα | μετρητές κτιρίων που χρειάζονται εργάτες / έχουν εξαντληθεί — κλικ = πήγαινε στο επόμενο |
-| Reclaim | (αφού ερευνηθεί) ανακύκλωση κτιρίου για credits & υλικά |
-| Menu · ? | πίσω στο μενού · βοήθεια |
+| Buildings | opens the palette (2 rows) → pick a building → click a hex to place it · **?** = help for every building |
+| Research | lists the available technologies → click to pick one · **?** = help for every technology |
+| Speed (clock) | pause / ×1 / ×2 / ×4 |
+| Save (disk) | save the game (with a screenshot) |
+| Mute (speaker) | mute/unmute |
+| Center | snap the camera back to the landing capsule (**H**) |
+| Crew · Deposit | counters for buildings that need workers / have run dry — click to jump to the next one |
+| Reclaim | (once researched) dismantle a building for credits & materials |
+| Menu · ? | back to the menu · help |
 
-**Ποντίκι & πλήκτρα:**
+**Mouse & keys:**
 
-| | Δράση |
+| | Action |
 |---|---|
-| drag (αριστερό/μεσαίο) · ροδέλα | pan · zoom |
-| WASD / βελάκια | κίνηση κάμερας |
-| δεξί κλικ | επιλογή hex/κτιρίου (ή ακύρωση build/popup) |
-| **[−] / [+]** στο panel κτιρίου, ή **+ / −** | ανάθεση/αφαίρεση αποίκου |
-| Space · 1 / 2 / 3 | pause · ταχύτητα ×1 / ×2 / ×4 |
-| B · T · H | παλέτα κτιρίων · έρευνα · κεντράρισμα |
+| drag (left/middle) · wheel | pan · zoom |
+| WASD / arrows | move the camera |
+| right click | select a hex/building (or cancel a build/popup) |
+| **[−] / [+]** on the building panel, or **+ / −** | assign/remove a colonist |
+| Space · 1 / 2 / 3 | pause · speed ×1 / ×2 / ×4 |
+| B · T · H | building palette · research · center camera |
 | F5 · F9 | save · load |
-| U · Esc | mute · πίσω στο μενού |
+| U · Esc | mute · back to the menu |
 
-**HUD:** πάνω-αριστερά **Sol & χορηγός**· πάνω-κέντρο η **μπάρα πόρων** (κοκκινίζει όταν πέφτει, hover =
-όριο & μεταβολή/tick)· από κάτω οι **4 στόχοι + terraforming % + biomass**· κάτω-δεξιά η **πρόοδος έρευνας**·
-κάτω-αριστερά panel με tile/κτίριο, **alerts** και γεγονότα. Στη Φάση 2 προστίθενται ο **πληθυσμός**,
-οι **παρατάξεις**, η **ρύπανση**, η **αυτοματοποίηση** και προειδοποιήσεις (runaway, marsquake, super-storm,
-εισβλητικά είδη, πανώλη, logistics blackout).
+**HUD:** top-left **Sol & sponsor**; top-centre the **resource bar** (a value turns red when it's
+falling; hover for its cap and its change per tick); below it the **4 targets + terraforming % +
+biomass**; bottom-right **research progress**; bottom-left a panel with the selected tile/building,
+**alerts** and events. In Phase 2 you also get **population**, **factions**, **pollution**,
+**automation**, and warnings for runaway greenhouse, marsquakes, super-storms, invasive species,
+plague and logistics blackouts.
 
 ---
 
-## 📖 Περισσότερα
+## 📖 More
 
-Αναλυτικός, μη-τεχνικός οδηγός του gameplay: **[GAMEPLAY.md](GAMEPLAY.md)**
+A full, non-technical guide to the gameplay: **[GAMEPLAY.md](GAMEPLAY.md)**
 
-## Άδεια
+## License
 
 [MIT](LICENSE)
