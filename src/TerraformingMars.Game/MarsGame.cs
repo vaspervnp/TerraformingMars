@@ -3114,7 +3114,7 @@ public class MarsGame : Microsoft.Xna.Framework.Game
         if (_world.StagnationActive)
             bottom.Add(("!! SYSTEMIC STAGNATION - population outgrew its food/water/housing - expand infrastructure !!", HudWarn));
         if (_world.Phase2Active)
-            bottom.Add(($"Factions: Industry {_world.Colony.IndustrialistApproval * 100:0}%   Ecology {_world.Colony.EcologistApproval * 100:0}%   Pollution {_world.PollutionLevel * 100:0}%",
+            bottom.Add(($"Factions: Industry {_world.Colony.IndustrialistApproval * 100:0}%   Ecology {_world.Colony.EcologistApproval * 100:0}%   Pollution {_world.PollutionLevel * 100:0}%   Automation {_world.AutomationLevel * 100:0}%",
                 _world.IndustrialStrike || _world.EcologistStrike ? HudWarn : HudDim));
         if (_world.PollutionLevel > 0.5)
             bottom.Add(("!! HEAVY POLLUTION - industry is withering nearby vegetation - build Atmospheric Scrubbers !!", HudWarn));

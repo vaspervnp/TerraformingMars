@@ -82,6 +82,7 @@ public static class ColonyFactory
         var systems = new List<ISimulationSystem>();
         if (enableEvents) systems.Add(new EventSystem(sponsor, map.Seed));
         systems.Add(new ConstructionSystem());
+        systems.Add(new AutomationSystem());   // πριν το Production ώστε το Automated flag να διαβαστεί
         systems.Add(new ProductionSystem());
         systems.Add(new MarketSystem());
         systems.Add(new ResearchSystem());

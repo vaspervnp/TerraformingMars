@@ -33,6 +33,10 @@ public sealed class Building
     /// <summary>Ticks επισκευής που απομένουν όταν το κτίριο είναι <see cref="BuildingState.Disabled"/>.</summary>
     public int RepairTicksRemaining { get; internal set; }
 
+    /// <summary>Αυτοματοποιημένο από AI drones (Φάση 2B): λειτουργεί πλήρως χωρίς ανθρώπινο πλήρωμα.
+    /// Εφήμερο — υπολογίζεται κάθε tick από το <see cref="Simulation.AutomationSystem"/>.</summary>
+    public bool Automated { get; internal set; }
+
     /// <summary>Tick κατά το οποίο τοποθετήθηκε (για υπολογισμό επιστροφής στο reclaim).</summary>
     public long CreatedTick { get; init; }
 
@@ -65,6 +69,7 @@ public sealed class Building
     public double WorkerEfficiency()
     {
         if (State != BuildingState.Operational) return 0.0;
+        if (Automated) return 1.0;                    // AI drones: πλήρης βασική απόδοση χωρίς πλήρωμα
         if (Definition.MaxWorkers <= 0) return 1.0;
         if (Workers.Count == 0) return 0.0;
 

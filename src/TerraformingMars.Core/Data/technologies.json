@@ -176,5 +176,15 @@
     "Cost": 800,
     "Prerequisites": [ "heavy_metallurgy" ],
     "Unlocks": [ "deep_core_drill" ]
+  },
+  {
+    "Id": "automated_labor_swarms",
+    "Name": "Automated Labor Swarms",
+    "Description": "Autonomous drone swarms that run heavy industry with no human workers.",
+    "Phase": 6,
+    "RequiresPhase2": true,
+    "Cost": 750,
+    "Prerequisites": [],
+    "Unlocks": [ "ai_drone_hive" ]
   }
 ]

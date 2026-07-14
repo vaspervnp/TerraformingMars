@@ -968,6 +968,101 @@ public class Phase2BSeismicTests
     }
 }
 
+public class Phase2BAutomationTests
+{
+    private static HexMap Map() =>
+        new MapGenerator(new MapGenerationSettings { Width = 24, Height = 24, Seed = 11 }).Generate();
+
+    private static void ToTargets(World w) =>
+        w.Planet.Restore(PlanetState.TargetTemperature, PlanetState.TargetPressure,
+            PlanetState.TargetOxygen, PlanetState.TargetWater, 0);
+
+    // Ασυμπλήρωτο drill (Industry, MaxWorkers 1) → κανονικά eff 0· παράγει μόνο αν αυτοματοποιηθεί.
+    private static Building UnstaffedDrill(HexMap map, int index) =>
+        new(BuildingCatalog.LoadDefault().Get("deep_core_drill"), map.Tiles.ElementAt(index).Coord, startOperational: true);
+
+    private static Building Hive(HexMap map, int index) =>
+        new(BuildingCatalog.LoadDefault().Get("ai_drone_hive"), map.Tiles.ElementAt(index).Coord, startOperational: true);
+
+    [Fact]
+    public void Drone_Hive_Runs_Industry_Without_Crew()
+    {
+        var map = Map();
+        var colony = new Colony();
+        colony.AddBuilding(UnstaffedDrill(map, 0));
+        colony.AddBuilding(Hive(map, 1));
+        colony.Ledger.Set(ResourceKind.Energy, 100_000);
+        var world = new World(map, colony, new ISimulationSystem[] { new AutomationSystem(), new ProductionSystem() });
+        ToTargets(world);
+        world.Tick();                       // → Φάση 2
+        for (int i = 0; i < 10; i++) world.Tick();
+
+        Assert.True(colony.Ledger.Get(ResourceKind.Materials) > 0); // το drone τρέχει το drill χωρίς πλήρωμα
+        Assert.True(world.AutomationLevel > 0);
+    }
+
+    [Fact]
+    public void Unstaffed_Industry_Stays_Idle_Without_A_Hive()
+    {
+        var map = Map();
+        var colony = new Colony();
+        colony.AddBuilding(UnstaffedDrill(map, 0)); // ΧΩΡΙΣ hive
+        colony.Ledger.Set(ResourceKind.Energy, 100_000);
+        var world = new World(map, colony, new ISimulationSystem[] { new AutomationSystem(), new ProductionSystem() });
+        ToTargets(world);
+        world.Tick();
+        for (int i = 0; i < 10; i++) world.Tick();
+
+        Assert.Equal(0, colony.Ledger.Get(ResourceKind.Materials), 6); // κανένα πλήρωμα, κανένα drone → αδρανές
+    }
+
+    [Fact]
+    public void Automation_Capacity_Limits_Coverage()
+    {
+        var map = Map();
+        var colony = new Colony();
+        for (int i = 0; i < 6; i++) colony.AddBuilding(UnstaffedDrill(map, i));
+        colony.AddBuilding(Hive(map, 6)); // capacity 4
+        var world = new World(map, colony, new ISimulationSystem[] { new AutomationSystem() });
+        ToTargets(world);
+        world.Tick();
+        world.Tick();
+
+        Assert.Equal(4, colony.Buildings.Count(b => b.Automated)); // μόνο 4 από τα 6
+        Assert.Equal(4.0 / 6.0, world.AutomationLevel, 3);
+    }
+
+    [Fact]
+    public void Automation_Is_Inactive_Before_Phase2()
+    {
+        var map = Map();
+        var colony = new Colony();
+        colony.AddBuilding(UnstaffedDrill(map, 0));
+        colony.AddBuilding(Hive(map, 1));
+        colony.Ledger.Set(ResourceKind.Energy, 100_000);
+        var world = new World(map, colony, new ISimulationSystem[] { new AutomationSystem(), new ProductionSystem() });
+        for (int i = 0; i < 20; i++) world.Tick(); // ΟΧΙ terraformed
+
+        Assert.Equal(0, colony.Ledger.Get(ResourceKind.Materials), 6);
+        Assert.False(colony.Buildings[0].Automated);
+    }
+
+    [Fact]
+    public void AI_Drone_Hive_Gated_By_Tech()
+    {
+        var map = Map();
+        var colony = new Colony();
+        colony.Ledger.Set(ResourceKind.Credits, 100_000);
+        var hive = BuildingCatalog.LoadDefault().Get("ai_drone_hive");
+        var tile = map.Tiles.First(t => t.IsBuildable);
+
+        Assert.False(colony.TryPlaceBuilding(hive, tile.Coord, map).Success); // locked
+
+        colony.Tech.Researched.Add("automated_labor_swarms");
+        Assert.True(colony.TryPlaceBuilding(hive, tile.Coord, map).Success);
+    }
+}
+
 // Παλινδρομήσεις για τα ευρήματα του adversarial review.
 public class Phase2ReviewRegressionTests
 {

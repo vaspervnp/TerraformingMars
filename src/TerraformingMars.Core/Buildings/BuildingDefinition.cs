@@ -85,6 +85,9 @@ public sealed class BuildingDefinition
     /// <summary>Σεισμική αστάθεια που προσθέτει/tick (Φάση 2B, deep core drilling). Υψηλή συσσώρευση → marsquake.</summary>
     public double SeismicPerTick { get; init; } = 0.0;
 
+    /// <summary>Πόσα βιομηχανικά κτίρια αυτοματοποιεί (AI Drone Hive, Φάση 2B) — λειτουργούν χωρίς πλήρωμα.</summary>
+    public int AutomationCapacity { get; init; } = 0;
+
     /// <summary>Αν true, καθαρίζει ρύπανση στο hex του και στα γειτονικά (μονάδα αντιρρύπανσης).</summary>
     public bool ScrubsPollution { get; init; } = false;
 

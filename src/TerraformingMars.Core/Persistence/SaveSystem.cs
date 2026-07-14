@@ -168,6 +168,7 @@ public static class SaveSystem
         {
             new EventSystem(sponsor, map.Seed),
             new ConstructionSystem(),
+            new AutomationSystem(),
             new ProductionSystem(),
             new MarketSystem(),
             new ResearchSystem(),

@@ -111,6 +111,9 @@ public sealed class World
     /// <summary>Εφήμερο (δεν σώζεται): 0..1 δείκτης εγγύτητας σε marsquake — για το HUD.</summary>
     public double SeismicLevel { get; internal set; }
 
+    /// <summary>Εφήμερο (δεν σώζεται): ποσοστό 0..1 των βιομηχανικών κτιρίων που τρέχουν με AI drones (Φάση 2B).</summary>
+    public double AutomationLevel { get; internal set; }
+
     /// <summary>Γεγονότα που μόλις ξεκίνησαν αυτό το βήμα· τα «καταναλώνει» το UI για popup (εφήμερο, δεν σώζεται).</summary>
     public List<EventStart> StartedEvents { get; } = new();
 

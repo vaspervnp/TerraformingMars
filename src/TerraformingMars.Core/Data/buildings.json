@@ -353,5 +353,17 @@
     "PollutionPerTick": 0.03,
     "Cost": { "Materials": 120, "Credits": 15000 },
     "Production": { "Materials": 2.0, "Silicon": 1.5, "Energy": -4.0 }
+  },
+  {
+    "Id": "ai_drone_hive",
+    "Name": "AI Drone Hive",
+    "Description": "Swarms of autonomous drones run nearby heavy industry with no human crew - freeing your workforce, for a hefty power draw.",
+    "Category": "Civic",
+    "RequiredTech": "automated_labor_swarms",
+    "BuildTimeTicks": 180,
+    "MaxWorkers": 0,
+    "AutomationCapacity": 4,
+    "Cost": { "Materials": 100, "Credits": 14000 },
+    "Production": { "Energy": -5.0 }
   }
 ]
