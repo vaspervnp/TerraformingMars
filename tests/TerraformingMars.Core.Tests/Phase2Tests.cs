@@ -1468,12 +1468,10 @@ public class Phase2APlagueTests
         new MapGenerator(new MapGenerationSettings { Width = 24, Height = 24, Seed = 17 }).Generate();
 
     private static readonly BuildingCatalog Catalog = BuildingCatalog.LoadDefault();
+    private static readonly int GraceTicks = (int)(GameClock.TicksPerSol * 3);
 
-    // Terraformed· το water ορίζει αν ο πλανήτης είναι «πλημμυρισμένος» (>= 0.40 → πανώλη).
-    private static World Flooded(Colony colony, double water = 0.45) =>
-        Terraform(colony, water);
-
-    private static World Terraform(Colony colony, double water)
+    // Terraformed + υδάτινος (water >= κατώφλι 0.25) → η αποικία μπαίνει στη Φάση 2.
+    private static World Flooded(Colony colony, double water = 0.45)
     {
         var world = new World(Map(), colony, new ISimulationSystem[] { new PlagueSystem() });
         world.Planet.Restore(PlanetState.TargetTemperature, PlanetState.TargetPressure,
@@ -1481,19 +1479,26 @@ public class Phase2APlagueTests
         return world;
     }
 
-    private static Colonist AddDoctor(Colony c, string name = "Doc")
+    private static void PastGrace(World world)
     {
-        var d = new Colonist(name, Specialty.Doctor);
-        c.Colonists.Add(d);
-        return d;
+        for (int i = 0; i < GraceTicks + 2; i++) world.Tick(); // πέρα από το grace onset
+    }
+
+    private static Building StaffedHospital(Colony c, Specialty staff)
+    {
+        var hospital = new Building(Catalog.Get("isolation_hospital"), new Hex(0, 0), startOperational: true);
+        c.AddBuilding(hospital);
+        var worker = new Colonist("Medic", staff);
+        c.Colonists.Add(worker);
+        c.Assign(worker, hospital);
+        return hospital;
     }
 
     [Fact]
-    public void Plague_Spreads_On_A_Flooded_Planet()
+    public void Plague_Spreads_On_A_Wet_Planet_After_Grace()
     {
-        var colony = new Colony();
-        var world = Flooded(colony);
-        for (int i = 0; i < 60; i++) world.Tick();
+        var world = Flooded(new Colony());
+        for (int i = 0; i < GraceTicks + 60; i++) world.Tick();
 
         Assert.True(world.PlagueSeverity > 0.1);
         Assert.True(world.PlagueEfficiency < 1.0);
@@ -1501,10 +1506,21 @@ public class Phase2APlagueTests
     }
 
     [Fact]
+    public void Grace_Period_Delays_The_Onset()
+    {
+        var world = Flooded(new Colony());
+        world.Tick(); world.Tick();              // μόλις μέσα στη Φάση 2, εντός grace
+        Assert.Equal(0, world.PlagueSeverity, 6);
+        Assert.True(world.Phase2Ticks < GraceTicks);
+
+        for (int i = 0; i < GraceTicks + 30; i++) world.Tick();
+        Assert.True(world.PlagueSeverity > 0);   // ξεκινά μετά το grace
+    }
+
+    [Fact]
     public void No_Plague_Before_Phase2()
     {
-        var colony = new Colony();
-        var world = new World(Map(), colony, new ISimulationSystem[] { new PlagueSystem() }); // όχι terraformed
+        var world = new World(Map(), new Colony(), new ISimulationSystem[] { new PlagueSystem() }); // όχι terraformed
         for (int i = 0; i < 20; i++) world.Tick();
 
         Assert.Equal(0, world.PlagueSeverity, 6);
@@ -1513,34 +1529,16 @@ public class Phase2APlagueTests
     }
 
     [Fact]
-    public void Doctors_Suppress_The_Plague()
-    {
-        var colony = new Colony();
-        AddDoctor(colony, "A"); AddDoctor(colony, "B"); AddDoctor(colony, "C"); // 3 × 0.004 > spread 0.004
-        var world = Flooded(colony);
-        world.Tick();                       // → Φάση 2
-        world.PlagueSeverity = 0.5;         // υπάρχουσα επιδημία
-        for (int i = 0; i < 40; i++) world.Tick();
-
-        Assert.True(world.PlagueSeverity < 0.5); // οι γιατροί την υποχωρούν
-    }
-
-    [Fact]
     public void Staffed_Isolation_Hospital_Cures_The_Plague()
     {
         var colony = new Colony();
-        var hospital = new Building(Catalog.Get("isolation_hospital"), new Hex(0, 0), startOperational: true);
-        colony.AddBuilding(hospital);
-        var medic = new Colonist("Nurse", Specialty.Engineer); // μη-Doctor: απομονώνει τη συνεισφορά του κτιρίου
-        colony.Colonists.Add(medic);
-        colony.Assign(medic, hospital);
-
+        StaffedHospital(colony, Specialty.Engineer); // μη-Doctor: το κτίριο και μόνο θεραπεύει
         var world = Flooded(colony);
-        world.Tick();
+        PastGrace(world);
         world.PlagueSeverity = 0.5;
         for (int i = 0; i < 40; i++) world.Tick();
 
-        Assert.True(world.PlagueSeverity < 0.5); // το στελεχωμένο νοσοκομείο θεραπεύει
+        Assert.True(world.PlagueSeverity < 0.5);
     }
 
     [Fact]
@@ -1549,19 +1547,35 @@ public class Phase2APlagueTests
         var colony = new Colony();
         colony.AddBuilding(new Building(Catalog.Get("isolation_hospital"), new Hex(0, 0), startOperational: true)); // 0 workers
         var world = Flooded(colony);
-        world.Tick();
+        PastGrace(world);
         world.PlagueSeverity = 0.5;
         for (int i = 0; i < 20; i++) world.Tick();
 
-        Assert.True(world.PlagueSeverity > 0.5); // χωρίς προσωπικό δεν έχει ιατρική ικανότητα → η πανώλη μεγαλώνει
+        Assert.True(world.PlagueSeverity > 0.5); // χωρίς προσωπικό δεν έχει ιατρική ικανότητα → μεγαλώνει
+    }
+
+    [Fact]
+    public void Loose_Doctors_Do_Not_Cure_Without_A_Hospital()
+    {
+        var colony = new Colony();
+        for (int i = 0; i < 3; i++) colony.Colonists.Add(new Colonist($"Doc{i}", Specialty.Doctor));
+        var world = Flooded(colony);
+        PastGrace(world);
+        world.PlagueSeverity = 0.5;
+        for (int i = 0; i < 20; i++) world.Tick();
+
+        Assert.True(world.PlagueSeverity > 0.5); // η θεραπεία απαιτεί στελεχωμένο νοσοκομείο, όχι σκόρπιους γιατρούς
     }
 
     [Fact]
     public void Plague_Recedes_When_Oceans_Drop_Below_Threshold()
     {
         var colony = new Colony();
-        var world = Terraform(colony, PlanetState.TargetWater); // 0.30 < 0.40 → όχι πλέον υγρός
-        world.Tick();
+        var world = new World(Map(), colony, new ISimulationSystem[] { new PlagueSystem() });
+        world.Phase2Active = true;            // latched (το νερό είναι κάτω από το κατώφλι)
+        world.Phase2Ticks = GraceTicks + 10;  // πέρα από το grace
+        world.Planet.Restore(PlanetState.TargetTemperature, PlanetState.TargetPressure,
+            PlanetState.TargetOxygen, 0.20, 0.3); // 0.20 < 0.25 → όχι υδάτινος
         world.PlagueSeverity = 0.5;
         for (int i = 0; i < 40; i++) world.Tick();
 
@@ -1571,9 +1585,8 @@ public class Phase2APlagueTests
     [Fact]
     public void PlagueSeverity_Round_Trips_Through_Save()
     {
-        var map = Map();
         var sponsors = SponsorCatalog.LoadDefault();
-        var world = new World(map, new Colony(), System.Array.Empty<ISimulationSystem>());
+        var world = new World(Map(), new Colony(), System.Array.Empty<ISimulationSystem>());
         world.PlagueSeverity = 0.4;
 
         var loaded = SaveSystem.Load(SaveSystem.ToJson(world, sponsors.Get("normal")), Catalog, sponsors, out _);
