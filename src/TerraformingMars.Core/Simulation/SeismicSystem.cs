@@ -6,9 +6,10 @@ namespace TerraformingMars.Core.Simulation;
 /// <summary>
 /// Σεισμική αστάθεια της Φάσης 2B: τα Deep Core Drills (κτίρια με <see cref="BuildingDefinition.SeismicPerTick"/>)
 /// συσσωρεύουν πίεση στον φλοιό όσο λειτουργούν. Όταν ξεπεραστεί το κατώφλι, ξεσπά <b>marsquake</b> με
-/// επίκεντρο ένα drill: όσα κτίρια βρίσκονται σε ακτίνα «ραγίζουν» (γίνονται <see cref="BuildingState.Disabled"/>
-/// και επισκευάζονται από το EventSystem). Ο παίκτης το διαχειρίζεται απλώνοντας τα drills μακριά από
-/// κρίσιμες υποδομές. Ντετερμινιστικό: το επίκεντρο είναι το πρώτο ενεργό drill.
+/// επίκεντρο ένα drill: τα κτίρια σε ακτίνα «ραγίζουν» (γίνονται <see cref="BuildingState.Disabled"/> και
+/// επισκευάζονται από το EventSystem) — εκτός της κρίσιμης υποδομής (Power/LifeSupport, ώστε να μη γίνεται
+/// death-spiral). Ο παίκτης το διαχειρίζεται απλώνοντας τα drills μακριά από βιομηχανία/οικονομία.
+/// Ντετερμινιστικό: το επίκεντρο είναι το πρώτο ενεργό drill.
 /// </summary>
 public sealed class SeismicSystem : ISimulationSystem
 {
@@ -51,6 +52,9 @@ public sealed class SeismicSystem : ISimulationSystem
         foreach (var b in world.Colony.Buildings)
         {
             if (b.State != BuildingState.Operational) continue;
+            // Κρίσιμη υποδομή επιβίωσης εξαιρείται — ένα marsquake ραγίζει βιομηχανία/οικονομία,
+            // ποτέ δεν προκαλεί brownout ή κατάρρευση υποστήριξης ζωής (αποφυγή death-spiral).
+            if (b.Definition.Category is "Power" or "LifeSupport") continue;
             if (b.Location.DistanceTo(epicenter) > MarsquakeRadius) continue;
             b.State = BuildingState.Disabled;
             b.RepairTicksRemaining = MarsquakeRepairTicks;

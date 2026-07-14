@@ -871,15 +871,16 @@ public class Phase2BSeismicTests
         var neighbor = drillTile.Coord.Neighbor(0);
         var colony = new Colony();
         StaffedDrill(colony, map, drillTile.Coord);
-        var solar = new Building(BuildingCatalog.LoadDefault().Get("solar_panel"), neighbor, startOperational: true);
-        colony.AddBuilding(solar);
+        // Μη-κρίσιμο γειτονικό κτίριο (Industry) — η κρίσιμη υποδομή (Power/LifeSupport) εξαιρείται.
+        var factory = new Building(BuildingCatalog.LoadDefault().Get("regolith_printer"), neighbor, startOperational: true);
+        colony.AddBuilding(factory);
         var world = new World(map, colony, new ISimulationSystem[] { new SeismicSystem() });
         ToTargets(world);
         world.Tick();
         for (int i = 0; i < 400; i++) world.Tick(); // η πίεση ξεπερνά το κατώφλι → marsquake
 
-        Assert.Equal(BuildingState.Disabled, solar.State);        // ράγισε το γειτονικό
-        Assert.True(solar.RepairTicksRemaining > 0);
+        Assert.Equal(BuildingState.Disabled, factory.State);      // ράγισε το γειτονικό
+        Assert.True(factory.RepairTicksRemaining > 0);
         Assert.Contains(world.EventNotifications, n => n.Contains("Marsquake"));
     }
 
@@ -896,6 +897,30 @@ public class Phase2BSeismicTests
         for (int i = 0; i < 100; i++) world.Tick();
 
         Assert.Equal(0, world.SeismicStress, 6); // απεργός drill → καμία σεισμική συσσώρευση
+    }
+
+    [Fact]
+    public void Marsquake_Spares_Power_And_Life_Support()
+    {
+        var map = Map();
+        var drillTile = map.Tiles.First(t =>
+            t.IsBuildable && map.GetTile(t.Coord.Neighbor(0)) is { IsBuildable: true }
+                          && map.GetTile(t.Coord.Neighbor(1)) is { IsBuildable: true });
+        var colony = new Colony();
+        StaffedDrill(colony, map, drillTile.Coord);
+        var catalog = BuildingCatalog.LoadDefault();
+        var solar = new Building(catalog.Get("solar_panel"), drillTile.Coord.Neighbor(0), startOperational: true);      // Power
+        var o2 = new Building(catalog.Get("o2_recycler"), drillTile.Coord.Neighbor(1), startOperational: true);        // LifeSupport
+        colony.AddBuilding(solar);
+        colony.AddBuilding(o2);
+        var world = new World(map, colony, new ISimulationSystem[] { new SeismicSystem() });
+        ToTargets(world);
+        world.Tick();
+        for (int i = 0; i < 400; i++) world.Tick();
+
+        Assert.Contains(world.EventNotifications, n => n.Contains("Marsquake")); // έγινε σεισμός
+        Assert.Equal(BuildingState.Operational, solar.State);                   // ...αλλά η ενέργεια γλίτωσε
+        Assert.Equal(BuildingState.Operational, o2.State);                      // ...και η υποστήριξη ζωής
     }
 
     [Fact]
