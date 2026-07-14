@@ -84,6 +84,7 @@ public static class ColonyFactory
         systems.Add(new ConstructionSystem());
         systems.Add(new AutomationSystem());   // πριν το Production ώστε το Automated flag να διαβαστεί
         systems.Add(new HyperloopSystem());    // πριν το Production ώστε ο LogisticsFactor να διαβαστεί
+        systems.Add(new PlagueSystem());       // πριν το Production ώστε ο PlagueEfficiency να διαβαστεί
         systems.Add(new ProductionSystem());
         systems.Add(new MarketSystem());
         systems.Add(new ResearchSystem());

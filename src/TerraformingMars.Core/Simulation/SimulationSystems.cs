@@ -64,7 +64,8 @@ public sealed class ProductionSystem : ISimulationSystem
         {
             if (building.State != BuildingState.Operational) continue;
             if (world.IsOnStrike(building.Definition)) continue;                    // απεργία παράταξης → σταματά
-            double eff = building.WorkerEfficiency() * world.ProductionEfficiency;  // <1 σε systemic stagnation (Φάση 2)
+            double eff = building.WorkerEfficiency() * world.ProductionEfficiency   // <1 σε systemic stagnation (Φάση 2)
+                         * world.PlagueEfficiency;                                  // <1 σε ενεργή Άρεια Πανώλη
             if (eff <= 0) continue;
 
             var def = building.Definition;

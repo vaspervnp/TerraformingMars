@@ -16,6 +16,10 @@ public sealed class PopulationSystem : ISimulationSystem
     private static readonly Specialty[] Specialties =
         { Specialty.Geologist, Specialty.Engineer, Specialty.Botanist, Specialty.Climatologist };
 
+    // Στη Φάση 2 φτάνουν και Doctors (χρειάζονται για την Άρεια Πανώλη / τα Isolation Hospitals).
+    private static readonly Specialty[] Phase2Specialties =
+        { Specialty.Geologist, Specialty.Engineer, Specialty.Botanist, Specialty.Climatologist, Specialty.Doctor };
+
     private readonly Random _rng;
     private double _growth;
     private int _born;
@@ -35,7 +39,8 @@ public sealed class PopulationSystem : ISimulationSystem
         if (_growth < 1.0) return;
 
         _growth -= 1.0;
-        var specialty = Specialties[_rng.Next(Specialties.Length)];
+        var pool = world.Phase2Active ? Phase2Specialties : Specialties;
+        var specialty = pool[_rng.Next(pool.Length)];
         colony.Colonists.Add(new Colonist($"Settler #{++_born}", specialty));
         colony.Crew = colony.Colonists.Count;
     }

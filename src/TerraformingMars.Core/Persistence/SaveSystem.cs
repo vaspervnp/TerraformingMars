@@ -66,6 +66,7 @@ public static class SaveSystem
             SeismicStress = world.SeismicStress,
             StormStress = world.StormStress,
             InfestationLevel = world.InfestationLevel,
+            PlagueSeverity = world.PlagueSeverity,
             IndustrialistApproval = colony.IndustrialistApproval,
             EcologistApproval = colony.EcologistApproval,
             HasCaveShelter = world.HasCaveShelter,
@@ -173,6 +174,7 @@ public static class SaveSystem
             new ConstructionSystem(),
             new AutomationSystem(),
             new HyperloopSystem(),
+            new PlagueSystem(),
             new ProductionSystem(),
             new MarketSystem(),
             new ResearchSystem(),
@@ -202,6 +204,7 @@ public static class SaveSystem
         world.SeismicStress = save.SeismicStress;
         world.StormStress = save.StormStress;
         world.InfestationLevel = save.InfestationLevel;
+        world.PlagueSeverity = save.PlagueSeverity;
 
         // Παλιό (προ-Φάσης-2) save που ήταν ήδη terraformed: μπες σιωπηλά στη Φάση 2 κατά το load,
         // ώστε το World.Tick να ΜΗΝ ξαναπυροδοτήσει τον εορτασμό/chime στο πρώτο tick.

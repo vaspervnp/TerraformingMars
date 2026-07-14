@@ -3126,6 +3126,8 @@ public class MarsGame : Microsoft.Xna.Framework.Game
             bottom.Add(($"!! INVASIVE SPECIES {_world.InfestationLevel * 100:0}% - eating crops & vegetation - build Wildlife Reserves / a Genetic Vault !!", HudWarn));
         if (_world.LogisticsBlackoutCount > 0)
             bottom.Add(($"!! LOGISTICS BLACKOUT - {_world.LogisticsBlackoutCount} remote outpost(s) at half output - link them with Hyperloop Terminals !!", HudWarn));
+        if (_world.PlagueActive && _world.PlagueSeverity > 0.05)
+            bottom.Add(($"!! MARTIAN PLAGUE {_world.PlagueSeverity * 100:0}% - workforce sickening - staff Isolation Hospitals with Doctors !!", HudWarn));
         if (_world.IndustrialStrike)
             bottom.Add(("!! INDUSTRIALIST STRIKE - mines & factories halted - build a District Town Hall !!", HudWarn));
         if (_world.EcologistStrike)

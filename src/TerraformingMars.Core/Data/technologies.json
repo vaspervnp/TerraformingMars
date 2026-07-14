@@ -155,6 +155,16 @@
     "Prerequisites": [],
     "Unlocks": [ "atmospheric_scrubber" ]
   },
+  {
+    "Id": "macro_epidemiology",
+    "Name": "Macro-Epidemiology",
+    "Description": "Planetary-scale medicine to identify and neutralize the mutated alien pathogens that bloom once oceans cover the surface.",
+    "Phase": 5,
+    "RequiresPhase2": true,
+    "Cost": 500,
+    "Prerequisites": [],
+    "Unlocks": [ "isolation_hospital" ]
+  },
 
   // ---------- Phase 6: Φάση 2B — Infrastructure Boom ----------
   {

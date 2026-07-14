@@ -95,6 +95,10 @@ public sealed class BuildingDefinition
     /// outposts στο δίκτυο και «γεφυρώνει» με άλλους κόμβους/πυρήνα εντός αυτής. 0 = δεν είναι κόμβος.</summary>
     public int HyperloopRange { get; init; } = 0;
 
+    /// <summary>Ιατρική ικανότητα/tick κατά της Άρειας Πανώλης (Isolation Hospital, Φάση 2A) — επί του
+    /// worker efficiency (χρειάζεται προσωπικό· Doctors το ενισχύουν). 0 = δεν θεραπεύει.</summary>
+    public double MedicalCapacity { get; init; } = 0.0;
+
     /// <summary>Καταστολή εισβλητικών ειδών/tick (Φάση 2B, wildlife reserve / genetic vault) — κρατά το οικοσύστημα σε ισορροπία.</summary>
     public double EcosystemStability { get; init; } = 0.0;
 

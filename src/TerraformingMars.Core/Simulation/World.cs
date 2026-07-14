@@ -134,6 +134,15 @@ public sealed class World
     /// το δίκτυο Hyperloop και τρέχουν με μειωμένη παραγωγή (blackout) — για το HUD.</summary>
     public int LogisticsBlackoutCount { get; internal set; }
 
+    // --- Phase 2A: Άρεια Πανώλη (bio-hazard σε πλήρως υδάτινο πλανήτη) ---
+    /// <summary>Σοβαρότητα της Άρειας Πανώλης 0..1 (σώζεται)· κλιμακώνεται όταν οι ωκεανοί ξεχειλίζουν και
+    /// υποχωρεί με Doctors / Isolation Hospitals. Μειώνει την απόδοση του εργατικού δυναμικού.</summary>
+    public double PlagueSeverity { get; internal set; }
+    /// <summary>Εφήμερο (δεν σώζεται): true όσο η πανώλη εξαπλώνεται ή παραμένει ενεργή — για το HUD.</summary>
+    public bool PlagueActive { get; internal set; }
+    /// <summary>Εφήμερο (δεν σώζεται): πολλαπλασιαστής παραγωγής λόγω πανώλης (1.0 = υγιές). Το διαβάζει το ProductionSystem.</summary>
+    public double PlagueEfficiency { get; internal set; } = 1.0;
+
     /// <summary>Γεγονότα που μόλις ξεκίνησαν αυτό το βήμα· τα «καταναλώνει» το UI για popup (εφήμερο, δεν σώζεται).</summary>
     public List<EventStart> StartedEvents { get; } = new();
 

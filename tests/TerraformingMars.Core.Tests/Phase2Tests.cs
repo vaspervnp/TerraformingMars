@@ -1462,6 +1462,141 @@ public class Phase2BHyperloopTests
     }
 }
 
+public class Phase2APlagueTests
+{
+    private static HexMap Map() =>
+        new MapGenerator(new MapGenerationSettings { Width = 24, Height = 24, Seed = 17 }).Generate();
+
+    private static readonly BuildingCatalog Catalog = BuildingCatalog.LoadDefault();
+
+    // Terraformed· το water ορίζει αν ο πλανήτης είναι «πλημμυρισμένος» (>= 0.40 → πανώλη).
+    private static World Flooded(Colony colony, double water = 0.45) =>
+        Terraform(colony, water);
+
+    private static World Terraform(Colony colony, double water)
+    {
+        var world = new World(Map(), colony, new ISimulationSystem[] { new PlagueSystem() });
+        world.Planet.Restore(PlanetState.TargetTemperature, PlanetState.TargetPressure,
+            PlanetState.TargetOxygen, water, 0.3);
+        return world;
+    }
+
+    private static Colonist AddDoctor(Colony c, string name = "Doc")
+    {
+        var d = new Colonist(name, Specialty.Doctor);
+        c.Colonists.Add(d);
+        return d;
+    }
+
+    [Fact]
+    public void Plague_Spreads_On_A_Flooded_Planet()
+    {
+        var colony = new Colony();
+        var world = Flooded(colony);
+        for (int i = 0; i < 60; i++) world.Tick();
+
+        Assert.True(world.PlagueSeverity > 0.1);
+        Assert.True(world.PlagueEfficiency < 1.0);
+        Assert.True(world.PlagueActive);
+    }
+
+    [Fact]
+    public void No_Plague_Before_Phase2()
+    {
+        var colony = new Colony();
+        var world = new World(Map(), colony, new ISimulationSystem[] { new PlagueSystem() }); // όχι terraformed
+        for (int i = 0; i < 20; i++) world.Tick();
+
+        Assert.Equal(0, world.PlagueSeverity, 6);
+        Assert.Equal(1.0, world.PlagueEfficiency, 6);
+        Assert.False(world.PlagueActive);
+    }
+
+    [Fact]
+    public void Doctors_Suppress_The_Plague()
+    {
+        var colony = new Colony();
+        AddDoctor(colony, "A"); AddDoctor(colony, "B"); AddDoctor(colony, "C"); // 3 × 0.004 > spread 0.004
+        var world = Flooded(colony);
+        world.Tick();                       // → Φάση 2
+        world.PlagueSeverity = 0.5;         // υπάρχουσα επιδημία
+        for (int i = 0; i < 40; i++) world.Tick();
+
+        Assert.True(world.PlagueSeverity < 0.5); // οι γιατροί την υποχωρούν
+    }
+
+    [Fact]
+    public void Staffed_Isolation_Hospital_Cures_The_Plague()
+    {
+        var colony = new Colony();
+        var hospital = new Building(Catalog.Get("isolation_hospital"), new Hex(0, 0), startOperational: true);
+        colony.AddBuilding(hospital);
+        var medic = new Colonist("Nurse", Specialty.Engineer); // μη-Doctor: απομονώνει τη συνεισφορά του κτιρίου
+        colony.Colonists.Add(medic);
+        colony.Assign(medic, hospital);
+
+        var world = Flooded(colony);
+        world.Tick();
+        world.PlagueSeverity = 0.5;
+        for (int i = 0; i < 40; i++) world.Tick();
+
+        Assert.True(world.PlagueSeverity < 0.5); // το στελεχωμένο νοσοκομείο θεραπεύει
+    }
+
+    [Fact]
+    public void Unstaffed_Hospital_Does_Not_Cure()
+    {
+        var colony = new Colony();
+        colony.AddBuilding(new Building(Catalog.Get("isolation_hospital"), new Hex(0, 0), startOperational: true)); // 0 workers
+        var world = Flooded(colony);
+        world.Tick();
+        world.PlagueSeverity = 0.5;
+        for (int i = 0; i < 20; i++) world.Tick();
+
+        Assert.True(world.PlagueSeverity > 0.5); // χωρίς προσωπικό δεν έχει ιατρική ικανότητα → η πανώλη μεγαλώνει
+    }
+
+    [Fact]
+    public void Plague_Recedes_When_Oceans_Drop_Below_Threshold()
+    {
+        var colony = new Colony();
+        var world = Terraform(colony, PlanetState.TargetWater); // 0.30 < 0.40 → όχι πλέον υγρός
+        world.Tick();
+        world.PlagueSeverity = 0.5;
+        for (int i = 0; i < 40; i++) world.Tick();
+
+        Assert.True(world.PlagueSeverity < 0.5); // φυσική ύφεση όταν οι ωκεανοί υποχωρούν
+    }
+
+    [Fact]
+    public void PlagueSeverity_Round_Trips_Through_Save()
+    {
+        var map = Map();
+        var sponsors = SponsorCatalog.LoadDefault();
+        var world = new World(map, new Colony(), System.Array.Empty<ISimulationSystem>());
+        world.PlagueSeverity = 0.4;
+
+        var loaded = SaveSystem.Load(SaveSystem.ToJson(world, sponsors.Get("normal")), Catalog, sponsors, out _);
+
+        Assert.Equal(0.4, loaded.PlagueSeverity, 3);
+    }
+
+    [Fact]
+    public void Isolation_Hospital_Gated_By_Tech()
+    {
+        var map = Map();
+        var colony = new Colony();
+        colony.Ledger.Set(ResourceKind.Credits, 100_000);
+        var hospital = Catalog.Get("isolation_hospital");
+        var tile = map.Tiles.First(t => t.IsBuildable);
+
+        Assert.False(colony.TryPlaceBuilding(hospital, tile.Coord, map).Success); // locked
+
+        colony.Tech.Researched.Add("macro_epidemiology");
+        Assert.True(colony.TryPlaceBuilding(hospital, tile.Coord, map).Success);
+    }
+}
+
 // Παλινδρομήσεις για τα ευρήματα του adversarial review.
 public class Phase2ReviewRegressionTests
 {

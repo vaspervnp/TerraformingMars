@@ -403,5 +403,18 @@
     "HyperloopRange": 6,
     "Cost": { "Materials": 70, "Credits": 6000 },
     "Production": { "Energy": -2.0 }
+  },
+  {
+    "Id": "isolation_hospital",
+    "Name": "Planetary Isolation Hospital",
+    "Description": "A sealed, high-tech medical center. Staffed with Doctors, it identifies and neutralizes the mutated pathogens of the Martian Plague, driving the colony-wide infection back down.",
+    "Category": "Civic",
+    "RequiredTech": "macro_epidemiology",
+    "BuildTimeTicks": 140,
+    "MaxWorkers": 2,
+    "OptimalSpecialty": "Doctor",
+    "MedicalCapacity": 0.02,
+    "Cost": { "Materials": 80, "Credits": 8000 },
+    "Production": { "Energy": -3.0 }
   }
 ]

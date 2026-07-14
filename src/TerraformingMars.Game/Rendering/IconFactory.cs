@@ -585,6 +585,14 @@ public static class IconFactory
                 Line(b, 12, 31, 22, 31, 2, speed);                        // γραμμές ταχύτητας
                 Line(b, 14, 35, 22, 35, 2, speed);
                 break;
+            case "isolation_hospital": // κτίριο νοσοκομείου + ιατρικός σταυρός
+                var hosp = new Color(228, 232, 240);
+                RoundRect(b, 17, 20, 30, 30, 4, hosp, 1f);                // σώμα κτιρίου
+                Rect(b, 24, 42, 16, 8, new Color(150, 190, 230));        // είσοδος
+                var med = new Color(228, 70, 70);                        // ιατρικός σταυρός
+                Rect(b, 29, 24, 6, 14, med);
+                Rect(b, 25, 28, 14, 6, med);
+                break;
             default:
                 Disc(b, 32, 32, 12, CategoryColor(category));
                 break;
