@@ -367,6 +367,7 @@ public static class IconFactory
         "Research" => new Color(180, 140, 255),
         "Planetary" => new Color(120, 220, 200),
         "Biosphere" => new Color(90, 200, 90),
+        "Civic" => new Color(150, 190, 230),
         _ => new Color(200, 200, 205)
     };
 
@@ -486,6 +487,79 @@ public static class IconFactory
                 Rect(b, 28, 38, 8, 10, dark);                               // πόρτα
                 Rect(b, 21, 37, 5, 5, new Color(150, 205, 240));            // παράθυρα
                 Rect(b, 38, 37, 5, 5, new Color(150, 205, 240));
+                break;
+            // ---------- Phase 2A/2B buildings ----------
+            case "cryo_carbon_capturer": // χιονονιφάδα (ψύξη/δέσμευση CO2)
+                var ice = new Color(190, 235, 255);
+                Line(b, 32, 13, 32, 51, 3, ice);
+                Line(b, 16, 22, 48, 42, 3, ice);
+                Line(b, 48, 22, 16, 42, 3, ice);
+                Line(b, 32, 13, 27, 19, 2, ice); Line(b, 32, 13, 37, 19, 2, ice);
+                Line(b, 32, 51, 27, 45, 2, ice); Line(b, 32, 51, 37, 45, 2, ice);
+                Disc(b, 32, 32, 4, new Color(235, 250, 255));
+                break;
+            case "high_density_arcology": // ουρανοξύστης με παράθυρα
+                var arcWall = new Color(205, 211, 221);
+                var arcWin = new Color(120, 180, 235);
+                Line(b, 32, 12, 32, 6, 2, arcWall);
+                RoundRect(b, 24, 12, 16, 40, 3, arcWall, 1f);
+                for (int wy = 16; wy <= 44; wy += 8)
+                { Rect(b, 27, wy, 4, 4, arcWin); Rect(b, 33, wy, 4, 4, arcWin); }
+                break;
+            case "district_town_hall": // πρόσοψη με αέτωμα & κίονες
+                var stone = new Color(222, 226, 234);
+                Tri(b, 32, 14, 15, 27, 49, 27, stone);
+                Rect(b, 16, 27, 32, 4, stone);
+                Rect(b, 20, 31, 3, 17, stone); Rect(b, 27, 31, 3, 17, stone);
+                Rect(b, 34, 31, 3, 17, stone); Rect(b, 41, 31, 3, 17, stone);
+                Rect(b, 15, 48, 34, 4, stone);
+                break;
+            case "atmospheric_scrubber": // πύργος φίλτρου + καθαρός αέρας
+                var scrBody = new Color(200, 210, 220);
+                RoundRect(b, 26, 20, 12, 30, 4, scrBody, 1f);
+                Rect(b, 28, 27, 8, 2, dark); Rect(b, 28, 32, 8, 2, dark); Rect(b, 28, 37, 8, 2, dark);
+                Disc(b, 32, 15, 5, new Color(120, 210, 140));
+                break;
+            case "quantum_processor_plant": // μικροτσίπ
+                var chip = new Color(120, 150, 205);
+                RoundRect(b, 22, 22, 20, 20, 3, chip, 1f);
+                Rect(b, 28, 28, 8, 8, new Color(190, 215, 255));
+                for (int py = 26; py <= 38; py += 6)
+                { Rect(b, 18, py, 4, 2, steel); Rect(b, 42, py, 4, 2, steel); }
+                for (int px = 26; px <= 38; px += 6)
+                { Rect(b, px, 18, 2, 4, steel); Rect(b, px, 42, 2, 4, steel); }
+                break;
+            case "deep_core_drill": // γεωτρύπανο προς τα κάτω
+                var drillMetal = new Color(210, 216, 228);
+                Rect(b, 29, 12, 6, 22, drillMetal);
+                Rect(b, 29, 20, 6, 1, dark); Rect(b, 29, 26, 6, 1, dark);
+                Tri(b, 26, 34, 38, 34, 32, 51, new Color(255, 180, 90));
+                Rect(b, 17, 47, 30, 3, new Color(150, 110, 80));
+                break;
+            case "ai_drone_hive": // drone (quadcopter)
+                var droneBody = new Color(200, 210, 225);
+                var rotor = new Color(150, 200, 245);
+                Line(b, 24, 30, 18, 22, 2, droneBody); Line(b, 40, 30, 46, 22, 2, droneBody);
+                Line(b, 24, 34, 18, 42, 2, droneBody); Line(b, 40, 34, 46, 42, 2, droneBody);
+                Disc(b, 18, 22, 5, rotor); Disc(b, 46, 22, 5, rotor);
+                Disc(b, 18, 42, 5, rotor); Disc(b, 46, 42, 5, rotor);
+                RoundRect(b, 27, 28, 10, 8, 3, droneBody, 1f);
+                break;
+            case "sea_wall": // τείχος + κύματα
+                var swWall = new Color(202, 202, 208);
+                Rect(b, 16, 22, 32, 22, swWall);
+                Rect(b, 16, 30, 32, 1, dark); Rect(b, 16, 38, 32, 1, dark);
+                Rect(b, 32, 22, 1, 8, dark); Rect(b, 24, 30, 1, 8, dark); Rect(b, 40, 30, 1, 8, dark);
+                var wave = new Color(70, 150, 235);
+                Line(b, 14, 50, 22, 46, 2, wave); Line(b, 22, 46, 30, 50, 2, wave);
+                Line(b, 30, 50, 38, 46, 2, wave); Line(b, 38, 46, 46, 50, 2, wave);
+                break;
+            case "interplanetary_stock_exchange": // ανοδικό γράφημα + χρυσό βέλος
+                var barCol = new Color(120, 210, 140);
+                Rect(b, 18, 40, 6, 10, barCol); Rect(b, 27, 32, 6, 18, barCol); Rect(b, 36, 24, 6, 26, barCol);
+                var gold = new Color(240, 195, 70);
+                Line(b, 16, 32, 45, 17, 3, gold);
+                Tri(b, 48, 15, 39, 17, 45, 24, gold);
                 break;
             default:
                 Disc(b, 32, 32, 12, CategoryColor(category));
