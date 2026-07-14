@@ -572,6 +572,19 @@ public static class IconFactory
                 Line(b, 16, 32, 45, 17, 3, gold);
                 Tri(b, 48, 15, 39, 17, 45, 24, gold);
                 break;
+            case "hyperloop_terminal": // maglev pod μέσα σε σωλήνα κενού + γραμμές ταχύτητας
+                var tube = new Color(150, 160, 175);
+                Line(b, 10, 24, 54, 24, 2, tube);                          // πάνω τοίχωμα σωλήνα
+                Line(b, 10, 42, 54, 42, 2, tube);                          // κάτω τοίχωμα σωλήνα
+                var pod = new Color(210, 224, 240);
+                RoundRect(b, 24, 28, 22, 10, 5, pod, 1f);                  // σώμα κάψουλας
+                Tri(b, 46, 28, 46, 38, 53, 33, pod);                      // μύτη (κατεύθυνση κίνησης)
+                Rect(b, 29, 31, 5, 4, new Color(90, 150, 220));           // παράθυρο
+                Rect(b, 37, 31, 4, 4, new Color(90, 150, 220));
+                var speed = new Color(120, 200, 245);
+                Line(b, 12, 31, 22, 31, 2, speed);                        // γραμμές ταχύτητας
+                Line(b, 14, 35, 22, 35, 2, speed);
+                break;
             default:
                 Disc(b, 32, 32, 12, CategoryColor(category));
                 break;

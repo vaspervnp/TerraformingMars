@@ -206,5 +206,15 @@
     "Cost": 700,
     "Prerequisites": [ "gm_trees" ],
     "Unlocks": [ "genetic_vault" ]
+  },
+  {
+    "Id": "maglev_propulsion",
+    "Name": "Maglev Vacuum Propulsion",
+    "Description": "Evacuated maglev tubes that fling materials and workers between distant nodes in seconds, knitting far-flung mining outposts into one economy.",
+    "Phase": 6,
+    "RequiresPhase2": true,
+    "Cost": 750,
+    "Prerequisites": [ "mass_driver" ],
+    "Unlocks": [ "hyperloop_terminal" ]
   }
 ]

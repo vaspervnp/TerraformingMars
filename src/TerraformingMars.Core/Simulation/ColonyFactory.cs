@@ -83,6 +83,7 @@ public static class ColonyFactory
         if (enableEvents) systems.Add(new EventSystem(sponsor, map.Seed));
         systems.Add(new ConstructionSystem());
         systems.Add(new AutomationSystem());   // πριν το Production ώστε το Automated flag να διαβαστεί
+        systems.Add(new HyperloopSystem());    // πριν το Production ώστε ο LogisticsFactor να διαβαστεί
         systems.Add(new ProductionSystem());
         systems.Add(new MarketSystem());
         systems.Add(new ResearchSystem());

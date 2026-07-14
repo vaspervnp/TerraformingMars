@@ -91,6 +91,10 @@ public sealed class BuildingDefinition
     /// <summary>Ακτίνα (hexes) που προστατεύει από hurricanes (Sea Wall, Φάση 2B). 0 = δεν προστατεύει.</summary>
     public int StormShieldRadius { get; init; } = 0;
 
+    /// <summary>Εμβέλεια (hexes) του κόμβου Hyperloop (Φάση 2B): συνδέει απομακρυσμένα βιομηχανικά
+    /// outposts στο δίκτυο και «γεφυρώνει» με άλλους κόμβους/πυρήνα εντός αυτής. 0 = δεν είναι κόμβος.</summary>
+    public int HyperloopRange { get; init; } = 0;
+
     /// <summary>Καταστολή εισβλητικών ειδών/tick (Φάση 2B, wildlife reserve / genetic vault) — κρατά το οικοσύστημα σε ισορροπία.</summary>
     public double EcosystemStability { get; init; } = 0.0;
 

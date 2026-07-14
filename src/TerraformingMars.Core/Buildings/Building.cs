@@ -37,6 +37,11 @@ public sealed class Building
     /// Εφήμερο — υπολογίζεται κάθε tick από το <see cref="Simulation.AutomationSystem"/>.</summary>
     public bool Automated { get; internal set; }
 
+    /// <summary>Πολλαπλασιαστής logistics [0..1] (Φάση 2B Hyperloop): &lt;1 όταν ένα απομακρυσμένο
+    /// βιομηχανικό outpost δεν είναι συνδεδεμένο στο δίκτυο Hyperloop (μισή παραγωγή = blackout).
+    /// Εφήμερο — υπολογίζεται κάθε tick από το <see cref="Simulation.HyperloopSystem"/>.</summary>
+    public double LogisticsFactor { get; internal set; } = 1.0;
+
     /// <summary>Tick κατά το οποίο τοποθετήθηκε (για υπολογισμό επιστροφής στο reclaim).</summary>
     public long CreatedTick { get; init; }
 
@@ -65,10 +70,16 @@ public sealed class Building
     /// <summary>
     /// Πολλαπλασιαστής απόδοσης [0..1.5]. Αυτόματα κτίρια (MaxWorkers=0) = 1.
     /// Στελεχωμένα: αναλογία στελέχωσης × (1 + 0.5 αν υπάρχει ο σωστός ειδικός).
+    /// Επί του <see cref="LogisticsFactor"/> (Hyperloop): απομακρυσμένα ασύνδετα outposts στραγγαλίζονται.
     /// </summary>
     public double WorkerEfficiency()
     {
         if (State != BuildingState.Operational) return 0.0;
+        return BaseEfficiency() * LogisticsFactor;
+    }
+
+    private double BaseEfficiency()
+    {
         if (Automated) return 1.0;                    // AI drones: πλήρης βασική απόδοση χωρίς πλήρωμα
         if (Definition.MaxWorkers <= 0) return 1.0;
         if (Workers.Count == 0) return 0.0;

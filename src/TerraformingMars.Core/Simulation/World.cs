@@ -124,6 +124,11 @@ public sealed class World
     /// <summary>Επίπεδο μόλυνσης από εισβλητικά είδη 0..1 (σώζεται)· υψηλό → τρώει σοδειές & μαραίνει βλάστηση.</summary>
     public double InfestationLevel { get; internal set; }
 
+    // --- Phase 2B: Δίκτυο Hyperloop (logistics) ---
+    /// <summary>Εφήμερο (δεν σώζεται): πλήθος απομακρυσμένων βιομηχανικών outposts που είναι ασύνδετα από
+    /// το δίκτυο Hyperloop και τρέχουν με μειωμένη παραγωγή (blackout) — για το HUD.</summary>
+    public int LogisticsBlackoutCount { get; internal set; }
+
     /// <summary>Γεγονότα που μόλις ξεκίνησαν αυτό το βήμα· τα «καταναλώνει» το UI για popup (εφήμερο, δεν σώζεται).</summary>
     public List<EventStart> StartedEvents { get; } = new();
 

@@ -391,5 +391,17 @@
     "EcosystemStability": 0.0025,
     "Cost": { "Materials": 90, "Credits": 9000 },
     "Production": { "Energy": -1.0 }
+  },
+  {
+    "Id": "hyperloop_terminal",
+    "Name": "Hyperloop Terminal",
+    "Description": "A maglev vacuum-tube node. Links remote industrial outposts within its range back to the colony core (directly or chained through other terminals) so they run at full output. If a hurricane knocks it offline, the outposts it served black out until it is repaired.",
+    "Category": "Civic",
+    "RequiredTech": "maglev_propulsion",
+    "BuildTimeTicks": 120,
+    "MaxWorkers": 0,
+    "HyperloopRange": 6,
+    "Cost": { "Materials": 70, "Credits": 6000 },
+    "Production": { "Energy": -2.0 }
   }
 ]

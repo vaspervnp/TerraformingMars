@@ -1308,6 +1308,129 @@ public class Phase2BEcosystemTests
     }
 }
 
+public class Phase2BHyperloopTests
+{
+    private static HexMap Map() =>
+        new MapGenerator(new MapGenerationSettings { Width = 24, Height = 24, Seed = 13 }).Generate();
+
+    private static readonly BuildingCatalog Catalog = BuildingCatalog.LoadDefault();
+
+    private static Building Place(Colony c, string id, Hex at) =>
+        Add(c, new Building(Catalog.Get(id), at, startOperational: true));
+
+    private static Building Add(Colony c, Building b) { c.AddBuilding(b); return b; }
+
+    private static void Terraformed(World w) =>
+        w.Planet.Restore(PlanetState.TargetTemperature, PlanetState.TargetPressure,
+            PlanetState.TargetOxygen, PlanetState.TargetWater, 0.3);
+
+    // Στήνει κόσμο μόνο με το HyperloopSystem, με πυρήνα (κάψουλα) στο (0,0), τον φέρνει στη Φάση 2
+    // και τρέχει ένα ακόμη tick ώστε το HyperloopSystem να υπολογίσει τους LogisticsFactor.
+    private static (World world, Colony colony) InPhase2()
+    {
+        var colony = new Colony();
+        Place(colony, "landing_capsule", new Hex(0, 0));
+        var world = new World(Map(), colony, new ISimulationSystem[] { new HyperloopSystem() });
+        Terraformed(world);
+        return (world, colony);
+    }
+
+    private static void Settle(World world)
+    {
+        world.Tick(); // → Φάση 2 (το latch τρέχει μετά τα systems)
+        world.Tick(); // → το HyperloopSystem βλέπει πλέον Phase2Active και υπολογίζει
+    }
+
+    [Fact]
+    public void Remote_Industry_Outpost_Runs_At_Penalty_Without_Hyperloop()
+    {
+        var (world, colony) = InPhase2();
+        var mine = Place(colony, "iron_mine", new Hex(10, 0)); // 10 hexes > RemoteRange
+        Settle(world);
+        Assert.Equal(0.5, mine.LogisticsFactor, 3);
+    }
+
+    [Fact]
+    public void Local_Industry_Is_Never_Penalized()
+    {
+        var (world, colony) = InPhase2();
+        var mine = Place(colony, "iron_mine", new Hex(3, 0)); // κοντά στον πυρήνα
+        Settle(world);
+        Assert.Equal(1.0, mine.LogisticsFactor, 3);
+    }
+
+    [Fact]
+    public void Hyperloop_Terminal_Restores_A_Remote_Outpost()
+    {
+        var (world, colony) = InPhase2();
+        var mine = Place(colony, "iron_mine", new Hex(10, 0));
+        Place(colony, "hyperloop_terminal", new Hex(6, 0)); // 6 από πυρήνα (συνδέεται), 4 από ορυχείο (εξυπηρετεί)
+        Settle(world);
+        Assert.Equal(1.0, mine.LogisticsFactor, 3);
+    }
+
+    [Fact]
+    public void Chained_Terminals_Extend_Reach_Across_The_Map()
+    {
+        var (world, colony) = InPhase2();
+        var mine = Place(colony, "iron_mine", new Hex(16, 0));
+        Place(colony, "hyperloop_terminal", new Hex(6, 0));   // πυρήνας → A
+        Place(colony, "hyperloop_terminal", new Hex(12, 0));  // A → B → ορυχείο
+        Settle(world);
+        Assert.Equal(1.0, mine.LogisticsFactor, 3);
+    }
+
+    [Fact]
+    public void Isolated_Terminal_Does_Not_Help_If_Unconnected_To_Core()
+    {
+        var (world, colony) = InPhase2();
+        var mine = Place(colony, "iron_mine", new Hex(20, 0));
+        Place(colony, "hyperloop_terminal", new Hex(20, 0)); // κοντά στο ορυχείο αλλά μακριά από τον πυρήνα (>6)
+        Settle(world);
+        Assert.Equal(0.5, mine.LogisticsFactor, 3); // ο κόμβος δεν αγκυρώνεται → δεν μεταδίδει
+    }
+
+    [Fact]
+    public void Broken_Terminal_Blacks_Out_Its_Linked_Base()
+    {
+        var (world, colony) = InPhase2();
+        var mine = Place(colony, "iron_mine", new Hex(10, 0));
+        var terminal = Place(colony, "hyperloop_terminal", new Hex(6, 0));
+        Settle(world);
+        Assert.Equal(1.0, mine.LogisticsFactor, 3); // συνδεδεμένο
+
+        terminal.State = BuildingState.Disabled;    // «σπάει» από ακραίο καιρό
+        world.Tick();
+        Assert.Equal(0.5, mine.LogisticsFactor, 3); // blackout μέχρι να επισκευαστεί
+    }
+
+    [Fact]
+    public void No_Logistics_Penalty_Before_Phase2()
+    {
+        var colony = new Colony();
+        Place(colony, "landing_capsule", new Hex(0, 0));
+        var mine = Place(colony, "iron_mine", new Hex(10, 0));
+        var world = new World(Map(), colony, new ISimulationSystem[] { new HyperloopSystem() });
+        for (int i = 0; i < 10; i++) world.Tick();
+        Assert.Equal(1.0, mine.LogisticsFactor, 3);
+    }
+
+    [Fact]
+    public void Hyperloop_Terminal_Gated_By_Tech()
+    {
+        var map = Map();
+        var colony = new Colony();
+        colony.Ledger.Set(ResourceKind.Credits, 100_000);
+        var terminal = Catalog.Get("hyperloop_terminal");
+        var tile = map.Tiles.First(t => t.IsBuildable);
+
+        Assert.False(colony.TryPlaceBuilding(terminal, tile.Coord, map).Success); // locked
+
+        colony.Tech.Researched.Add("maglev_propulsion");
+        Assert.True(colony.TryPlaceBuilding(terminal, tile.Coord, map).Success);
+    }
+}
+
 // Παλινδρομήσεις για τα ευρήματα του adversarial review.
 public class Phase2ReviewRegressionTests
 {
