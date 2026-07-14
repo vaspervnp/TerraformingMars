@@ -1257,6 +1257,28 @@ public class Phase2BEcosystemTests
     }
 
     [Fact]
+    public void Withering_Scales_With_Infestation_Severity()
+    {
+        // Regression: ceil(level × WitherTilesPerTick) πρέπει να ΚΛΙΜΑΚΩΝΕΤΑΙ, όχι να είναι πάντα 1.
+        static int WitheredInOneTick(double level)
+        {
+            var map = Map();
+            foreach (var t in map.Tiles.Where(t => t.Terrain == TerrainType.Flatland).Take(10))
+                t.Terrain = TerrainType.Vegetation;
+            int before = map.Tiles.Count(t => t.Terrain == TerrainType.Vegetation);
+
+            var world = new World(map, new Colony(), new ISimulationSystem[] { new EcosystemSystem() });
+            Terraformed(world, 0.5);
+            world.Tick();                // → Φάση 2 (μόλυνση ~0, χωρίς wither)
+            world.InfestationLevel = level;
+            world.Tick();                // ένα tick withering
+            return before - map.Tiles.Count(t => t.Terrain == TerrainType.Vegetation);
+        }
+
+        Assert.True(WitheredInOneTick(1.0) > WitheredInOneTick(0.31)); // η βαρύτητα έχει σημασία
+    }
+
+    [Fact]
     public void Genetic_Vault_Gated_By_Tech()
     {
         var map = Map();

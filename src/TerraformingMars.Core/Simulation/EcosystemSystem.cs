@@ -17,7 +17,7 @@ public sealed class EcosystemSystem : ISimulationSystem
     private const double EcologistSuppression = 0.0012;  // × έγκριση Οικολόγων
     private const double DrainThreshold = 0.30;          // πάνω από αυτό ξεκινά η ζημιά
     private const double FoodDrainPerTick = 0.4;         // × μόλυνση
-    private const double WitherTilesPerTick = 1.0;       // × μόλυνση
+    private const double WitherTilesPerTick = 3.0;       // ceil(μόλυνση × αυτό): 1 tile (~0.30) → 3 tiles (1.0)
 
     public void Tick(World world)
     {
