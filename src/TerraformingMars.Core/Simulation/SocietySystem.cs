@@ -72,5 +72,10 @@ public sealed class SocietySystem : ISimulationSystem
             world.UrbanizationReached = true;
             world.UrbanizationPending = true;
         }
+        if (!world.IndustrialShiftReached && colony.PeakPopulation >= World.IndustrialShiftThreshold)
+        {
+            world.IndustrialShiftReached = true;
+            world.IndustrialShiftPending = true;
+        }
     }
 }

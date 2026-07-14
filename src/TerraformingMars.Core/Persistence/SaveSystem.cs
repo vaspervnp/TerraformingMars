@@ -61,6 +61,7 @@ public static class SaveSystem
             PeakPopulation = colony.PeakPopulation,
             Phase2Active = world.Phase2Active,
             UrbanizationReached = world.UrbanizationReached,
+            IndustrialShiftReached = world.IndustrialShiftReached,
             IndustrialistApproval = colony.IndustrialistApproval,
             EcologistApproval = colony.EcologistApproval,
             HasCaveShelter = world.HasCaveShelter,
@@ -187,6 +188,7 @@ public static class SaveSystem
         world.SolarEfficiency = save.SolarEfficiency;
         world.Phase2Active = save.Phase2Active;
         world.UrbanizationReached = save.UrbanizationReached;
+        world.IndustrialShiftReached = save.IndustrialShiftReached;
 
         // Παλιό (προ-Φάσης-2) save που ήταν ήδη terraformed: μπες σιωπηλά στη Φάση 2 κατά το load,
         // ώστε το World.Tick να ΜΗΝ ξαναπυροδοτήσει τον εορτασμό/chime στο πρώτο tick.

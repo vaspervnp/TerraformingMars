@@ -154,5 +154,17 @@
     "Cost": 450,
     "Prerequisites": [],
     "Unlocks": [ "atmospheric_scrubber" ]
+  },
+
+  // ---------- Phase 6: Φάση 2B — Infrastructure Boom ----------
+  {
+    "Id": "quantum_processing",
+    "Name": "Quantum Processing",
+    "Description": "Fabricate quantum processors from raw silicon, multiplying its trade value roughly tenfold.",
+    "Phase": 6,
+    "RequiresPhase2": true,
+    "Cost": 700,
+    "Prerequisites": [ "mass_driver" ],
+    "Unlocks": [ "quantum_processor_plant" ]
   }
 ]

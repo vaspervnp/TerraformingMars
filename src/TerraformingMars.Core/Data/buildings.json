@@ -313,5 +313,31 @@
     "ScrubsPollution": true,
     "Cost": { "Materials": 70, "Credits": 6000 },
     "Production": { "Energy": -1.0 }
+  },
+  {
+    "Id": "quantum_processor_plant",
+    "Name": "Quantum Processor Plant",
+    "Description": "Turns raw silicon into quantum processors worth roughly ten times exported silicon.",
+    "Category": "Industry",
+    "RequiredTech": "quantum_processing",
+    "BuildTimeTicks": 160,
+    "MaxWorkers": 0,
+    "ExportPerTick": 3.0,
+    "SiliconExportPrice": 350,
+    "Cost": { "Materials": 90, "Credits": 12000 },
+    "Production": { "Energy": -2.0 }
+  },
+  {
+    "Id": "interplanetary_stock_exchange",
+    "Name": "Interplanetary Stock Exchange",
+    "Description": "Automatically trades surplus silicon and materials to Earth for a steady stream of credits. Unlocks at 50,000 population.",
+    "Category": "Civic",
+    "RequiresPopulation": 50000,
+    "BuildTimeTicks": 220,
+    "MaxWorkers": 0,
+    "ExportPerTick": 5.0,
+    "MaterialsExportPerTick": 2.0,
+    "Cost": { "Materials": 150, "Credits": 30000 },
+    "Production": { "Energy": -8.0 }
   }
 ]

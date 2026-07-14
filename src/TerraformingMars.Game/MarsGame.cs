@@ -1661,6 +1661,14 @@ public class MarsGame : Microsoft.Xna.Framework.Game
             _audio.Chime();
         }
 
+        // Κατώφλι Industrial Shift (50k) → ξεκλειδώνει το Interplanetary Stock Exchange.
+        if (_world.ConsumeIndustrialShift())
+        {
+            _status = "THE INDUSTRIAL SHIFT - population 50,000 - Interplanetary Stock Exchange unlocked";
+            _statusTimer = 5.0;
+            _audio.Chime();
+        }
+
         // Τεχνολογίες που μόλις ολοκληρώθηκαν → modal popup (μία-μία, με «X» πάνω δεξιά).
         foreach (var id in _world.Colony.Tech.Researched)
             if (_knownResearched.Add(id) && _world.Colony.Tech.Catalog.TryGet(id, out var td) && td is not null)

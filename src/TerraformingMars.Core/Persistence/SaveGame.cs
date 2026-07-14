@@ -30,6 +30,9 @@ public sealed class SaveGame
     /// <summary>Έφτασε το κατώφλι Urbanization (10k) — latched. Παλιά saves → false.</summary>
     public bool UrbanizationReached { get; set; }
 
+    /// <summary>Έφτασε το κατώφλι Industrial Shift (50k) — latched. Παλιά saves → false.</summary>
+    public bool IndustrialShiftReached { get; set; }
+
     /// <summary>Έγκριση παρατάξεων Φάσης 2 (0..1). Παλιά saves → 0.6 (ουδέτερο, όχι απεργία).</summary>
     public double IndustrialistApproval { get; set; } = 0.6;
     public double EcologistApproval { get; set; } = 0.6;

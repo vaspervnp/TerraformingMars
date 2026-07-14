@@ -37,6 +37,12 @@ public sealed class BuildingDefinition
     /// <summary>Μονάδες αποθηκευμένου Silicon που πωλούνται σε Credits/tick (>0 ⇒ export terminal· το χειρίζεται το <see cref="Simulation.MarketSystem"/>).</summary>
     public double ExportPerTick { get; init; } = 0.0;
 
+    /// <summary>Τιμή Credits ανά μονάδα Silicon για ΑΥΤΟ το κτίριο (0 = παγκόσμια τιμή). >global ⇒ επεξεργασία (quantum).</summary>
+    public double SiliconExportPrice { get; init; } = 0.0;
+
+    /// <summary>Μονάδες πλεονάζοντος Materials (πάνω από reserve) που πωλούνται/tick (stock exchange).</summary>
+    public double MaterialsExportPerTick { get; init; } = 0.0;
+
     /// <summary>Τεχνολογία που απαιτείται για να ξεκλειδωθεί (κενό = διαθέσιμο από την αρχή).</summary>
     public string RequiredTech { get; init; } = "";
 

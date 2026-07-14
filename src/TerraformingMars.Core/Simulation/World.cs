@@ -75,6 +75,22 @@ public sealed class World
         return true;
     }
 
+    // --- Phase 2B: The Industrial Shift (Threshold 2, 50k) ---
+    /// <summary>Latched (σώζεται): έφτασε το κατώφλι 50k — εποχή Industrial Shift (macro-economy).</summary>
+    public bool IndustrialShiftReached { get; internal set; }
+    /// <summary>Εφήμερο one-shot (δεν σώζεται): το UI το «καταναλώνει» για την ειδοποίηση Industrial Shift.</summary>
+    public bool IndustrialShiftPending { get; internal set; }
+    /// <summary>Πληθυσμιακό κατώφλι της εποχής Industrial Shift (Threshold 2).</summary>
+    public const int IndustrialShiftThreshold = 50000;
+
+    /// <summary>Καταναλώνει (μία φορά) το σήμα Industrial Shift από το UI.</summary>
+    public bool ConsumeIndustrialShift()
+    {
+        if (!IndustrialShiftPending) return false;
+        IndustrialShiftPending = false;
+        return true;
+    }
+
     // --- Phase 2A: Πολιτικές παρατάξεις (factions) ---
     /// <summary>Εφήμερο (δεν σώζεται): οι Βιομηχανικοί απεργούν — τα κτίρια κατηγορίας "Industry" σταματούν.</summary>
     public bool IndustrialStrike { get; internal set; }

@@ -690,6 +690,132 @@ public class Phase2PollutionTests
     }
 }
 
+public class Phase2BEconomyTests
+{
+    private static HexMap Map() =>
+        new MapGenerator(new MapGenerationSettings { Width = 24, Height = 24, Seed = 11 }).Generate();
+
+    private static void ToTargets(World w) =>
+        w.Planet.Restore(PlanetState.TargetTemperature, PlanetState.TargetPressure,
+            PlanetState.TargetOxygen, PlanetState.TargetWater, 0);
+
+    private static Building Op(HexMap map, string id, int index) =>
+        new(BuildingCatalog.LoadDefault().Get(id), map.Tiles.ElementAt(index).Coord, startOperational: true);
+
+    [Fact]
+    public void Industrial_Shift_Latches_At_50k()
+    {
+        var map = Map();
+        var colony = new Colony();
+        colony.AddBuilding(Op(map, "high_density_arcology", 0)); // +30000 cap
+        colony.AddBuilding(Op(map, "high_density_arcology", 1)); // +30000 cap → cap ~63000
+        var world = new World(map, colony, new ISimulationSystem[] { new SocietySystem() });
+        colony.Ledger.Set(ResourceKind.Food, 1_000_000);
+        colony.Ledger.Set(ResourceKind.Water, 1_000_000);
+        colony.Ledger.Set(ResourceKind.Energy, 1_000_000);
+        ToTargets(world);
+        world.Tick();               // → Φάση 2
+        colony.Population = 49_999;
+        world.Tick();               // μεγαλώνει σε >50000 → latch
+
+        Assert.True(world.IndustrialShiftReached);
+        Assert.True(colony.PeakPopulation >= World.IndustrialShiftThreshold);
+    }
+
+    [Fact]
+    public void Stock_Exchange_Gated_By_50k_Population()
+    {
+        var map = Map();
+        var colony = new Colony();
+        colony.Ledger.Set(ResourceKind.Credits, 100_000);
+        var exchange = BuildingCatalog.LoadDefault().Get("interplanetary_stock_exchange");
+        var tile = map.Tiles.First(t => t.IsBuildable);
+
+        Assert.False(colony.TryPlaceBuilding(exchange, tile.Coord, map).Success); // peak pop 0
+
+        colony.PeakPopulation = 50_000;
+        Assert.True(colony.TryPlaceBuilding(exchange, tile.Coord, map).Success);
+    }
+
+    [Fact]
+    public void Stock_Exchange_Sells_Surplus_Silicon_And_Materials()
+    {
+        var map = Map();
+        var colony = new Colony();
+        colony.AddBuilding(Op(map, "interplanetary_stock_exchange", 0));
+        colony.Ledger.Set(ResourceKind.Silicon, 1000);
+        colony.Ledger.Set(ResourceKind.Materials, 1000); // πάνω από το reserve (300)
+        colony.Ledger.Set(ResourceKind.Credits, 0);
+        var world = new World(map, colony, new ISimulationSystem[] { new MarketSystem() });
+
+        for (int i = 0; i < 10; i++) world.Tick();
+
+        Assert.True(colony.Ledger.Get(ResourceKind.Credits) > 0);
+        Assert.True(colony.Ledger.Get(ResourceKind.Silicon) < 1000);
+        Assert.True(colony.Ledger.Get(ResourceKind.Materials) < 1000);
+    }
+
+    [Fact]
+    public void Stock_Exchange_Keeps_A_Materials_Reserve()
+    {
+        var map = Map();
+        var colony = new Colony();
+        colony.AddBuilding(Op(map, "interplanetary_stock_exchange", 0));
+        colony.Ledger.Set(ResourceKind.Materials, 200); // κάτω από το reserve → δεν πωλείται
+        var world = new World(map, colony, new ISimulationSystem[] { new MarketSystem() });
+
+        for (int i = 0; i < 20; i++) world.Tick();
+
+        Assert.Equal(200, colony.Ledger.Get(ResourceKind.Materials), 3);
+    }
+
+    [Fact]
+    public void Quantum_Plant_Sells_Silicon_At_Ten_Times_Raw()
+    {
+        var map = Map();
+        var colony = new Colony();
+        colony.AddBuilding(Op(map, "quantum_processor_plant", 0));
+        colony.Ledger.Set(ResourceKind.Silicon, 1000);
+        colony.Ledger.Set(ResourceKind.Credits, 0);
+        var world = new World(map, colony, new ISimulationSystem[] { new MarketSystem() });
+
+        world.Tick();
+
+        // 3 silicon × 350 = 1050 (vs raw 3 × 35 = 105).
+        Assert.Equal(3 * 350, colony.Ledger.Get(ResourceKind.Credits), 3);
+        Assert.Equal(997, colony.Ledger.Get(ResourceKind.Silicon), 3);
+    }
+
+    [Fact]
+    public void Quantum_Plant_Gated_By_Tech()
+    {
+        var map = Map();
+        var colony = new Colony();
+        colony.Ledger.Set(ResourceKind.Credits, 100_000);
+        var plant = BuildingCatalog.LoadDefault().Get("quantum_processor_plant");
+        var tile = map.Tiles.First(t => t.IsBuildable);
+
+        Assert.False(colony.TryPlaceBuilding(plant, tile.Coord, map).Success); // locked
+
+        colony.Tech.Researched.Add("quantum_processing");
+        Assert.True(colony.TryPlaceBuilding(plant, tile.Coord, map).Success);
+    }
+
+    [Fact]
+    public void IndustrialShiftReached_Round_Trips_Through_Save()
+    {
+        var map = Map();
+        var catalog = BuildingCatalog.LoadDefault();
+        var sponsors = SponsorCatalog.LoadDefault();
+        var world = new World(map, new Colony(), System.Array.Empty<ISimulationSystem>());
+        world.IndustrialShiftReached = true;
+
+        var loaded = SaveSystem.Load(SaveSystem.ToJson(world, sponsors.Get("normal")), catalog, sponsors, out _);
+
+        Assert.True(loaded.IndustrialShiftReached);
+    }
+}
+
 // Παλινδρομήσεις για τα ευρήματα του adversarial review.
 public class Phase2ReviewRegressionTests
 {
