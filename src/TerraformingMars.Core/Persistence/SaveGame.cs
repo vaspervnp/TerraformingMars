@@ -24,6 +24,9 @@ public sealed class SaveGame
     /// <summary>Αφηρημένος μεταναστευτικός πληθυσμός Φάσης 2. Παλιά saves → 0.</summary>
     public double Population { get; set; }
 
+    /// <summary>Πλήθος ticks που έχει τρέξει η Φάση 2 (grace του Hyperloop logistics). Παλιά saves → 0.</summary>
+    public long Phase2Ticks { get; set; }
+
     /// <summary>Μέγιστος πληθυσμός που επιτεύχθηκε ποτέ (για μόνιμο ξεκλείδωμα κατωφλιών). Παλιά saves → 0.</summary>
     public double PeakPopulation { get; set; }
 

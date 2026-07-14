@@ -60,6 +60,7 @@ public static class SaveSystem
             Population = colony.Population,
             PeakPopulation = colony.PeakPopulation,
             Phase2Active = world.Phase2Active,
+            Phase2Ticks = world.Phase2Ticks,
             UrbanizationReached = world.UrbanizationReached,
             IndustrialShiftReached = world.IndustrialShiftReached,
             SeismicStress = world.SeismicStress,
@@ -195,6 +196,7 @@ public static class SaveSystem
         world.HasCaveShelter = save.HasCaveShelter;
         world.SolarEfficiency = save.SolarEfficiency;
         world.Phase2Active = save.Phase2Active;
+        world.Phase2Ticks = save.Phase2Ticks;
         world.UrbanizationReached = save.UrbanizationReached;
         world.IndustrialShiftReached = save.IndustrialShiftReached;
         world.SeismicStress = save.SeismicStress;

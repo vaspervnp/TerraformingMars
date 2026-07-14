@@ -20,16 +20,22 @@ public sealed class HyperloopSystem : ISimulationSystem
     private const int RemoteRange = 6;          // hexes από τον πυρήνα· πέρα από αυτό ⇒ απομακρυσμένο
     private const double RemotePenalty = 0.5;   // παραγωγή ασύνδετου απομακρυσμένου outpost
 
+    /// <summary>Περίοδος χάριτος (ticks) μετά την έναρξη της Φάσης 2 πριν αρχίσει ο logistics περιορισμός:
+    /// δίνει χρόνο να ερευνηθεί το Maglev Propulsion και να χτιστούν terminals, ώστε τα ήδη υπάρχοντα
+    /// (ακόμη και τα αυτόματα τοποθετημένα) βιομηχανικά κτίρια να μην στραγγαλιστούν την ίδια στιγμή
+    /// που ολοκληρώνεται το terraforming.</summary>
+    private const long GraceTicks = (long)(GameClock.TicksPerSol * 3); // ~3 Sols
+
     private readonly List<Building> _connected = new();
 
     public void Tick(World world)
     {
         var buildings = world.Colony.Buildings;
 
-        // Reset (ο factor είναι εφήμερος)· εκτός Φάσης 2 δεν υπάρχει logistics περιορισμός.
+        // Reset (ο factor είναι εφήμερος)· εκτός Φάσης 2 —ή μέσα στο grace— δεν υπάρχει logistics περιορισμός.
         foreach (var b in buildings) b.LogisticsFactor = 1.0;
         world.LogisticsBlackoutCount = 0;
-        if (!world.Phase2Active) return;
+        if (!world.Phase2Active || world.Phase2Ticks < GraceTicks) return;
 
         // Πυρήνας = κάψουλα προσγείωσης (fallback: πρώτο κτίριο). Χωρίς πυρήνα → τίποτα να αγκυρώσουμε.
         var core = buildings.FirstOrDefault(b => b.Definition.Id == "landing_capsule")

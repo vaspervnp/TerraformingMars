@@ -1335,10 +1335,12 @@ public class Phase2BHyperloopTests
         return (world, colony);
     }
 
+    private static readonly int GraceTicks = (int)(GameClock.TicksPerSol * 3);
+
     private static void Settle(World world)
     {
-        world.Tick(); // → Φάση 2 (το latch τρέχει μετά τα systems)
-        world.Tick(); // → το HyperloopSystem βλέπει πλέον Phase2Active και υπολογίζει
+        // Πέρα από το grace onset ώστε να ενεργοποιηθεί ο logistics περιορισμός.
+        for (int i = 0; i < GraceTicks + 3; i++) world.Tick();
     }
 
     [Fact]
@@ -1402,6 +1404,35 @@ public class Phase2BHyperloopTests
         terminal.State = BuildingState.Disabled;    // «σπάει» από ακραίο καιρό
         world.Tick();
         Assert.Equal(0.5, mine.LogisticsFactor, 3); // blackout μέχρι να επισκευαστεί
+    }
+
+    [Fact]
+    public void Grace_Period_Cushions_The_Phase2_Onset()
+    {
+        var (world, colony) = InPhase2();
+        var mine = Place(colony, "iron_mine", new Hex(10, 0)); // απομακρυσμένο, χωρίς terminal
+        world.Tick(); // → Φάση 2
+        world.Tick(); // λίγο μέσα στο grace
+        Assert.Equal(1.0, mine.LogisticsFactor, 3);           // δεν τιμωρείται ακόμη
+        Assert.True(world.Phase2Ticks < GraceTicks);
+
+        for (int i = 0; i < GraceTicks; i++) world.Tick();
+        Assert.Equal(0.5, mine.LogisticsFactor, 3);           // μετά το grace: blackout
+    }
+
+    [Fact]
+    public void Phase2Ticks_Round_Trips_Through_Save()
+    {
+        var map = Map();
+        var catalog = BuildingCatalog.LoadDefault();
+        var sponsors = SponsorCatalog.LoadDefault();
+        var world = new World(map, new Colony(), System.Array.Empty<ISimulationSystem>());
+        world.Phase2Active = true;
+        world.Phase2Ticks = 999;
+
+        var loaded = SaveSystem.Load(SaveSystem.ToJson(world, sponsors.Get("normal")), catalog, sponsors, out _);
+
+        Assert.Equal(999, loaded.Phase2Ticks);
     }
 
     [Fact]

@@ -55,6 +55,11 @@ public sealed class World
     /// <summary>Αρχικός πληθυσμός τη στιγμή της μετάβασης στη Φάση 2.</summary>
     public const double Phase2StartingPopulation = 1000;
 
+    /// <summary>Πλήθος ticks που έχει τρέξει η Φάση 2 (σώζεται). Ανεξάρτητο από το ρολόι ώστε να
+    /// προχωρά ντετερμινιστικά και στα tests. Το χρησιμοποιεί το <see cref="HyperloopSystem"/> για το
+    /// grace του logistics onset (δεν στραγγαλίζει απομακρυσμένα outposts αμέσως μόλις μπει η Φάση 2).</summary>
+    public long Phase2Ticks { get; internal set; }
+
     // --- Phase 2A: Κοινωνία & πληθυσμιακή κλίμακα ---
     /// <summary>Εφήμερο (δεν σώζεται): true όταν ο πληθυσμός ξεπερνά τη στέγαση ή λείπουν πόροι (systemic stagnation).</summary>
     public bool StagnationActive { get; internal set; }
@@ -170,5 +175,7 @@ public sealed class World
             Colony.Tech.UnlockPhase2();
             if (Colony.Population < Phase2StartingPopulation) Colony.Population = Phase2StartingPopulation;
         }
+
+        if (Phase2Active) Phase2Ticks++;
     }
 }
