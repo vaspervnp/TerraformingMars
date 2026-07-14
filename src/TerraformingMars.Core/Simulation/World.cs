@@ -114,6 +114,12 @@ public sealed class World
     /// <summary>Εφήμερο (δεν σώζεται): ποσοστό 0..1 των βιομηχανικών κτιρίων που τρέχουν με AI drones (Φάση 2B).</summary>
     public double AutomationLevel { get; internal set; }
 
+    // --- Phase 2B: Ακραίος καιρός (super-storms) ---
+    /// <summary>Συσσωρευμένη ενέργεια καταιγίδας (σώζεται)· όταν ξεπεράσει το κατώφλι → hurricane.</summary>
+    public double StormStress { get; internal set; }
+    /// <summary>Εφήμερο (δεν σώζεται): 0..1 δείκτης εγγύτητας σε hurricane — για το HUD.</summary>
+    public double StormLevel { get; internal set; }
+
     /// <summary>Γεγονότα που μόλις ξεκίνησαν αυτό το βήμα· τα «καταναλώνει» το UI για popup (εφήμερο, δεν σώζεται).</summary>
     public List<EventStart> StartedEvents { get; } = new();
 

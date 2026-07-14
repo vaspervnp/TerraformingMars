@@ -94,6 +94,7 @@ public static class ColonyFactory
         systems.Add(new SocietySystem());
         systems.Add(new PollutionSystem());
         systems.Add(new SeismicSystem());
+        systems.Add(new WeatherSystem());
         systems.Add(new FactionSystem());
         return new World(map, colony, systems);
     }

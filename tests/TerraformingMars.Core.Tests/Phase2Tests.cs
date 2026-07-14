@@ -1063,6 +1063,132 @@ public class Phase2BAutomationTests
     }
 }
 
+public class Phase2BWeatherTests
+{
+    private static HexMap Map() =>
+        new MapGenerator(new MapGenerationSettings { Width = 24, Height = 24, Seed = 11 }).Generate();
+
+    private static Building Op(HexMap map, string id, Hex at) =>
+        new(BuildingCatalog.LoadDefault().Get(id), at, startOperational: true);
+
+    // Πυκνή & υγρή ατμόσφαιρα (τροφοδοτεί καταιγίδες) — και terraformed ώστε να μπει σε Φάση 2.
+    private static void ThickWet(World w) =>
+        w.Planet.Restore(PlanetState.TargetTemperature, PlanetState.TargetPressure,
+            PlanetState.TargetOxygen, PlanetState.TargetWater, 0);
+
+    [Fact]
+    public void Storm_Builds_In_Thick_Wet_Atmosphere()
+    {
+        var map = Map();
+        var world = new World(map, new Colony(), new ISimulationSystem[] { new WeatherSystem() });
+        ThickWet(world);
+        world.Tick(); // → Φάση 2
+        for (int i = 0; i < 50; i++) world.Tick();
+
+        Assert.True(world.StormStress > 0);
+        Assert.True(world.StormLevel > 0);
+    }
+
+    [Fact]
+    public void No_Storm_In_Thin_Dry_Atmosphere()
+    {
+        var map = Map();
+        var world = new World(map, new Colony(), new ISimulationSystem[] { new WeatherSystem() });
+        ThickWet(world);
+        world.Tick(); // → Φάση 2 (latched)
+        world.Planet.Restore(PlanetState.TargetTemperature, 5, PlanetState.TargetOxygen, 0, 0); // λεπτή & ξηρή
+        for (int i = 0; i < 200; i++) world.Tick();
+
+        Assert.Equal(0, world.StormStress, 6); // χωρίς πυκνό αέρα/ωκεανούς → καμία καταιγίδα
+    }
+
+    [Fact]
+    public void Hurricane_Knocks_Out_Solar_Arrays()
+    {
+        var map = Map();
+        var colony = new Colony();
+        var solar = Op(map, "solar_panel", map.Tiles.First(t => t.IsBuildable).Coord);
+        colony.AddBuilding(solar);
+        var world = new World(map, colony, new ISimulationSystem[] { new WeatherSystem() });
+        ThickWet(world);
+        world.Tick();
+        for (int i = 0; i < 900; i++) world.Tick(); // η ενέργεια καταιγίδας ξεπερνά το κατώφλι → hurricane
+
+        Assert.Equal(BuildingState.Disabled, solar.State);
+        Assert.Contains(world.EventNotifications, n => n.Contains("Hurricane"));
+    }
+
+    [Fact]
+    public void Sea_Wall_Shields_Nearby_Buildings()
+    {
+        var map = Map();
+        var wallTile = map.Tiles.First(t => t.IsBuildable && map.GetTile(t.Coord.Neighbor(0)) is { IsBuildable: true });
+        var farTile = map.Tiles.First(t => t.IsBuildable && t.Coord.DistanceTo(wallTile.Coord) > 3);
+        var colony = new Colony();
+        colony.AddBuilding(Op(map, "sea_wall", wallTile.Coord));
+        var shielded = Op(map, "solar_panel", wallTile.Coord.Neighbor(0)); // dist 1 <= radius 2
+        var exposed = Op(map, "solar_panel", farTile.Coord);
+        colony.AddBuilding(shielded);
+        colony.AddBuilding(exposed);
+        var world = new World(map, colony, new ISimulationSystem[] { new WeatherSystem() });
+        ThickWet(world);
+        world.Tick();
+        for (int i = 0; i < 900; i++) world.Tick();
+
+        Assert.Equal(BuildingState.Disabled, exposed.State);      // απροστάτευτο → σαρώθηκε
+        Assert.Equal(BuildingState.Operational, shielded.State);  // κοντά σε sea wall → γλίτωσε
+    }
+
+    [Fact]
+    public void Hurricane_Spares_Life_Support()
+    {
+        var map = Map();
+        var lowTile = map.Tiles.Where(t => t.IsBuildable).OrderBy(t => t.Elevation).First(); // χαμηλότερο (flood-prone)
+        var farTile = map.Tiles.First(t => t.IsBuildable && t.Coord.DistanceTo(lowTile.Coord) > 3);
+        var colony = new Colony();
+        var o2 = Op(map, "o2_recycler", lowTile.Coord);          // LifeSupport
+        var exposed = Op(map, "solar_panel", farTile.Coord);
+        colony.AddBuilding(o2);
+        colony.AddBuilding(exposed);
+        var world = new World(map, colony, new ISimulationSystem[] { new WeatherSystem() });
+        ThickWet(world);
+        world.Tick();
+        for (int i = 0; i < 900; i++) world.Tick();
+
+        Assert.Equal(BuildingState.Disabled, exposed.State);       // έγινε hurricane
+        Assert.Equal(BuildingState.Operational, o2.State);         // ...αλλά η υποστήριξη ζωής γλίτωσε
+    }
+
+    [Fact]
+    public void Sea_Wall_Gated_By_Tech()
+    {
+        var map = Map();
+        var colony = new Colony();
+        colony.Ledger.Set(ResourceKind.Credits, 100_000);
+        var wall = BuildingCatalog.LoadDefault().Get("sea_wall");
+        var tile = map.Tiles.First(t => t.IsBuildable);
+
+        Assert.False(colony.TryPlaceBuilding(wall, tile.Coord, map).Success); // locked
+
+        colony.Tech.Researched.Add("storm_engineering");
+        Assert.True(colony.TryPlaceBuilding(wall, tile.Coord, map).Success);
+    }
+
+    [Fact]
+    public void Storm_Stress_Round_Trips_Through_Save()
+    {
+        var map = Map();
+        var catalog = BuildingCatalog.LoadDefault();
+        var sponsors = SponsorCatalog.LoadDefault();
+        var world = new World(map, new Colony(), System.Array.Empty<ISimulationSystem>());
+        world.StormStress = 7.5;
+
+        var loaded = SaveSystem.Load(SaveSystem.ToJson(world, sponsors.Get("normal")), catalog, sponsors, out _);
+
+        Assert.Equal(7.5, loaded.StormStress, 3);
+    }
+}
+
 // Παλινδρομήσεις για τα ευρήματα του adversarial review.
 public class Phase2ReviewRegressionTests
 {

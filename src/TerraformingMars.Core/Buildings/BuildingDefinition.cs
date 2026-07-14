@@ -88,6 +88,9 @@ public sealed class BuildingDefinition
     /// <summary>Πόσα βιομηχανικά κτίρια αυτοματοποιεί (AI Drone Hive, Φάση 2B) — λειτουργούν χωρίς πλήρωμα.</summary>
     public int AutomationCapacity { get; init; } = 0;
 
+    /// <summary>Ακτίνα (hexes) που προστατεύει από hurricanes (Sea Wall, Φάση 2B). 0 = δεν προστατεύει.</summary>
+    public int StormShieldRadius { get; init; } = 0;
+
     /// <summary>Αν true, καθαρίζει ρύπανση στο hex του και στα γειτονικά (μονάδα αντιρρύπανσης).</summary>
     public bool ScrubsPollution { get; init; } = false;
 

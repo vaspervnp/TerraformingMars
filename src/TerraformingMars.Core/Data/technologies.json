@@ -186,5 +186,15 @@
     "Cost": 750,
     "Prerequisites": [],
     "Unlocks": [ "ai_drone_hive" ]
+  },
+  {
+    "Id": "storm_engineering",
+    "Name": "Storm Engineering",
+    "Description": "Sea walls and hardened structures that shield the colony from the super-storms of a thick, wet atmosphere.",
+    "Phase": 6,
+    "RequiresPhase2": true,
+    "Cost": 650,
+    "Prerequisites": [],
+    "Unlocks": [ "sea_wall" ]
   }
 ]

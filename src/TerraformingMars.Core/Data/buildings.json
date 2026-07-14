@@ -365,5 +365,17 @@
     "AutomationCapacity": 4,
     "Cost": { "Materials": 100, "Credits": 14000 },
     "Production": { "Energy": -5.0 }
+  },
+  {
+    "Id": "sea_wall",
+    "Name": "Sea Wall",
+    "Description": "Flood barriers and hardened shielding that protect nearby buildings from hurricanes and flooding.",
+    "Category": "Civic",
+    "RequiredTech": "storm_engineering",
+    "BuildTimeTicks": 130,
+    "MaxWorkers": 0,
+    "StormShieldRadius": 2,
+    "Cost": { "Materials": 90, "Credits": 7000 },
+    "Production": { "Energy": -0.5 }
   }
 ]
