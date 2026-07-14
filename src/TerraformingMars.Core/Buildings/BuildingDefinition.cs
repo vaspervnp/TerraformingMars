@@ -91,6 +91,9 @@ public sealed class BuildingDefinition
     /// <summary>Ακτίνα (hexes) που προστατεύει από hurricanes (Sea Wall, Φάση 2B). 0 = δεν προστατεύει.</summary>
     public int StormShieldRadius { get; init; } = 0;
 
+    /// <summary>Καταστολή εισβλητικών ειδών/tick (Φάση 2B, wildlife reserve / genetic vault) — κρατά το οικοσύστημα σε ισορροπία.</summary>
+    public double EcosystemStability { get; init; } = 0.0;
+
     /// <summary>Αν true, καθαρίζει ρύπανση στο hex του και στα γειτονικά (μονάδα αντιρρύπανσης).</summary>
     public bool ScrubsPollution { get; init; } = false;
 

@@ -120,6 +120,10 @@ public sealed class World
     /// <summary>Εφήμερο (δεν σώζεται): 0..1 δείκτης εγγύτητας σε hurricane — για το HUD.</summary>
     public double StormLevel { get; internal set; }
 
+    // --- Phase 2B: Οικοσύστημα & εισβλητικά είδη ---
+    /// <summary>Επίπεδο μόλυνσης από εισβλητικά είδη 0..1 (σώζεται)· υψηλό → τρώει σοδειές & μαραίνει βλάστηση.</summary>
+    public double InfestationLevel { get; internal set; }
+
     /// <summary>Γεγονότα που μόλις ξεκίνησαν αυτό το βήμα· τα «καταναλώνει» το UI για popup (εφήμερο, δεν σώζεται).</summary>
     public List<EventStart> StartedEvents { get; } = new();
 

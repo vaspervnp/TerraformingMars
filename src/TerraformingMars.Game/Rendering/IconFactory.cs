@@ -554,6 +554,17 @@ public static class IconFactory
                 Line(b, 14, 50, 22, 46, 2, wave); Line(b, 22, 46, 30, 50, 2, wave);
                 Line(b, 30, 50, 38, 46, 2, wave); Line(b, 38, 46, 46, 50, 2, wave);
                 break;
+            case "genetic_vault": // διπλή έλικα DNA
+                var dna = new Color(120, 220, 140);
+                var rung = new Color(180, 240, 190);
+                for (int i = 0; i < 6; i++)
+                {
+                    int yy = 15 + i * 6;
+                    int off = (i % 2 == 0) ? 7 : -7;
+                    Line(b, 32 - off, yy, 32 + off, yy, 1, rung);
+                    Disc(b, 32 - off, yy, 2, dna); Disc(b, 32 + off, yy, 2, dna);
+                }
+                break;
             case "interplanetary_stock_exchange": // ανοδικό γράφημα + χρυσό βέλος
                 var barCol = new Color(120, 210, 140);
                 Rect(b, 18, 40, 6, 10, barCol); Rect(b, 27, 32, 6, 18, barCol); Rect(b, 36, 24, 6, 26, barCol);

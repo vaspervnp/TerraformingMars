@@ -251,7 +251,8 @@
     "Cost": { "Materials": 80, "Credits": 7000 },
     "Production": { "Energy": -0.3, "Food": 0.5 },
     "PlanetEffects": { "Oxygen": 0.010 },
-    "VegetationSpreadPerTick": 0.020
+    "VegetationSpreadPerTick": 0.020,
+    "EcosystemStability": 0.001
   },
   {
     "Id": "domeless_city",
@@ -377,5 +378,18 @@
     "StormShieldRadius": 2,
     "Cost": { "Materials": 90, "Credits": 7000 },
     "Production": { "Energy": -0.5 }
+  },
+  {
+    "Id": "genetic_vault",
+    "Name": "Genetic Vault",
+    "Description": "A biodiversity bank and bio-control lab that suppresses invasive species and keeps the ecosystem in balance.",
+    "Category": "Biosphere",
+    "RequiredTech": "ecological_engineering",
+    "BuildTimeTicks": 150,
+    "MaxWorkers": 1,
+    "OptimalSpecialty": "Botanist",
+    "EcosystemStability": 0.0025,
+    "Cost": { "Materials": 90, "Credits": 9000 },
+    "Production": { "Energy": -1.0 }
   }
 ]

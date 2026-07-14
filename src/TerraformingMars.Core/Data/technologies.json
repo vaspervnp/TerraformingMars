@@ -196,5 +196,15 @@
     "Cost": 650,
     "Prerequisites": [],
     "Unlocks": [ "sea_wall" ]
+  },
+  {
+    "Id": "ecological_engineering",
+    "Name": "Ecological Engineering",
+    "Description": "Gene banks and targeted bio-controls that keep invasive Earth species from overrunning the young biosphere.",
+    "Phase": 6,
+    "RequiresPhase2": true,
+    "Cost": 700,
+    "Prerequisites": [ "gm_trees" ],
+    "Unlocks": [ "genetic_vault" ]
   }
 ]

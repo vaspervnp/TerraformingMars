@@ -1189,6 +1189,103 @@ public class Phase2BWeatherTests
     }
 }
 
+public class Phase2BEcosystemTests
+{
+    private static HexMap Map() =>
+        new MapGenerator(new MapGenerationSettings { Width = 24, Height = 24, Seed = 11 }).Generate();
+
+    // Terraformed + βιόσφαιρα (biomass) ώστε να μπει σε Φάση 2 και να υπάρχει πίεση εισβολής.
+    private static void Terraformed(World w, double biomass = 0.5) =>
+        w.Planet.Restore(PlanetState.TargetTemperature, PlanetState.TargetPressure,
+            PlanetState.TargetOxygen, PlanetState.TargetWater, biomass);
+
+    [Fact]
+    public void Infestation_Builds_With_A_Lush_Biosphere()
+    {
+        var map = Map();
+        var world = new World(map, new Colony(), new ISimulationSystem[] { new EcosystemSystem() });
+        Terraformed(world, 0.5);
+        world.Tick(); // → Φάση 2
+        for (int i = 0; i < 100; i++) world.Tick();
+
+        Assert.True(world.InfestationLevel > 0);
+    }
+
+    [Fact]
+    public void No_Infestation_Before_Phase2()
+    {
+        var map = Map();
+        var world = new World(map, new Colony(), new ISimulationSystem[] { new EcosystemSystem() });
+        for (int i = 0; i < 100; i++) world.Tick();
+        Assert.Equal(0, world.InfestationLevel, 6);
+    }
+
+    [Fact]
+    public void Genetic_Vault_Suppresses_Infestation()
+    {
+        var map = Map();
+        var colony = new Colony();
+        colony.AddBuilding(new Building(BuildingCatalog.LoadDefault().Get("genetic_vault"),
+            map.Tiles.First().Coord, startOperational: true));
+        var world = new World(map, colony, new ISimulationSystem[] { new EcosystemSystem() });
+        Terraformed(world, 0.0);          // χαμηλή πίεση + ισχυρή καταστολή
+        world.Tick();                     // → Φάση 2
+        world.InfestationLevel = 0.5;     // υπάρχουσα μόλυνση
+        for (int i = 0; i < 100; i++) world.Tick();
+
+        Assert.True(world.InfestationLevel < 0.5); // ο vault την υποχωρεί
+    }
+
+    [Fact]
+    public void High_Infestation_Eats_Crops_And_Withers_Vegetation()
+    {
+        var map = Map();
+        foreach (var t in map.Tiles.Where(t => t.Terrain == TerrainType.Flatland).Take(5))
+            t.Terrain = TerrainType.Vegetation;
+        int vegStart = map.Tiles.Count(t => t.Terrain == TerrainType.Vegetation);
+
+        var colony = new Colony();
+        colony.Ledger.Set(ResourceKind.Food, 1000);
+        var world = new World(map, colony, new ISimulationSystem[] { new EcosystemSystem() });
+        Terraformed(world, 0.5);
+        world.Tick();                 // → Φάση 2
+        world.InfestationLevel = 0.8; // πάνω από το κατώφλι
+        for (int i = 0; i < 60; i++) world.Tick();
+
+        Assert.True(colony.Ledger.Get(ResourceKind.Food) < 1000);                        // τρώνε σοδειές
+        Assert.True(map.Tiles.Count(t => t.Terrain == TerrainType.Vegetation) < vegStart); // μαραίνουν βλάστηση
+    }
+
+    [Fact]
+    public void Genetic_Vault_Gated_By_Tech()
+    {
+        var map = Map();
+        var colony = new Colony();
+        colony.Ledger.Set(ResourceKind.Credits, 100_000);
+        var vault = BuildingCatalog.LoadDefault().Get("genetic_vault");
+        var tile = map.Tiles.First(t => t.IsBuildable);
+
+        Assert.False(colony.TryPlaceBuilding(vault, tile.Coord, map).Success); // locked
+
+        colony.Tech.Researched.Add("ecological_engineering");
+        Assert.True(colony.TryPlaceBuilding(vault, tile.Coord, map).Success);
+    }
+
+    [Fact]
+    public void Infestation_Round_Trips_Through_Save()
+    {
+        var map = Map();
+        var catalog = BuildingCatalog.LoadDefault();
+        var sponsors = SponsorCatalog.LoadDefault();
+        var world = new World(map, new Colony(), System.Array.Empty<ISimulationSystem>());
+        world.InfestationLevel = 0.5;
+
+        var loaded = SaveSystem.Load(SaveSystem.ToJson(world, sponsors.Get("normal")), catalog, sponsors, out _);
+
+        Assert.Equal(0.5, loaded.InfestationLevel, 3);
+    }
+}
+
 // Παλινδρομήσεις για τα ευρήματα του adversarial review.
 public class Phase2ReviewRegressionTests
 {

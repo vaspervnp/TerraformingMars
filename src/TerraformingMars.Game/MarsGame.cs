@@ -3122,6 +3122,8 @@ public class MarsGame : Microsoft.Xna.Framework.Game
             bottom.Add(("!! SEISMIC INSTABILITY - marsquake imminent - space out your Deep Core Drills !!", HudWarn));
         if (_world.StormLevel > 0.8)
             bottom.Add(("!! SUPER-STORM BUILDING - hurricane imminent - shield solar/low ground with Sea Walls !!", HudWarn));
+        if (_world.InfestationLevel > 0.3)
+            bottom.Add(($"!! INVASIVE SPECIES {_world.InfestationLevel * 100:0}% - eating crops & vegetation - build Wildlife Reserves / a Genetic Vault !!", HudWarn));
         if (_world.IndustrialStrike)
             bottom.Add(("!! INDUSTRIALIST STRIKE - mines & factories halted - build a District Town Hall !!", HudWarn));
         if (_world.EcologistStrike)
