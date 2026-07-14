@@ -884,6 +884,21 @@ public class Phase2BSeismicTests
     }
 
     [Fact]
+    public void Striking_Drill_Does_Not_Build_Seismic_Stress()
+    {
+        var map = Map();
+        var colony = new Colony();
+        StaffedDrill(colony, map, map.Tiles.First(t => t.IsBuildable).Coord);
+        var world = new World(map, colony, new ISimulationSystem[] { new SeismicSystem() });
+        ToTargets(world);
+        world.Tick();                    // → Φάση 2
+        world.IndustrialStrike = true;   // απεργία Βιομηχανικών (το drill είναι Industry)
+        for (int i = 0; i < 100; i++) world.Tick();
+
+        Assert.Equal(0, world.SeismicStress, 6); // απεργός drill → καμία σεισμική συσσώρευση
+    }
+
+    [Fact]
     public void Deep_Core_Drill_Produces_Metals_Without_A_Deposit()
     {
         var map = Map();

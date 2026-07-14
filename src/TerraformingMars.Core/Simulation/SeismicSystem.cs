@@ -26,6 +26,7 @@ public sealed class SeismicSystem : ISimulationSystem
         foreach (var b in world.Colony.Buildings)
         {
             if (b.State != BuildingState.Operational || b.Definition.SeismicPerTick <= 0) continue;
+            if (world.IsOnStrike(b.Definition)) continue;   // απεργός drill δεν παράγει → δεν δονεί
             double eff = b.WorkerEfficiency();
             if (eff <= 0) continue;
             add += b.Definition.SeismicPerTick * eff;
