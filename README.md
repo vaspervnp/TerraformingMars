@@ -163,7 +163,7 @@ plague and logistics blackouts.
 
 ## 📖 More
 
-A full, non-technical guide to the gameplay: **[GAMEPLAY.md](GAMEPLAY.md)**
+A full, non-technical guide to the gameplay: **[GAMEPLAY.md](GAMEPLAY.md)** · **[📄 PDF](docs/GAMEPLAY.en.pdf)**
 
 ## License
 

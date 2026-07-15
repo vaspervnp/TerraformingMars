@@ -161,7 +161,7 @@ dotnet run --project src/TerraformingMars.Game # το παιχνίδι
 
 ## 📖 Περισσότερα
 
-Αναλυτικός, μη-τεχνικός οδηγός του gameplay: **[GAMEPLAY.el.md](GAMEPLAY.el.md)**
+Αναλυτικός, μη-τεχνικός οδηγός του gameplay: **[GAMEPLAY.el.md](GAMEPLAY.el.md)** · **[📄 PDF](docs/GAMEPLAY.el.pdf)**
 
 ## Άδεια
 

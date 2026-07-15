@@ -1,6 +1,6 @@
 # Terraforming Mars — Οδηγός Παιχνιδιού (Gameplay)
 
-[🇬🇧 English](GAMEPLAY.md) · **🇬🇷 Ελληνικά**
+[🇬🇧 English](GAMEPLAY.md) · **🇬🇷 Ελληνικά** · [📄 Λήψη PDF](docs/GAMEPLAY.el.pdf)
 
 ## Τι είναι αυτό το παιχνίδι
 
