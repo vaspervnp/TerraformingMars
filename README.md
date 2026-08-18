@@ -62,7 +62,7 @@ explodes from a dozen named colonists into **tens of thousands** of residents.
 ### Quality of life
 
 * **Step-by-step tutorial wizard** (it advances as you actually perform each action; Esc to leave).
-* **Multiple saves** in a `SavedGames` folder, each with a **screenshot**, name and timestamp — a scrollable list, a large preview, and a confirmation before Delete.
+* **Multiple saves** in your account folder — `%APPDATA%\Terraforming Mars\SavedGames` on Windows, `~/.local/share/TerraformingMars/SavedGames` on Linux, `~/Library/Application Support` on macOS; saves left next to an older build are moved there on start — each with a **screenshot**, name and timestamp — a scrollable list, a large preview, and a confirmation before Delete.
 * **3 cyclic autosaves** (Auto 1/2/3) every 5 minutes.
 * **In-game help** for every building and every technology, in a scrollable window.
 * **HUD counters** for buildings that need crew or have exhausted their deposit (with a "jump to the next one" button).

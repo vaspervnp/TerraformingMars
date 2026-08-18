@@ -163,6 +163,7 @@ public partial class MarsGame : Microsoft.Xna.Framework.Game
     // Οθόνη Load: λίστα με thumbnails + ημ/ώρα, scroll, μεγάλο preview στο κλικ.
     private sealed class SaveEntry { public string Slug = ""; public string Name = ""; public DateTime When; public Texture2D? Thumb; }
     private bool _loadScreenOpen;
+    private int _migratedSaves;                          // πόσα save μεταφέρθηκαν από την παλιά θέση στο ξεκίνημα
     private int _loadScroll, _loadScrollMax;
     private int _previewIndex = -1;                      // -1 = λίστα· >=0 = μεγάλο preview της εγγραφής
     private int _deleteConfirmIndex = -1;                // >=0 = ανοιχτός διάλογος επιβεβαίωσης διαγραφής
@@ -222,6 +223,10 @@ public partial class MarsGame : Microsoft.Xna.Framework.Game
 
     protected override void Initialize()
     {
+        // Τα save ζουν πλέον στον λογαριασμό του χρήστη· ό,τι έμεινε δίπλα στο εκτελέσιμο
+        // από παλιότερη έκδοση μεταφέρεται εδώ, μία φορά, στο ξεκίνημα.
+        _migratedSaves = SaveManager.MigrateLegacySaves();
+
         _catalog = BuildingCatalog.LoadDefault();
         _buildables = _catalog.Buildables.ToList();
 
@@ -408,7 +413,8 @@ public partial class MarsGame : Microsoft.Xna.Framework.Game
         var p = LoadPanelRect();
         const int pad = 20;
         int top = p.Y + 64;
-        return new Rectangle(p.X + pad, top, p.Width - pad * 2, p.Bottom - pad - top);
+        // Κάτω-κάτω μένει μια γραμμή για τη διαδρομή του φακέλου των save.
+        return new Rectangle(p.X + pad, top, p.Width - pad * 2, p.Bottom - pad - 22 - top);
     }
 
     private Rectangle LoadRowRect(int i)
@@ -560,6 +566,14 @@ public partial class MarsGame : Microsoft.Xna.Framework.Game
             _spriteBatch.Draw(_pixel, new Rectangle(trackX, thumbY, 5, thumbH), new Color(130, 150, 180));
         }
         DrawCloseButton(LoadCloseRect(), ms);
+
+        // Πού ζουν τα save (φάκελος λογαριασμού) + αν μόλις μεταφέρθηκαν από την παλιά θέση.
+        string footer = _migratedSaves > 0
+            ? $"moved {_migratedSaves} save{(_migratedSaves == 1 ? "" : "s")} here from the old game folder:  {SaveManager.Folder}"
+            : $"saves folder:  {SaveManager.Folder}";
+        _spriteBatch.DrawString(_font, Truncate(footer, panel.Width - 40, 0.8f),
+            new Vector2(panel.X + 20, panel.Bottom - 26),
+            _migratedSaves > 0 ? new Color(150, 230, 160) : HudDim, 0f, Vector2.Zero, 0.8f, SpriteEffects.None, 0f);
         _spriteBatch.End();
 
         if (_previewIndex >= 0 && _previewIndex < _saveEntries.Count) DrawPreview(ms);

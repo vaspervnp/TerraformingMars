@@ -61,7 +61,7 @@ hex χάρτη και real-time προσομοίωση. Ξεκινάς με μι
 ### Quality of life
 
 * **Tutorial wizard** βήμα-βήμα (προχωράει μόνο του καθώς εκτελείς τις ενέργειες· Esc για έξοδο).
-* **Πολλαπλά saves** σε φάκελο `SavedGames`, το καθένα με **screenshot**, όνομα και ημερομηνία — λίστα με scroll, μεγάλο preview, επιβεβαίωση στο Delete.
+* **Πολλαπλά saves** στον φάκελο του λογαριασμού σου — `%APPDATA%\Terraforming Mars\SavedGames` σε Windows, `~/.local/share/TerraformingMars/SavedGames` σε Linux, `~/Library/Application Support` σε macOS· όσα save έχουν μείνει δίπλα σε παλιότερο build μεταφέρονται εκεί στο ξεκίνημα — το καθένα με **screenshot**, όνομα και ημερομηνία — λίστα με scroll, μεγάλο preview, επιβεβαίωση στο Delete.
 * **3 κυκλικά autosaves** (Auto 1/2/3) κάθε 5 λεπτά.
 * **In-game help** για κάθε κτίριο και κάθε τεχνολογία, σε παράθυρο με scroll.
 * **HUD μετρητές** για κτίρια χωρίς προσωπικό ή με εξαντλημένο κοίτασμα (με κουμπί «βρες το επόμενο»).

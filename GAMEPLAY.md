@@ -279,6 +279,7 @@ There is no single "right" path — you are constantly balancing keeping people 
 
 - **Multiple saves** — every save also keeps a **screenshot** of the screen. On the "Load Game" screen you see a list with those images, the date and time of each save; you can enlarge any image, and choose which one to load.
 - **Autosave** — the game saves itself every 5 minutes, cycling through 3 slots (Auto 1/2/3).
+- **Where the saves live** — in your own account folder, so they survive a rebuild or a reinstall: `%APPDATA%\Terraforming Mars\SavedGames` on Windows, `~/.local/share/TerraformingMars/SavedGames` on Linux (`$XDG_DATA_HOME` is honoured), `~/Library/Application Support/Terraforming Mars/SavedGames` on macOS. The exact path is written at the bottom of the "Load Game" screen. Saves left next to an older build are moved there automatically at start-up.
 - **Tutorial** — from the main menu, a step-by-step guide that teaches you the basics (movement, building, selection, research, speed) as you actually perform them. Leave any time with **Esc**.
 
 ---
