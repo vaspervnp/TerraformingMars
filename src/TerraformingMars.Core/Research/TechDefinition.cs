@@ -23,4 +23,7 @@ public sealed class TechDefinition
 
     /// <summary>Building ids που ξεκλειδώνει.</summary>
     public List<string> Unlocks { get; init; } = new();
+
+    /// <summary>Μη-δομήσιμα terrain (βουνά/νερό) που ανοίγει για χτίσιμο. Βλ. <see cref="TerrainUnlock"/>.</summary>
+    public List<TerrainUnlock> TerrainUnlocks { get; init; } = new();
 }

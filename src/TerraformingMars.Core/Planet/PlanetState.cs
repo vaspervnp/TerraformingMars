@@ -83,4 +83,37 @@ public sealed class PlanetState
     public bool IsTerraformed =>
         Progress(PlanetMetric.Temperature) >= 1 && Progress(PlanetMetric.Pressure) >= 1 &&
         Progress(PlanetMetric.Oxygen) >= 1 && Progress(PlanetMetric.Water) >= 1;
+
+    // ---------------------------------------------------------------- υπέρβαση στόχου
+
+    /// <summary>Πόσο πάνω από τον στόχο ξεκινά το runaway greenhouse (°C / kPa) — βλ. Phase2System.</summary>
+    public const double RunawayOvershoot = 4.0;
+
+    /// <summary>Ο στόχος κατοικησιμότητας μιας μετρικής (στις μονάδες της μετρικής).</summary>
+    public static double TargetOf(PlanetMetric metric) => metric switch
+    {
+        PlanetMetric.Temperature => TargetTemperature,
+        PlanetMetric.Pressure => TargetPressure,
+        PlanetMetric.Oxygen => TargetOxygen,
+        PlanetMetric.Water => TargetWater,
+        _ => 0
+    };
+
+    /// <summary>Μετρικές που, αν ξεφύγουν προς τα πάνω, πυροδοτούν runaway greenhouse (Φάση 2).</summary>
+    public static bool HasRunawayRisk(PlanetMetric metric) =>
+        metric is PlanetMetric.Temperature or PlanetMetric.Pressure;
+
+    /// <summary>Πόσο πάνω από τον στόχο βρίσκεται η μετρική (0 αν είναι ακόμη κάτω).</summary>
+    public double Overshoot(PlanetMetric metric) => Math.Max(0, Get(metric) - TargetOf(metric));
+
+    /// <summary>
+    /// Πόσο «πάνω από το ιδανικό» είναι μια μετρική τώρα — για ένδειξη στο HUD ώστε ο παίκτης να
+    /// βλέπει την υπέρβαση σε πραγματικό χρόνο, όχι μόνο όταν σκάσει το runaway στη Φάση 2.
+    /// </summary>
+    public OvershootLevel OvershootOf(PlanetMetric metric)
+    {
+        double over = Overshoot(metric);
+        if (over <= 0) return OvershootLevel.None;
+        return HasRunawayRisk(metric) && over > RunawayOvershoot ? OvershootLevel.Critical : OvershootLevel.Over;
+    }
 }

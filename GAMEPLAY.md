@@ -21,6 +21,8 @@ At the top of the screen sit **four target gauges**. To win, all four must reach
 
 When all four hit 100% — **and your crew is still alive** — you have won: Mars is habitable.
 
+**100% is the target, not a score to beat.** Once a gauge passes its target it stops showing a percentage and starts showing **how far over** you are (e.g. `+16.0 C`) with an up-arrow: amber means the extra output is mostly wasted, **red means danger** — temperature or pressure more than 4 over target is runaway-greenhouse territory, where the crew sickens, vegetation withers and the oceans boil away. A line at the bottom of the screen spells it out. Throttle or dismantle greenhouse-gas factories and mirrors before it gets there.
+
 **You lose** if the colony collapses: if life support runs dry and your colonists have no air, water or food left.
 
 It is a long journey: you start by keeping a few people alive, and you end up reshaping an entire planet.
@@ -77,6 +79,8 @@ Colonists are precious. Each has a **specialty**, and putting them in the "right
 
 **How you manage them:** right-click a building to select it, then use the **[+] / [–]** buttons (or the +/– keys) to assign or remove workers. A staffed building produces far more than an empty one.
 
+**The crew screen (C):** press **C** — or the two-colonists icon on the bottom bar — to see every colonist and every job in one place: the unassigned pool on the left, all the buildings with jobs on the right. **Drag** a colonist onto a slot to move them there; if that slot is already taken, the two colonists **swap buildings**. Drop someone on *UNASSIGNED* to pull them off the job. A `*` marks a colonist whose specialty matches the building (+50% output), and each building shows its current efficiency, so you can see at a glance where a reshuffle is worth it.
+
 The population **grows over time**, as long as there is housing and living conditions (food, health, morale) are good.
 
 ---
@@ -119,6 +123,15 @@ Every technology has **prerequisites**, so you climb a tree from the basics towa
 ### Reclaim
 
 A special technology lets you **dismantle buildings** and get back part of their Credits and Materials — handy for tearing down a mine that has exhausted its deposit and putting those resources to work elsewhere.
+
+### Opening up new ground
+
+Two technologies do not unlock a building — they unlock **terrain you could not build on before**:
+
+- **Mountain Foundations** (Phase 2, after *Heavy Metallurgy*) — rock anchors and terraced platforms. Mountains stop being off-limits, which matters because the iron and silicon veins run right through them.
+- **Offshore Drill Platforms** (Phase 3, after *Orbital Mirrors*) — once the mirrors melt the caps, the polar ice becomes sea, but the ice deposit is still down there. Floating rigs let you put an **ice drill on water that hides ice** — everything else still needs dry land.
+
+Buildings that need a specific deposit still need it, and the build cursor tells you which research is missing (e.g. *"Mountain: needs Mountain Foundations"*).
 
 ---
 
@@ -254,6 +267,8 @@ There is no single "right" path — you are constantly balancing keeping people 
 - **Buildings:** **B** or the icon — **Research:** **T** or the icon
 - **Speed:** Space (pause) and **1 / 2 / 3**
 - **Centre on base:** **H** — **Next building that needs crew:** `.` — **Exhausted deposit:** `,`
+- **Next broken building:** `/` — broken buildings wear a **red wrench** on the map and produce nothing until repaired
+- **Crew assignments (drag & drop):** **C**
 - **Reclaim:** **R** (once unlocked) — **Mute:** **U**
 - **Menu / back:** **Esc**
 - **Help:** the "Help" button in the menu, and the "?" buttons inside the palettes

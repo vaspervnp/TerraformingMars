@@ -92,6 +92,31 @@ public static class IconFactory
                 Line(b, 47, 30, 51, 16, 2, body);                       // κεραία
                 Disc(b, 51, 15, 2, new Color(255, 230, 120));
                 break;
+            case "mountain_foundations": // κορυφή βουνού πάνω σε θεμέλιο/πλατφόρμα
+                var rock = new Color(196, 150, 120);
+                var snow = new Color(240, 244, 250);
+                Tri(b, 22, 20, 8, 42, 36, 42, rock);                    // πίσω κορυφή
+                Tri(b, 38, 14, 22, 42, 54, 42, rock);                   // μπροστινή κορυφή
+                Tri(b, 38, 14, 30, 26, 46, 26, snow);                   // χιόνι
+                Rect(b, 8, 42, 48, 5, new Color(150, 158, 172));        // πλατφόρμα θεμελίωσης
+                Rect(b, 15, 47, 5, 10, new Color(120, 128, 142));       // πάσσαλοι αγκύρωσης
+                Rect(b, 30, 47, 5, 10, new Color(120, 128, 142));
+                Rect(b, 45, 47, 5, 10, new Color(120, 128, 142));
+                break;
+            case "offshore_drilling": // πλωτή εξέδρα με πύργο γεώτρησης πάνω από νερό & πάγο
+                var sea = new Color(60, 130, 200);
+                var deck = new Color(215, 220, 232);
+                var rig = new Color(255, 190, 90);
+                Rect(b, 4, 44, 56, 16, sea);                            // θάλασσα
+                Disc(b, 16, 52, 5, new Color(190, 225, 245));           // παγοκομμάτια
+                Disc(b, 46, 55, 4, new Color(190, 225, 245));
+                Rect(b, 18, 38, 28, 6, deck);                           // κατάστρωμα
+                Rect(b, 22, 44, 4, 12, deck);                           // πόδια στήριξης
+                Rect(b, 38, 44, 4, 12, deck);
+                Line(b, 32, 10, 24, 38, 3, rig);                        // πύργος γεώτρησης
+                Line(b, 32, 10, 40, 38, 3, rig);
+                Line(b, 27, 24, 37, 24, 3, rig);
+                break;
             default: // άτομο (γενική έρευνα)
                 Ring(b, 32, 32, 16, 3, new Color(190, 150, 255));
                 Ring(b, 32, 32, 9, 2, new Color(150, 120, 220));
@@ -190,7 +215,7 @@ public static class IconFactory
     {
         var icons = new Dictionary<string, Texture2D>(StringComparer.OrdinalIgnoreCase);
         foreach (var id in new[] { "research", "speed", "save", "menu", "mute_on", "mute_off", "center",
-                                   "crew_needed", "depleted",
+                                   "crew_needed", "depleted", "crew_assign", "broken",
                                    "pause", "speed1", "speed2", "speed4",
                                    "sol", "sponsor", "temperature", "pressure", "planet", "biomass" })
         {
@@ -258,6 +283,23 @@ public static class IconFactory
                 var plus = new Color(255, 180, 70);
                 Rect(b, 44, 33, 5, 17, plus);                   // κάθετη ράβδος του +
                 Rect(b, 39, 39, 15, 5, plus);                   // οριζόντια ράβδος του +
+                break;
+            case "broken": // κόκκινο γαλλικό κλειδί (κτήριο εκτός λειτουργίας — θέλει επισκευή)
+                var wrench = new Color(240, 80, 70);
+                Ring(b, 44, 20, 10, 7, wrench);                 // «γάντζος» (κλειστό άκρο)
+                Line(b, 38, 26, 18, 46, 9, wrench);             // λαβή
+                Disc(b, 17, 47, 5, wrench);                     // στρογγυλεμένη άκρη λαβής
+                break;
+            case "crew_assign": // δύο άποικοι + βέλη ανταλλαγής (οθόνη αναθέσεων / drag & drop)
+                var left = new Color(150, 200, 245);
+                var right = new Color(160, 235, 180);
+                Disc(b, 15, 17, 7, left);                       // κεφάλι αριστερού
+                RoundRect(b, 4, 26, 22, 16, 7, left, 1f);       // σώμα αριστερού
+                Disc(b, 49, 17, 7, right);                      // κεφάλι δεξιού
+                RoundRect(b, 38, 26, 22, 16, 7, right, 1f);     // σώμα δεξιού
+                var swap = new Color(255, 190, 90);
+                Arrow(b, 20, 50, 46, 50, swap, 3f, 7f);         // βέλος προς τα δεξιά
+                Arrow(b, 44, 58, 18, 58, swap, 3f, 7f);         // βέλος προς τα αριστερά
                 break;
             case "depleted": // άδειος ρόμβος κοιτάσματος + κόκκινο κάτω βέλος (εξάντληση)
                 var edge = new Color(150, 155, 165);

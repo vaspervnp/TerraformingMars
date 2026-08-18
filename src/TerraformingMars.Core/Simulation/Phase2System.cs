@@ -13,8 +13,10 @@ namespace TerraformingMars.Core.Simulation;
 /// </summary>
 public sealed class Phase2System : ISimulationSystem
 {
-    private const double RunawayTempThreshold = 4.0;      // °C πάνω από τον στόχο για έναρξη runaway
-    private const double RunawayPressureThreshold = 4.0;  // kPa πάνω από τον στόχο για έναρξη runaway
+    // Κοινό κατώφλι με το HUD (PlanetState.RunawayOvershoot), ώστε η ένδειξη υπέρβασης στους
+    // δείκτες στόχων να ανάβει ακριβώς εκεί που αρχίζει πραγματικά η ζημιά.
+    private const double RunawayTempThreshold = PlanetState.RunawayOvershoot;      // °C πάνω από τον στόχο
+    private const double RunawayPressureThreshold = PlanetState.RunawayOvershoot;  // kPa πάνω από τον στόχο
     private const double SeverityScale = 15.0;            // overshoot που δίνει severity 1.0
     private const double MaxSeverity = 3.0;
 

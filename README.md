@@ -135,7 +135,9 @@ Settings (sponsor, seed, music, volumes) via clicks/arrows; **R** = random seed.
 | Save (disk) | save the game (with a screenshot) |
 | Mute (speaker) | mute/unmute |
 | Center | snap the camera back to the landing capsule (**H**) |
+| Crew assignments | the whole colony's crew on one screen — **drag & drop** colonists between buildings (**C**) |
 | Crew · Deposit | counters for buildings that need workers / have run dry — click to jump to the next one |
+| Wrench | jump to the next **broken** building (**/**) — broken buildings also carry a red wrench on the map |
 | Reclaim | (once researched) dismantle a building for credits & materials |
 | Menu · ? | back to the menu · help |
 
@@ -147,6 +149,7 @@ Settings (sponsor, seed, music, volumes) via clicks/arrows; **R** = random seed.
 | WASD / arrows | move the camera |
 | right click | select a hex/building (or cancel a build/popup) |
 | **[−] / [+]** on the building panel, or **+ / −** | assign/remove a colonist |
+| **C** | crew assignment screen: drag a colonist onto a building slot — drop on a taken slot and the two swap buildings, drop on *UNASSIGNED* to free them |
 | Space · 1 / 2 / 3 | pause · speed ×1 / ×2 / ×4 |
 | B · T · H | building palette · research · center camera |
 | F5 · F9 | save · load |

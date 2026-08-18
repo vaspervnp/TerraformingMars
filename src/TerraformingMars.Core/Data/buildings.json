@@ -33,7 +33,7 @@
     "SolarPowered": true,
     "Cost": { "Materials": 40, "Credits": 2000 },
     "Production": { "Energy": 4.0 },
-    "AllowedTerrain": [ "Flatland", "Lowland", "Highland", "Crater" ]
+    "AllowedTerrain": [ "Flatland", "Lowland", "Highland", "Crater", "Mountain" ]
   },
   {
     "Id": "battery",

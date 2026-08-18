@@ -30,6 +30,16 @@
     "Unlocks": [ "iron_mine" ]
   },
   {
+    "Id": "mountain_foundations",
+    "Name": "Mountain Foundations",
+    "Description": "Rock anchors and terraced platforms bolted into the bedrock - build on mountain slopes, and put mines straight on the iron and silicon veins that run through them.",
+    "Phase": 2,
+    "Cost": 350,
+    "Prerequisites": [ "heavy_metallurgy" ],
+    "Unlocks": [],
+    "TerrainUnlocks": [ { "Terrain": "Mountain" } ]
+  },
+  {
     "Id": "rover_networks",
     "Name": "Rover Networks",
     "Description": "Autonomous rover networks for expansion and logistics.",
@@ -75,6 +85,16 @@
     "Cost": 600,
     "Prerequisites": [ "greenhouse_gas_production" ],
     "Unlocks": [ "orbital_mirror" ]
+  },
+  {
+    "Id": "offshore_drilling",
+    "Name": "Offshore Drill Platforms",
+    "Description": "Floating rigs anchored over the new meltwater seas - an ice drill can now sit on water that still hides an ice deposit underneath.",
+    "Phase": 3,
+    "Cost": 450,
+    "Prerequisites": [ "orbital_mirrors" ],
+    "Unlocks": [],
+    "TerrainUnlocks": [ { "Terrain": "Water", "RequiresDeposit": "Ice" } ]
   },
   {
     "Id": "artificial_magnetosphere",

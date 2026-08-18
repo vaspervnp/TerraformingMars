@@ -1,3 +1,5 @@
+using TerraformingMars.Core.Map;
+
 namespace TerraformingMars.Core.Research;
 
 /// <summary>
@@ -71,6 +73,27 @@ public sealed class TechTree
         CurrentProgress = progress;
         Phase2Unlocked = phase2Unlocked;
     }
+
+    /// <summary>Οι τεχνολογίες που έχουν ήδη ερευνηθεί.</summary>
+    private IEnumerable<TechDefinition> ResearchedTechs =>
+        _catalog.All.Where(t => Researched.Contains(t.Id));
+
+    /// <summary>
+    /// True αν κάποια ερευνημένη τεχνολογία επιτρέπει χτίσιμο σε αυτό το (κατά τα άλλα μη-δομήσιμο)
+    /// terrain, για κτίριο που ζητά το <paramref name="buildingDeposit"/> κοίτασμα.
+    /// </summary>
+    public bool AllowsTerrain(TerrainType terrain, ResourceType buildingDeposit = ResourceType.None) =>
+        ResearchedTechs.Any(t => t.TerrainUnlocks.Any(u => u.Covers(terrain, buildingDeposit)));
+
+    /// <summary>
+    /// Η (μη ερευνημένη ακόμη) τεχνολογία που θα ξεκλείδωνε αυτό το terrain — για να λέει το UI
+    /// «needs X» αντί για ένα στεγνό «cannot build here». null αν δεν υπάρχει τέτοια.
+    /// </summary>
+    public TechDefinition? TerrainUnlockTech(TerrainType terrain, ResourceType buildingDeposit = ResourceType.None) =>
+        _catalog.All
+            .Where(t => !Researched.Contains(t.Id))
+            .OrderBy(t => t.Phase).ThenBy(t => t.Cost)
+            .FirstOrDefault(t => t.TerrainUnlocks.Any(u => u.Covers(terrain, buildingDeposit)));
 
     /// <summary>Building ids που έχουν ξεκλειδωθεί από τις researched τεχνολογίες.</summary>
     public IEnumerable<string> UnlockedBuildingIds =>

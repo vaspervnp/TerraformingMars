@@ -102,7 +102,12 @@ public sealed class Colony
 
         var tile = map.GetTile(hex);
         if (tile is null) return PlacementResult.Fail("outside map");
-        if (!tile.IsBuildable) return PlacementResult.Fail($"cannot build on {tile.Terrain}");
+        // Βουνά/νερό είναι κλειστά, εκτός αν κάποια τεχνολογία τα έχει ανοίξει (π.χ. θεμελιώσεις
+        // βουνού, πλωτές εξέδρες γεώτρησης). Το μήνυμα δείχνει ποια έρευνα λείπει.
+        if (!tile.IsBuildable && !Tech.AllowsTerrain(tile.Terrain, def.RequiresDeposit))
+            return PlacementResult.Fail(Tech.TerrainUnlockTech(tile.Terrain, def.RequiresDeposit) is { } needed
+                ? $"{tile.Terrain}: needs {needed.Name}"
+                : $"cannot build on {tile.Terrain}");
         if (def.AllowedTerrain.Count > 0 && !def.AllowedTerrain.Contains(tile.Terrain))
             return PlacementResult.Fail($"needs {string.Join("/", def.AllowedTerrain)}");
         if (def.RequiresDeposit != ResourceType.None && tile.Deposit.Type != def.RequiresDeposit)
@@ -212,5 +217,45 @@ public sealed class Colony
         colonist.Assignment.Workers.Remove(colonist);
         colonist.Assignment = null;
         return true;
+    }
+
+    /// <summary>
+    /// Ανταλλάσσει τις θέσεις δύο αποίκων. Ο ένας μπορεί να είναι idle — τότε ο άλλος γίνεται idle
+    /// στη θέση του. Χρησιμοποιείται από το drag &amp; drop της οθόνης αναθέσεων.
+    /// </summary>
+    public bool SwapAssignments(Colonist a, Colonist b)
+    {
+        if (ReferenceEquals(a, b)) return false;
+
+        var buildingA = a.Assignment;
+        var buildingB = b.Assignment;
+        if (ReferenceEquals(buildingA, buildingB)) return false; // ίδιο κτήριο (ή και οι δύο idle)
+
+        Unassign(a);
+        Unassign(b);
+        if (buildingB is not null) Assign(a, buildingB);
+        if (buildingA is not null) Assign(b, buildingA);
+        return true;
+    }
+
+    /// <summary>
+    /// Τοποθετεί άποικο σε κτήριο: αν υπάρχει ελεύθερη θέση κάνει απλή ανάθεση, αλλιώς ανταλλάσσει
+    /// θέση με κάποιον που δουλεύει ήδη εκεί (τον <paramref name="swapWith"/> αν δοθεί, αλλιώς τον
+    /// τελευταίο). Επιστρέφει true αν κάτι άλλαξε.
+    /// </summary>
+    public bool AssignOrSwap(Colonist colonist, Building building, Colonist? swapWith = null)
+    {
+        if (building.Definition.MaxWorkers <= 0) return false;
+
+        // Ρητή ανταλλαγή με συγκεκριμένο εργαζόμενο του κτηρίου (drop πάνω στη θέση του).
+        if (swapWith is not null && ReferenceEquals(swapWith.Assignment, building))
+            return SwapAssignments(colonist, swapWith);
+
+        if (ReferenceEquals(colonist.Assignment, building)) return false;
+
+        if (building.Workers.Count < building.Definition.MaxWorkers)
+            return Assign(colonist, building);
+
+        return SwapAssignments(colonist, building.Workers[^1]);
     }
 }

@@ -26,7 +26,7 @@ namespace TerraformingMars.Game;
 /// Pan (drag), zoom (wheel), hover/select hex (mouse → <see cref="HexLayout.PixelToHex"/>),
 /// regenerate (N), έλεγχος ταχύτητας (Space, 1/2/3). HUD on-screen με SpriteFont.
 /// </summary>
-public class MarsGame : Microsoft.Xna.Framework.Game
+public partial class MarsGame : Microsoft.Xna.Framework.Game
 {
     private const float HexSize = 22f;
 
@@ -79,6 +79,7 @@ public class MarsGame : Microsoft.Xna.Framework.Game
     // Μετρητές HUD (κτήρια χωρίς εργαζόμενους / με τελειωμένα resources): ανανεώνονται περιοδικά, όχι κάθε frame.
     private int _crewNeededCount;
     private int _depletedCount;
+    private int _brokenCount;
     private double _buildingCheckTimer;
     private const double BuildingCheckInterval = 3.0;
 
@@ -177,13 +178,13 @@ public class MarsGame : Microsoft.Xna.Framework.Game
     private bool ReclaimUnlocked => _world.Colony.Tech.IsResearched(ReclaimTechId);
 
     // Μπάρα εργαλείων: δυναμική λίστα κουμπιών (το Reclaim εμφανίζεται μόνο όταν ξεκλειδωθεί).
-    private enum Tool { Buildings, Research, Speed, Save, Mute, Center, CrewNeeded, Depleted, Reclaim, Menu, Help }
+    private enum Tool { Buildings, Research, Speed, Save, Mute, Center, Crew, CrewNeeded, Depleted, Broken, Reclaim, Menu, Help }
     private List<Tool> ToolbarTools()
     {
         var list = new List<Tool>
         {
             Tool.Buildings, Tool.Research, Tool.Speed, Tool.Save, Tool.Mute,
-            Tool.Center, Tool.CrewNeeded, Tool.Depleted,
+            Tool.Center, Tool.Crew, Tool.CrewNeeded, Tool.Depleted, Tool.Broken,
         };
         if (ReclaimUnlocked) list.Add(Tool.Reclaim);
         list.Add(Tool.Menu);
@@ -194,6 +195,10 @@ public class MarsGame : Microsoft.Xna.Framework.Game
     // Κυκλική πλοήγηση: το τελευταίο κτήριο που δείξαμε με «.»/«,» ώστε το επόμενο πάτημα να πάει παρακάτω.
     private Building? _crewFocus;
     private Building? _depletedFocus;
+    private Building? _brokenFocus;
+
+    // Χρόνος HUD (δευτερόλεπτα από την έναρξη του γύρου) — για ήπιο παλμό στις κρίσιμες ενδείξεις.
+    private double _hudTime;
 
     // Οθόνη βοήθειας (modal· ανοίγει από τη μπάρα ή το μενού)
     private bool _showHelp;
@@ -651,6 +656,7 @@ public class MarsGame : Microsoft.Xna.Framework.Game
     {
         _crewNeededCount = _world.Colony.Buildings.Count(NeedsCrew);
         _depletedCount = _world.Colony.Buildings.Count(IsDepleted);
+        _brokenCount = _world.Colony.Buildings.Count(IsBroken);
     }
 
     private void CheckAudioTransitions()
@@ -991,6 +997,8 @@ public class MarsGame : Microsoft.Xna.Framework.Game
         "GOAL",
         "Raise Temperature, Pressure, Oxygen and Water to their target levels.",
         "Win when all four goals (top, under the resource bar) hit 100% - keep your crew alive.",
+        "Do NOT overshoot: a goal turns amber with an up-arrow past the target, red when",
+        "temperature/pressure run away (crew sickens, vegetation withers, oceans boil off).",
         "",
         "BUILD",
         "Click the buildings icon (bottom bar), pick a building, then a hex.",
@@ -1000,6 +1008,8 @@ public class MarsGame : Microsoft.Xna.Framework.Game
         "CREW",
         "Right-click a building to select it. Then use [-] / [+] (or +/- keys)",
         "to assign or remove colonists - staffed buildings produce more.",
+        "Press C for the crew screen: drag a colonist onto a building slot; drop on a",
+        "taken slot and the two swap. '*' = matching specialty (+50% output).",
         "",
         "RESEARCH & RECLAIM",
         "Click the research icon (or T) and pick a technology to research.",
@@ -1012,7 +1022,8 @@ public class MarsGame : Microsoft.Xna.Framework.Game
         "CONTROLS",
         "Move: WASD / arrows / drag   Zoom: wheel   Select: right-click   Mute: U",
         "Center on landing module: H, or the crosshair icon in the bottom bar.",
-        "Jump to a building needing crew: '.'   to a depleted deposit: ','",
+        "Jump to a building needing crew: '.'   depleted deposit: ','   broken building: '/'",
+        "A red wrench on a building means it broke down and produces nothing until repaired.",
         "Resource numbers (top) turn red when falling.   Menu / back: Esc.",
     };
 
@@ -1024,7 +1035,7 @@ public class MarsGame : Microsoft.Xna.Framework.Game
         foreach (var line in HelpText)
             maxLine = MathF.Max(maxLine, _font.MeasureString(line).X);
         int w = Math.Min(vw - 40, (int)maxLine + 52);
-        int h = Math.Min(vh - 60, 680);
+        int h = Math.Min(vh - 60, 720);
         return new Rectangle((vw - w) / 2, (vh - h) / 2, w, h);
     }
 
@@ -1200,9 +1211,12 @@ public class MarsGame : Microsoft.Xna.Framework.Game
     private List<string> TechDoneBody(TechDefinition t, int textW)
     {
         var paras = new List<string> { t.Description, "" };
-        paras.Add(t.Unlocks.Count > 0
-            ? "Now available: " + string.Join(", ", t.Unlocks.Select(BuildingName))
-            : "A permanent upgrade for your colony.");
+        if (t.Unlocks.Count > 0)
+            paras.Add("Now available: " + string.Join(", ", t.Unlocks.Select(BuildingName)));
+        else if (t.TerrainUnlocks.Count == 0)
+            paras.Add("A permanent upgrade for your colony.");
+        if (t.TerrainUnlocks.Count > 0)
+            paras.Add("You can now build on: " + string.Join(", ", t.TerrainUnlocks.Select(TerrainUnlockText)));
         var lines = new List<string>();
         foreach (var p in paras)
         {
@@ -1392,6 +1406,9 @@ public class MarsGame : Microsoft.Xna.Framework.Game
     // Κτήρια με εξαντλημένο κοίτασμα (ορυχεία/γεωτρήσεις που σταμάτησαν να παράγουν).
     private static bool IsDepleted(Building b) => b.DepositDepleted;
 
+    // Χαλασμένα κτήρια: εκτός λειτουργίας μέχρι να ολοκληρωθεί η επισκευή (σημαδεύονται με κλειδί).
+    private static bool IsBroken(Building b) => b.State == BuildingState.Disabled;
+
     /// <summary>
     /// Κεντράρει (κυκλικά) στο επόμενο κτήριο που ταιριάζει στο <paramref name="match"/>, το επιλέγει
     /// ώστε να φανεί το panel του, και θυμάται ποιο έδειξε ώστε το επόμενο πάτημα να πάει στο μεθεπόμενο.
@@ -1457,6 +1474,16 @@ public class MarsGame : Microsoft.Xna.Framework.Game
                 _catalogHelp = CatalogHelp.None;
                 _audio.Blip();
             }
+            _prevMouse = mouse;
+            _prevKeys = keys;
+            base.Update(gameTime);
+            return;
+        }
+
+        // Οθόνη αναθέσεων πληρώματος: modal — drag & drop αποίκων, «X»/Esc/C κλείνει.
+        if (_state == GameState.Playing && _crewScreenOpen)
+        {
+            UpdateCrewScreen(gameTime, keys, mouse);
             _prevMouse = mouse;
             _prevKeys = keys;
             base.Update(gameTime);
@@ -1575,6 +1602,13 @@ public class MarsGame : Microsoft.Xna.Framework.Game
         if (KeyPressed(keys, Keys.OemComma))
         { CenterOnNextBuilding(IsDepleted, ref _depletedFocus, "No depleted deposits"); _audio.Blip(); }
 
+        // / : κεντράρισμα στο επόμενο χαλασμένο (Disabled) κτήριο
+        if (KeyPressed(keys, Keys.OemQuestion) || KeyPressed(keys, Keys.Divide))
+        { CenterOnNextBuilding(IsBroken, ref _brokenFocus, "No broken buildings"); _audio.Blip(); }
+
+        // C: οθόνη αναθέσεων πληρώματος (drag & drop αποίκων ανάμεσα στα κτήρια)
+        if (KeyPressed(keys, Keys.C)) OpenCrewScreen();
+
         // R: εναλλαγή reclaim mode (μόνο όταν έχει ξεκλειδωθεί από έρευνα)
         if (KeyPressed(keys, Keys.R))
         {
@@ -1621,6 +1655,7 @@ public class MarsGame : Microsoft.Xna.Framework.Game
             if (KeyPressed(keys, Keys.OemMinus) || KeyPressed(keys, Keys.Subtract)) RemoveCrew(selected);
         }
 
+        _hudTime += gameTime.ElapsedGameTime.TotalSeconds;   // παλμός για τις κρίσιμες ενδείξεις
         if (_statusTimer > 0) _statusTimer -= gameTime.ElapsedGameTime.TotalSeconds;
 
         // Περιοδικός έλεγχος (κάθε 3s) για κτήρια χωρίς εργαζόμενους / με τελειωμένα resources → μετρητές HUD.
@@ -2206,6 +2241,7 @@ public class MarsGame : Microsoft.Xna.Framework.Game
         }
 
         DrawHud();
+        if (_crewScreenOpen) DrawCrewScreen();
         if (_showHelp) DrawHelpOverlay();
         if (_catalogHelp != CatalogHelp.None) DrawCatalogHelpOverlay();
         if (_techDone.Count > 0) DrawTechDoneOverlay();
@@ -2286,9 +2322,27 @@ public class MarsGame : Microsoft.Xna.Framework.Game
                 var dst = new Rectangle(rect.X, rect.Bottom - fillDst, rect.Width, fillDst);
                 _spriteBatch.Draw(tex, dst, src, Color.White);
             }
+
+            // Χαλασμένο κτήριο: κόκκινο κλειδί σε σκούρο δισκίο, πάνω-δεξιά στο εικονίδιο (παλλόμενο).
+            if (b.State == BuildingState.Disabled)
+            {
+                float badge = iconWorld * 0.62f;
+                var badgeRect = new Rectangle(
+                    (int)(rect.Right - badge * 0.78f), (int)(rect.Y - badge * 0.22f), (int)badge, (int)badge);
+                var back = badgeRect; back.Inflate((int)(badge * 0.1f), (int)(badge * 0.1f));
+                _spriteBatch.Draw(_pixel, back, new Color(18, 12, 14, 220));
+                _spriteBatch.Draw(_toolIcons["broken"], badgeRect, WarnPulse(new Color(255, 120, 110)));
+            }
         }
 
         _spriteBatch.End();
+    }
+
+    /// <summary>Χρώμα που «αναπνέει» ανάμεσα σε πλήρες και αμυδρό — για ενδείξεις που θέλουν προσοχή.</summary>
+    private Color WarnPulse(Color color, float floor = 0.55f)
+    {
+        float t = floor + (1f - floor) * (float)((Math.Sin(_hudTime * 4.0) + 1.0) * 0.5);
+        return color * t;
     }
 
     private Rectangle ToolbarButtonRect(int index, int count)
@@ -2412,6 +2466,7 @@ public class MarsGame : Microsoft.Xna.Framework.Game
                 Tool.Speed => _speedMenuOpen,
                 Tool.Research => _researchMenuOpen,
                 Tool.Reclaim => _reclaimMode,
+                Tool.Crew => _crewScreenOpen,
                 Tool.Help => _showHelp,
                 _ => false
             };
@@ -2447,8 +2502,10 @@ public class MarsGame : Microsoft.Xna.Framework.Game
         Tool.Save => _toolIcons["save"],
         Tool.Mute => _toolIcons[_audio.Enabled ? "mute_on" : "mute_off"],
         Tool.Center => _toolIcons["center"],
+        Tool.Crew => _toolIcons["crew_assign"],
         Tool.CrewNeeded => _toolIcons["crew_needed"],
         Tool.Depleted => _toolIcons["depleted"],
+        Tool.Broken => _toolIcons["broken"],
         Tool.Menu => _toolIcons["menu"],
         _ => _buildingsIcon
     };
@@ -2464,8 +2521,10 @@ public class MarsGame : Microsoft.Xna.Framework.Game
         Tool.Mute => _audio.Enabled ? "Mute sound   (U)" : "Unmute sound   (U)",
         Tool.Reclaim => "Reclaim   (R - recycle a building for credits)",
         Tool.Center => "Center on landing module   (H)",
+        Tool.Crew => "Crew assignments   (C - drag & drop colonists between buildings)",
         Tool.CrewNeeded => "Next understaffed building   (.)",
         Tool.Depleted => "Next depleted deposit   (,)",
+        Tool.Broken => "Next broken building   (/ - needs repair)",
         Tool.Menu => "Menu   (Esc - back to main menu)",
         Tool.Help => "Help   (how to play)",
         _ => ""
@@ -2506,11 +2565,17 @@ public class MarsGame : Microsoft.Xna.Framework.Game
             case Tool.Center:
                 CenterOnLandingModule();
                 break;
+            case Tool.Crew:
+                OpenCrewScreen();
+                break;
             case Tool.CrewNeeded:
                 CenterOnNextBuilding(NeedsCrew, ref _crewFocus, "No building needs crew");
                 break;
             case Tool.Depleted:
                 CenterOnNextBuilding(IsDepleted, ref _depletedFocus, "No depleted deposits");
+                break;
+            case Tool.Broken:
+                CenterOnNextBuilding(IsBroken, ref _brokenFocus, "No broken buildings");
                 break;
             case Tool.Menu:
                 _state = GameState.Menu;
@@ -2704,7 +2769,21 @@ public class MarsGame : Microsoft.Xna.Framework.Game
 
         int hover = BuildMenuHitIndex(ms.X, ms.Y);
         if (hover >= 0)
-            DrawPaletteTooltip($"{_buildables[hover].Name}   ({CostString(_buildables[hover])})", BuildMenuButtonRect(hover));
+        {
+            // Πολυγραμμο tooltip: όνομα/κόστος + τι κάνει το κτήριο (χωρίς να ανοίξει ο κατάλογος).
+            var def = _buildables[hover];
+            var tip = new List<(string text, Color color)>
+            {
+                ($"{def.Name}   ({CostString(def)})", HudWhite),
+            };
+            tip.AddRange(BuildingEffectLines(def));
+            if (def.MaxWorkers > 0)
+                tip.Add(($"crew: up to {def.MaxWorkers}" +
+                    (def.OptimalSpecialty != Specialty.None ? $" (best: {def.OptimalSpecialty})" : ""), HudDim));
+            if (def.RequiresDeposit != ResourceType.None)
+                tip.Add(($"needs a {def.RequiresDeposit} deposit", new Color(255, 205, 120)));
+            DrawPaletteTooltip(tip, BuildMenuButtonRect(hover));
+        }
     }
 
     /// <summary>Κουμπί help μιας παλέτας (τελευταίο slot, ίδιο μέγεθος): κλικ ανοίγει το παράθυρο καταλόγου. Hover = hint.</summary>
@@ -2720,13 +2799,26 @@ public class MarsGame : Microsoft.Xna.Framework.Game
     }
 
     /// <summary>Tooltip πάνω από ένα κουμπί παλέτας, κεντραρισμένο & περιορισμένο μέσα στην οθόνη.</summary>
-    private void DrawPaletteTooltip(string text, Rectangle itemRect)
+    private void DrawPaletteTooltip(string text, Rectangle itemRect) =>
+        DrawPaletteTooltip(new List<(string, Color)> { (text, HudWhite) }, itemRect);
+
+    /// <summary>Πολυγραμμο tooltip παλέτας (π.χ. όνομα + τι κάνει το κτήριο).</summary>
+    private void DrawPaletteTooltip(List<(string text, Color color)> lines, Rectangle itemRect)
     {
-        var size = _font.MeasureString(text);
-        float x = Math.Clamp(itemRect.Center.X - size.X / 2f, 6f, GraphicsDevice.Viewport.Width - size.X - 6f);
-        float y = itemRect.Y - size.Y - 6f;
-        _spriteBatch.Draw(_pixel, new Rectangle((int)x - 5, (int)y - 2, (int)size.X + 10, (int)size.Y + 4), new Color(0, 0, 0, 235));
-        _spriteBatch.DrawString(_font, text, new Vector2(x, y), HudWhite);
+        if (lines.Count == 0) return;
+        float w = 0f;
+        foreach (var (text, _) in lines) w = MathF.Max(w, _font.MeasureString(text).X);
+        float h = lines.Count * _font.LineSpacing;
+
+        float x = Math.Clamp(itemRect.Center.X - w / 2f, 6f, GraphicsDevice.Viewport.Width - w - 6f);
+        float y = MathF.Max(6f, itemRect.Y - h - 6f);
+        _spriteBatch.Draw(_pixel, new Rectangle((int)x - 6, (int)y - 4, (int)w + 12, (int)h + 8), new Color(0, 0, 0, 240));
+        DrawRectOutline(new Rectangle((int)x - 6, (int)y - 4, (int)w + 12, (int)h + 8), new Color(70, 78, 96));
+        foreach (var (text, color) in lines)
+        {
+            _spriteBatch.DrawString(_font, text, new Vector2(x, y), color);
+            y += _font.LineSpacing;
+        }
     }
 
     /// <summary>Αναδιπλώνει κείμενο σε γραμμές που χωρούν σε <paramref name="maxWidth"/> px (στο δοσμένο scale).</summary>
@@ -2752,18 +2844,51 @@ public class MarsGame : Microsoft.Xna.Framework.Game
         var body = new List<string> { def.Description, "" };
         if (def.RequiredTech.Length > 0) body.Add($"Requires tech: {TechName(def.RequiredTech)}");
         if (def.RequiresDeposit != ResourceType.None) body.Add($"Requires deposit: {def.RequiresDeposit}");
+        if (def.RequiresPopulation > 0) body.Add($"Requires population: {def.RequiresPopulation:N0}");
+        if (def.RequiresHabitatLink) body.Add("Must be next to a habitat");
         body.Add(def.MaxWorkers > 0
             ? $"Crew: up to {def.MaxWorkers}" + (def.OptimalSpecialty != Specialty.None ? $" (best: {def.OptimalSpecialty})" : "")
             : "Crew: automatic (none needed)");
-        if (def.Production.Count > 0)
-            body.Add("Output/tick: " + string.Join(", ", def.Production.Select(kv => $"{Signed(kv.Value)} {kv.Key}")));
-        if (def.PlanetEffects.Count > 0)
-            body.Add("Planet/tick: " + string.Join(", ", def.PlanetEffects.Select(kv => $"{Signed(kv.Value)} {kv.Key}")));
-        if (def.Storage.Count > 0)
-            body.Add("Storage: " + string.Join(", ", def.Storage.Select(kv => $"{kv.Value:0} {kv.Key}")));
-        if (def.HousingCapacity > 0) body.Add($"Housing: +{def.HousingCapacity}");
-        if (def.VegetationSpreadPerTick > 0) body.Add("Spreads vegetation");
+        body.AddRange(BuildingEffectLines(def).Select(l => l.text));
         return body;
+    }
+
+    /// <summary>
+    /// Τι κάνει ένα κτήριο, σε γραμμές «τίτλος: τιμές» — παραγωγή, εξόρυξη, πλανητικές επιδράσεις,
+    /// αποθήκευση, στέγαση, εξαγωγές. Κοινό για το info panel, το tooltip της παλέτας και το help,
+    /// ώστε ο παίκτης να μη χρειάζεται να ανοίγει τον κατάλογο για να δει τι του δίνει το κτήριο.
+    /// </summary>
+    private static List<(string text, Color color)> BuildingEffectLines(BuildingDefinition def)
+    {
+        var good = new Color(120, 230, 120);
+        var bad = new Color(240, 130, 110);
+        var info = new Color(150, 200, 245);
+        var lines = new List<(string, Color)>();
+
+        var produces = def.Production.Where(kv => kv.Value > 0).ToList();
+        var consumes = def.Production.Where(kv => kv.Value < 0).ToList();
+        if (produces.Count > 0)
+            lines.Add(("produces: " + string.Join(", ", produces.Select(kv => $"{Signed(kv.Value)} {kv.Key}/t")), good));
+        if (consumes.Count > 0)
+            lines.Add(("consumes: " + string.Join(", ", consumes.Select(kv => $"{-kv.Value:0.##} {kv.Key}/t")), bad));
+        if (def.ExtractionPerTick > 0)
+            lines.Add(($"mines: {def.ExtractionPerTick:0.##} {(def.RequiresDeposit != ResourceType.None ? def.RequiresDeposit.ToString() : "deposit")}/t", good));
+        if (def.PlanetEffects.Count > 0)
+            lines.Add(("terraforms: " + string.Join(", ", def.PlanetEffects.Select(kv => $"{Signed(kv.Value)} {kv.Key}/t")),
+                def.PlanetEffects.Values.Any(v => v < 0) ? bad : good));
+        if (def.Storage.Count > 0)
+            lines.Add(("stores: " + string.Join(", ", def.Storage.Select(kv => $"+{kv.Value:0} {kv.Key}")), info));
+        if (def.HousingCapacity > 0) lines.Add(($"houses: +{def.HousingCapacity} colonists", info));
+        if (def.PopulationCapacity > 0) lines.Add(($"population: +{def.PopulationCapacity:N0}", info));
+        if (def.ExportPerTick > 0)
+            lines.Add(($"exports: {def.ExportPerTick:0.##} Silicon/t for credits", good));
+        if (def.MaterialsExportPerTick > 0)
+            lines.Add(($"exports: {def.MaterialsExportPerTick:0.##} surplus Materials/t for credits", good));
+        if (def.VegetationSpreadPerTick > 0)
+            lines.Add(($"greens: {def.VegetationSpreadPerTick:0.##} tiles/t of vegetation", good));
+        if (def.ShieldsAtmosphere) lines.Add(("shields the atmosphere (stops pressure loss)", good));
+        if (lines.Count == 0) lines.Add(("no direct output (support building)", HudDim));
+        return lines;
     }
 
     /// <summary>Σώμα της κάρτας βοήθειας μιας τεχνολογίας: περιγραφή + φάση/προαπαιτούμενα/ξεκλειδώματα.</summary>
@@ -2775,8 +2900,16 @@ public class MarsGame : Microsoft.Xna.Framework.Game
             body.Add("Needs: " + string.Join(", ", t.Prerequisites.Select(TechName)));
         if (t.Unlocks.Count > 0)
             body.Add("Unlocks: " + string.Join(", ", t.Unlocks.Select(BuildingName)));
+        if (t.TerrainUnlocks.Count > 0)
+            body.Add("Lets you build on: " + string.Join(", ", t.TerrainUnlocks.Select(TerrainUnlockText)));
         return body;
     }
+
+    /// <summary>«Mountain» ή «Water (ice deposits only)» — τι ανοίγει ένα terrain unlock.</summary>
+    private static string TerrainUnlockText(TerrainUnlock u) =>
+        u.RequiresDeposit == ResourceType.None
+            ? u.Terrain.ToString()
+            : $"{u.Terrain} ({u.RequiresDeposit.ToString().ToLowerInvariant()} deposits only)";
 
     private static string Signed(double v) => (v >= 0 ? "+" : "") + v.ToString("0.###");
 
@@ -2931,8 +3064,8 @@ public class MarsGame : Microsoft.Xna.Framework.Game
     {
         var planet = _world.Planet;
 
-        // Ετοίμασε τα chips: (εικονίδιο, κείμενο %, hint, χρώμα).
-        var chips = new List<(string icon, string text, string tip, Color color)>();
+        // Ετοίμασε τα chips: (εικονίδιο, κείμενο %, hint, χρώμα, υπέρβαση στόχου).
+        var chips = new List<(string icon, string text, string tip, Color color, OvershootLevel over)>();
         foreach (var (metric, ic, label, unit, target) in Goals)
         {
             double raw = planet.Get(metric);
@@ -2940,20 +3073,48 @@ public class MarsGame : Microsoft.Xna.Framework.Game
             double progress = planet.Progress(metric);
             string valStr = unit == "%" ? $"{value:0.0}%" : $"{value:0.0} {unit}";
             string tgtStr = unit == "%" ? $"{target:0}%" : $"{target:0} {unit}";
-            chips.Add((ic, $"{progress * 100:0}%", $"{label}   {valStr}   (target {tgtStr})", MetricColor(progress)));
+
+            // Πάνω από τον στόχο: αντί για ένα αδιάφορο «100%» δείχνουμε πόσο έχει ξεφύγει.
+            var level = planet.OvershootOf(metric);
+            double over = planet.Overshoot(metric) * (metric == PlanetMetric.Water ? 100 : 1);
+            string overStr = unit == "%" ? $"+{over:0.0}%" : $"+{over:0.0} {unit}";
+
+            string text = level == OvershootLevel.None ? $"{progress * 100:0}%" : overStr;
+            Color color = level switch
+            {
+                OvershootLevel.Critical => WarnPulse(HudWarn, 0.65f),
+                OvershootLevel.Over => new Color(255, 190, 90),
+                _ => MetricColor(progress)
+            };
+            string chipTip = level switch
+            {
+                OvershootLevel.Critical =>
+                    $"{label}   {valStr}   {overStr} OVER target {tgtStr}  -  RUNAWAY GREENHOUSE: crew sickens, "
+                    + "vegetation withers and oceans boil off. Shut down GHG factories / mirrors, build Cryo-Carbon Capturers.",
+                OvershootLevel.Over =>
+                    $"{label}   {valStr}   {overStr} over target {tgtStr}  -  extra output is mostly wasted from here"
+                    + (PlanetState.HasRunawayRisk(metric)
+                        ? $"; past +{PlanetState.RunawayOvershoot:0} it turns into a runaway greenhouse."
+                        : "."),
+                _ => $"{label}   {valStr}   (target {tgtStr})"
+            };
+            chips.Add((ic, text, chipTip, color, level));
         }
         double overall = planet.OverallProgress;
-        chips.Add(("planet", $"{overall * 100:0}%", $"Terraforming   overall {overall * 100:0}%   (avg of 4 goals)", MetricColor(overall)));
-        chips.Add(("biomass", $"{planet.Biomass * 100:0}%", $"Biomass   vegetation cover {planet.Biomass * 100:0.0}%", new Color(90, 200, 90)));
+        chips.Add(("planet", $"{overall * 100:0}%", $"Terraforming   overall {overall * 100:0}%   (avg of 4 goals)",
+            MetricColor(overall), OvershootLevel.None));
+        chips.Add(("biomass", $"{planet.Biomass * 100:0}%", $"Biomass   vegetation cover {planet.Biomass * 100:0.0}%",
+            new Color(90, 200, 90), OvershootLevel.None));
 
-        const int icon = 20, gap = 12;
+        const int icon = 20, gap = 12, caretW = 11;
 
         // Πλάτη ανά chip για οριζόντιο κεντράρισμα, κάτω από τη μπάρα πόρων.
         var widths = new float[chips.Count];
         float total = 0;
         for (int i = 0; i < chips.Count; i++)
         {
-            widths[i] = icon + 3 + _font.MeasureString(chips[i].text).X;
+            widths[i] = icon + 3 + _font.MeasureString(chips[i].text).X
+                        + (chips[i].over != OvershootLevel.None ? caretW : 0);
             total += widths[i];
         }
         total += gap * (chips.Count - 1);
@@ -2966,17 +3127,30 @@ public class MarsGame : Microsoft.Xna.Framework.Game
 
         for (int i = 0; i < chips.Count; i++)
         {
-            var (ic, text, chipTip, color) = chips[i];
+            var (ic, text, chipTip, color, over) = chips[i];
             float w = widths[i];
             var rect = new Rectangle((int)x - 4, (int)y - 4, (int)w + 8, icon + 8);
-            _spriteBatch.Draw(_pixel, rect, new Color(12, 14, 20, 205));
+            _spriteBatch.Draw(_pixel, rect, over == OvershootLevel.Critical
+                ? new Color(48, 14, 16, 225) : new Color(12, 14, 20, 205));
+            if (over != OvershootLevel.None) DrawRectOutline(rect, color);
             _spriteBatch.Draw(GoalIcon(ic), new Rectangle((int)x, (int)y, icon, icon), Color.White);
             _spriteBatch.DrawString(_font, text, new Vector2(x + icon + 3, y + (icon - _font.LineSpacing) / 2f), color);
+
+            // Βελάκι «πάνω από τον στόχο» δεξιά από το νούμερο (η γραμματοσειρά δεν έχει ▲).
+            if (over != OvershootLevel.None)
+                DrawCaretUp((int)(x + w - caretW + 2), (int)(y + icon / 2f - 4), 5, color);
 
             if (rect.Contains(ms.X, ms.Y)) { tip = chipTip; tipCx = x + w / 2f; }
             x += w + gap;
         }
         if (tip is not null) DrawTip(tip, tipCx, y + icon + 4, above: false);
+    }
+
+    /// <summary>Μικρό βελάκι «πάνω» (τρίγωνο από γραμμές pixel) — η γραμματοσειρά του HUD δεν έχει ▲.</summary>
+    private void DrawCaretUp(int x, int y, int size, Color color)
+    {
+        for (int i = 0; i < size; i++)
+            _spriteBatch.Draw(_pixel, new Rectangle(x + size - 1 - i, y + i, 2 * i + 1, 1), color);
     }
 
     /// <summary>Κάτω δεξιά: δείκτης έρευνας — εικονίδιο + πρόοδος %. Γκρίζο όταν δεν τρέχει έρευνα. Hint με λεπτομέρειες.</summary>
@@ -3107,6 +3281,26 @@ public class MarsGame : Microsoft.Xna.Framework.Game
             bottom.Add(($"{_crewNeededCount} building{(_crewNeededCount == 1 ? "" : "s")} needing crew   (. to find)", new Color(150, 200, 245)));
         if (_depletedCount > 0)
             bottom.Add(($"{_depletedCount} building{(_depletedCount == 1 ? "" : "s")} out of resources   (, to find)", new Color(240, 170, 80)));
+        if (_brokenCount > 0)
+            bottom.Add(($"{_brokenCount} building{(_brokenCount == 1 ? "" : "s")} broken - not producing   (/ to find)", new Color(240, 110, 100)));
+
+        // Υπέρβαση στόχων σε πραγματικό χρόνο — προειδοποίηση πριν φτάσει η ζημιά της Φάσης 2.
+        var critical = new List<string>();
+        var over = new List<string>();
+        foreach (var (metric, _, label, unit, _) in Goals)
+        {
+            var level = _world.Planet.OvershootOf(metric);
+            if (level == OvershootLevel.None) continue;
+            double amount = _world.Planet.Overshoot(metric) * (metric == PlanetMetric.Water ? 100 : 1);
+            string entry = unit == "%" ? $"{label} +{amount:0.0}%" : $"{label} +{amount:0.0} {unit}";
+            (level == OvershootLevel.Critical ? critical : over).Add(entry);
+        }
+        if (critical.Count > 0 && !_world.RunawayActive)
+            bottom.Add(($"!! OVER TARGET: {string.Join(", ", critical)} - runaway greenhouse risk: cut GHG output !!",
+                HudWarn));
+        if (over.Count > 0)
+            bottom.Add(($"over target: {string.Join(", ", over)} - extra output is mostly wasted",
+                new Color(255, 190, 90)));
 
         // Κρίσιμα alerts (μεταφέρθηκαν από το πρώην πάνω HUD ώστε να μη χάνονται).
         if (_world.RunawayActive)
@@ -3230,6 +3424,14 @@ public class MarsGame : Microsoft.Xna.Framework.Game
             (d.Category, HudDim),
         };
 
+        // Σύντομη περιγραφή (αναδιπλωμένη) — η ίδια που δείχνει ο κατάλογος βοήθειας.
+        if (d.Description.Length > 0)
+        {
+            var wrapped = new List<string>();
+            WrapText(wrapped, d.Description, 330f);
+            foreach (var ln in wrapped) lines.Add((ln, new Color(150, 200, 245)));
+        }
+
         if (b.State == BuildingState.UnderConstruction)
         {
             lines.Add(($"building... {b.BuildFraction * 100:0}%", HudWhite));
@@ -3237,7 +3439,8 @@ public class MarsGame : Microsoft.Xna.Framework.Game
         }
         else if (b.State == BuildingState.Disabled)
         {
-            lines.Add(($"DISABLED  ({b.RepairTicksRemaining / 4}s to repair)", HudWarn));
+            lines.Add(($"BROKEN - under repair ({b.RepairTicksRemaining / 4}s left)", HudWarn));
+            lines.Add(("produces nothing until repaired   (/ = next broken)", HudDim));
             if (b.Definition.MaxWorkers > 0) lines.Add(("assign Engineer to speed repair", HudDim));
         }
         else
@@ -3245,12 +3448,19 @@ public class MarsGame : Microsoft.Xna.Framework.Game
             lines.Add((b.State.ToString(), HudDim));
         }
 
-        if (d.Production.Count > 0)
+        // Τι κάνει το κτήριο (ίδιες γραμμές με το help) — ώστε να μη χρειάζεται άνοιγμα καταλόγου.
+        lines.Add(("what it does:", HudDim));
+        foreach (var (text, color) in BuildingEffectLines(d))
+            lines.Add(("  " + text, color));
+
+        // Πραγματική απόδοση τώρα (παραγωγή × efficiency) όταν δεν δουλεύει στο 100%.
+        double eff = b.WorkerEfficiency();
+        if (b.State == BuildingState.Operational && d.Production.Count > 0 && Math.Abs(eff - 1.0) > 0.01)
         {
-            lines.Add(("output / tick:", HudDim));
-            foreach (var (kind, value) in d.Production)
-                lines.Add(($"  {value.ToString("+0.00;-0.00")} {kind}",
-                    value >= 0 ? new Color(120, 230, 120) : new Color(240, 130, 110)));
+            var actual = d.Production.Where(kv => kv.Value > 0)
+                .Select(kv => $"{kv.Value * eff:+0.00;-0.00} {kv.Key}/t");
+            lines.Add(($"  right now: {(actual.Any() ? string.Join(", ", actual) : "nothing")}",
+                eff <= 0 ? HudWarn : new Color(255, 205, 120)));
         }
 
         if (d.ExtractionPerTick > 0)
@@ -3291,8 +3501,8 @@ public class MarsGame : Microsoft.Xna.Framework.Game
 
         // Περιορισμός μέσα στην οθόνη (το viewport μπορεί να έχει αλλάξει από την τελευταία φορά).
         // Χρησιμοποιούμε το πλήρες πλάτος (μαζί με τον χώρο των κουμπιών) ώστε να μένουν ορατά.
-        pos.X = Math.Clamp(pos.X, 0f, MathF.Max(0f, vpW - width));
-        pos.Y = Math.Clamp(pos.Y, 0f, MathF.Max(0f, vpH - panelH));
+        pos.X = Math.Clamp(pos.X, 0f, MathF.Max(0f, vpW - width - 10f));
+        pos.Y = Math.Clamp(pos.Y, 0f, MathF.Max(0f, vpH - panelH - 10f));
 
         // Αν η θέση έχει «κλειδώσει» (αποθηκευμένη ή από drag), κράτα την συγχρονισμένη με το ορθογώνιο.
         if (_buildingPanelPosSet || _uiSettings.BuildingPanelX is not null)
