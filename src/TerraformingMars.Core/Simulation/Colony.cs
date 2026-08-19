@@ -181,6 +181,7 @@ public sealed class Colony
 
         foreach (var worker in building.Workers.ToList())
             Unassign(worker);
+        ReleaseRepairCrew(building);
 
         // Αφαίρεση χωρητικότητας που είχε προσθέσει το κτίριο (μόνο αν λειτουργούσε).
         if (building.State == BuildingState.Operational)
@@ -204,19 +205,55 @@ public sealed class Colony
         if (building.Definition.MaxWorkers <= 0) return false;
         if (building.Workers.Count >= building.Definition.MaxWorkers) return false;
 
-        colonist.Assignment?.Workers.Remove(colonist);
+        Detach(colonist);
         building.Workers.Add(colonist);
         colonist.Assignment = building;
         return true;
     }
 
-    /// <summary>Αφαιρεί άποικο από τη θέση εργασίας του (γίνεται idle).</summary>
+    /// <summary>
+    /// Στέλνει άποικο να επισκευάσει ένα χαλασμένο κτήριο. Δουλεύει και σε αυτόματα κτήρια (δεν
+    /// πιάνει θέση εργασίας) και επιταχύνει την επισκευή — πολύ περισσότερο αν είναι Engineer.
+    /// Τυχόν προηγούμενο συνεργείο του κτηρίου γυρνά στους διαθέσιμους.
+    /// </summary>
+    public bool AssignRepair(Colonist colonist, Building building)
+    {
+        if (building.State != BuildingState.Disabled) return false;
+        if (ReferenceEquals(building.RepairCrew, colonist)) return false;
+
+        ReleaseRepairCrew(building);
+        Detach(colonist);
+        building.RepairCrew = colonist;
+        colonist.Assignment = building;
+        return true;
+    }
+
+    /// <summary>Αποδεσμεύει το συνεργείο επισκευής ενός κτηρίου (γίνεται ξανά διαθέσιμο).</summary>
+    public Colonist? ReleaseRepairCrew(Building building)
+    {
+        var crew = building.RepairCrew;
+        if (crew is null) return null;
+
+        building.RepairCrew = null;
+        if (ReferenceEquals(crew.Assignment, building)) crew.Assignment = null;
+        return crew;
+    }
+
+    /// <summary>Αφαιρεί άποικο από τη θέση εργασίας ή το συνεργείο επισκευής του (γίνεται idle).</summary>
     public bool Unassign(Colonist colonist)
     {
         if (colonist.Assignment is null) return false;
-        colonist.Assignment.Workers.Remove(colonist);
+        Detach(colonist);
         colonist.Assignment = null;
         return true;
+    }
+
+    /// <summary>Ξεκολλά τον άποικο από όπου κι αν βρίσκεται (θέση εργασίας ή συνεργείο επισκευής).</summary>
+    private static void Detach(Colonist colonist)
+    {
+        if (colonist.Assignment is not { } previous) return;
+        previous.Workers.Remove(colonist);
+        if (ReferenceEquals(previous.RepairCrew, colonist)) previous.RepairCrew = null;
     }
 
     /// <summary>

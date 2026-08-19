@@ -89,13 +89,21 @@ public sealed class EventSystem : ISimulationSystem
         {
             if (b.State != BuildingState.Disabled || b.RepairTicksRemaining <= 0) continue;
 
-            int speed = b.Workers.Any(w => w.Specialty == Specialty.Engineer) ? 2 : 1;
+            // Βάση 1/tick. Συνεργείο επισκευής: Engineer ×3, άλλη ειδικότητα ×2. Χωρίς συνεργείο,
+            // ένας Engineer του προσωπικού του κτηρίου εξακολουθεί να βοηθά (×2).
+            int speed = 1;
+            if (b.RepairCrew is { } crew) speed += crew.Specialty == Specialty.Engineer ? 2 : 1;
+            else if (b.Workers.Any(w => w.Specialty == Specialty.Engineer)) speed += 1;
+
             b.RepairTicksRemaining -= speed;
             if (b.RepairTicksRemaining <= 0)
             {
                 b.RepairTicksRemaining = 0;
                 b.State = BuildingState.Operational;
-                Notify(world, $"{b.Definition.Name} repaired");
+                var released = world.Colony.ReleaseRepairCrew(b);   // το συνεργείο γυρνά στους διαθέσιμους
+                Notify(world, released is null
+                    ? $"{b.Definition.Name} repaired"
+                    : $"{b.Definition.Name} repaired - {released.Name} is free again");
             }
         }
     }

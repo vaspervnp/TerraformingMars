@@ -218,7 +218,7 @@ public partial class MarsGame : Microsoft.Xna.Framework.Game
         Content.RootDirectory = "Content";
         IsMouseVisible = true;
         Window.AllowUserResizing = true;
-        Window.Title = "Terraforming Mars";
+        Window.Title = "Mars Terraforming";
     }
 
     protected override void Initialize()
@@ -941,7 +941,7 @@ public partial class MarsGame : Microsoft.Xna.Framework.Game
         _spriteBatch.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, SamplerState.PointClamp);
 
         var ms = Mouse.GetState();
-        DrawCentered("TERRAFORMING MARS", GraphicsDevice.Viewport.Height * 0.09f, 2.4f, new Color(230, 120, 80));
+        DrawCentered("MARS TERRAFORMING", GraphicsDevice.Viewport.Height * 0.09f, 2.4f, new Color(230, 120, 80));
 
         var rows = MenuRows();
         for (int i = 0; i < rows.Count; i++)
@@ -1024,6 +1024,8 @@ public partial class MarsGame : Microsoft.Xna.Framework.Game
         "to assign or remove colonists - staffed buildings produce more.",
         "Press C for the crew screen: drag a colonist onto a building slot; drop on a",
         "taken slot and the two swap. '*' = matching specialty (+50% output).",
+        "Broken buildings sit on top there with a red repair slot - even automatic ones.",
+        "An Engineer dropped in it repairs 3x faster and frees himself when it is done.",
         "",
         "RESEARCH & RECLAIM",
         "Click the research icon (or T) and pick a technology to research.",
@@ -1049,7 +1051,7 @@ public partial class MarsGame : Microsoft.Xna.Framework.Game
         foreach (var line in HelpText)
             maxLine = MathF.Max(maxLine, _font.MeasureString(line).X);
         int w = Math.Min(vw - 40, (int)maxLine + 52);
-        int h = Math.Min(vh - 60, 720);
+        int h = Math.Min(vh - 60, 760);
         return new Rectangle((vw - w) / 2, (vh - h) / 2, w, h);
     }
 
@@ -1113,7 +1115,7 @@ public partial class MarsGame : Microsoft.Xna.Framework.Game
     {
         int vw = GraphicsDevice.Viewport.Width, vh = GraphicsDevice.Viewport.Height;
         int w = Math.Min(vw - 40, 640);
-        int h = Math.Min(vh - 60, 720);
+        int h = Math.Min(vh - 60, 760);
         return new Rectangle((vw - w) / 2, (vh - h) / 2, w, h);
     }
 
@@ -2337,14 +2339,15 @@ public partial class MarsGame : Microsoft.Xna.Framework.Game
                 _spriteBatch.Draw(tex, dst, src, Color.White);
             }
 
-            // Χαλασμένο κτήριο: κόκκινο κλειδί σε σκούρο δισκίο, πάνω-δεξιά στο εικονίδιο (παλλόμενο).
+            // Χαλασμένο κτήριο: μικρό κόκκινο κλειδί στην πάνω-δεξιά γωνία του εικονιδίου (παλλόμενο).
             if (b.State == BuildingState.Disabled)
             {
-                float badge = iconWorld * 0.62f;
+                float badge = iconWorld * 0.34f;
+                float inset = iconWorld * 0.05f;
                 var badgeRect = new Rectangle(
-                    (int)(rect.Right - badge * 0.78f), (int)(rect.Y - badge * 0.22f), (int)badge, (int)badge);
-                var back = badgeRect; back.Inflate((int)(badge * 0.1f), (int)(badge * 0.1f));
-                _spriteBatch.Draw(_pixel, back, new Color(18, 12, 14, 220));
+                    (int)(rect.Right - badge - inset), (int)(rect.Y + inset), (int)badge, (int)badge);
+                var back = badgeRect; back.Inflate(1, 1);   // λεπτό σκούρο φόντο για αντίθεση
+                _spriteBatch.Draw(_pixel, back, new Color(18, 12, 14, 210));
                 _spriteBatch.Draw(_toolIcons["broken"], badgeRect, WarnPulse(new Color(255, 120, 110)));
             }
         }

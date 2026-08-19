@@ -40,6 +40,7 @@ public partial class MarsGame
         public Rectangle Rect;
         public Building Building = null!;
         public Colonist? Colonist;   // null = ελεύθερη θέση
+        public bool IsRepair;        // θέση συνεργείου επισκευής (υπάρχει μόνο σε χαλασμένα κτήρια)
     }
 
     private sealed class CrewCard
@@ -67,11 +68,16 @@ public partial class MarsGame
 
     private Rectangle CrewCloseRect() => CloseButtonRect(CrewPanelRect());
 
-    /// <summary>Κτήρια που έχουν θέσεις εργασίας, με σταθερή σειρά (ώστε να μη «χοροπηδούν» στο drag).</summary>
+    /// <summary>
+    /// Τι μπαίνει στη λίστα: κτήρια με θέσεις εργασίας, συν όσα είναι χαλασμένα (ακόμη κι αν είναι
+    /// αυτόματα) — εκεί μπορεί να σταλεί συνεργείο. Τα χαλασμένα πάνω-πάνω· κατά τα άλλα σταθερή
+    /// σειρά, ώστε να μη «χοροπηδούν» οι κάρτες όσο σέρνεις.
+    /// </summary>
     private List<Building> CrewBuildings() =>
         _world.Colony.Buildings
-            .Where(b => b.Definition.MaxWorkers > 0)
-            .OrderBy(b => b.Definition.Category, StringComparer.OrdinalIgnoreCase)
+            .Where(b => b.Definition.MaxWorkers > 0 || b.State == BuildingState.Disabled)
+            .OrderByDescending(b => b.State == BuildingState.Disabled)
+            .ThenBy(b => b.Definition.Category, StringComparer.OrdinalIgnoreCase)
             .ThenBy(b => b.Definition.Name, StringComparer.OrdinalIgnoreCase)
             .ThenBy(b => b.Location.Q).ThenBy(b => b.Location.R)
             .ToList();
@@ -115,6 +121,20 @@ public partial class MarsGame
                 Rect = new Rectangle(lay.ListArea.X, y, lay.ListArea.Width - 8, cardH),
             };
             int sx = card.Rect.X + 8, sy = card.Rect.Y + headerH;
+
+            // Χαλασμένο κτήριο: πρώτη-πρώτη η θέση του συνεργείου επισκευής.
+            if (b.State == BuildingState.Disabled)
+            {
+                card.Slots.Add(new CrewSlot
+                {
+                    Rect = new Rectangle(sx, sy, SlotW, ChipH),
+                    Building = b,
+                    Colonist = b.RepairCrew,
+                    IsRepair = true,
+                });
+                sx += SlotW + 8;
+            }
+
             for (int i = 0; i < b.Definition.MaxWorkers; i++)
             {
                 card.Slots.Add(new CrewSlot
@@ -247,6 +267,22 @@ public partial class MarsGame
             var occupant = slot?.Colonist;
             if (ReferenceEquals(occupant, dragged)) return;         // αφέθηκε στη θέση του
 
+            // Συνεργείο επισκευής: ρητά στη θέση «repair», ή σε χαλασμένο κτήριο που δεν έχει
+            // καθόλου θέσεις εργασίας (αυτόματο) — εκεί το μόνο που βγάζει νόημα είναι επισκευή.
+            bool repair = slot?.IsRepair == true
+                          || (slot is null && target.State == BuildingState.Disabled
+                              && target.Definition.MaxWorkers <= 0);
+            if (repair)
+            {
+                if (_world.Colony.AssignRepair(dragged, target))
+                {
+                    CrewFeedback($"{dragged.Name} -> repairing {target.Definition.Name}"
+                                 + (dragged.Specialty == Specialty.Engineer ? "  (engineer: 3x faster)" : ""));
+                    _audio.Blip();
+                }
+                return;
+            }
+
             // Drop στο σώμα μιας γεμάτης καρτέλας (όχι σε συγκεκριμένη θέση): ανταλλαγή με τον τελευταίο.
             var partner = occupant ?? (target.Workers.Count >= target.Definition.MaxWorkers
                 ? target.Workers.LastOrDefault()
@@ -358,7 +394,7 @@ public partial class MarsGame
 
         string footer = _crewMessageTimer > 0
             ? _crewMessage
-            : "Drag a colonist onto a building slot. Drop on a taken slot to swap them, or on UNASSIGNED to free them.";
+            : "Drag onto a slot; a taken slot swaps. Red = repair (Engineer 3x). Drop on UNASSIGNED to free.";
         _spriteBatch.DrawString(_font, Truncate(footer, lay.Panel.Width - CrewPad * 2, 0.85f),
             new Vector2(lay.Panel.X + CrewPad, lay.Panel.Bottom - 24),
             _crewMessageTimer > 0 ? new Color(150, 230, 160) : HudDim, 0f, Vector2.Zero, 0.85f, SpriteEffects.None, 0f);
@@ -390,8 +426,11 @@ public partial class MarsGame
         var d = b.Definition;
         bool dropHere = _crewDrag is not null && card.Rect.Contains(ms.X, ms.Y);
 
-        _spriteBatch.Draw(_pixel, card.Rect, new Color(24, 28, 38, 235));
-        DrawRectOutline(card.Rect, dropHere ? new Color(150, 220, 160) : new Color(58, 64, 78));
+        bool broken = b.State == BuildingState.Disabled;
+
+        _spriteBatch.Draw(_pixel, card.Rect, broken ? new Color(40, 24, 26, 240) : new Color(24, 28, 38, 235));
+        DrawRectOutline(card.Rect, dropHere ? new Color(150, 220, 160)
+            : broken ? new Color(150, 70, 66) : new Color(58, 64, 78));
 
         int iconSz = _font.LineSpacing + 2;
         if (_icons.TryGetValue(d.Id, out var icon))
@@ -405,31 +444,39 @@ public partial class MarsGame
         string state = b.State switch
         {
             BuildingState.UnderConstruction => "under construction",
-            BuildingState.Disabled => "disabled",
+            BuildingState.Disabled => $"BROKEN - {b.RepairTicksRemaining / 4}s of repair left",
             _ => b.Automated ? "automated" : $"eff {b.WorkerEfficiency():0.00}"
         };
-        string info = d.OptimalSpecialty != Specialty.None
+        string info = !broken && d.OptimalSpecialty != Specialty.None
             ? $"best: {d.OptimalSpecialty}   {state}"
             : state;
         var isz = _font.MeasureString(info) * 0.85f;
         _spriteBatch.DrawString(_font, info, new Vector2(card.Rect.Right - 10 - isz.X, card.Rect.Y + 6),
-            b.State == BuildingState.Operational ? HudDim : HudWarn, 0f, Vector2.Zero, 0.85f, SpriteEffects.None, 0f);
+            broken ? WarnPulse(HudWarn, 0.7f) : b.State == BuildingState.Operational ? HudDim : HudWarn,
+            0f, Vector2.Zero, 0.85f, SpriteEffects.None, 0f);
 
         foreach (var slot in card.Slots)
         {
             bool hover = slot.Rect.Contains(ms.X, ms.Y);
+            // Στη θέση επισκευής «ιδανικός» είναι ο Engineer, όποιο κι αν είναι το κτήριο.
+            var optimal = slot.IsRepair ? Specialty.Engineer : d.OptimalSpecialty;
+
             if (slot.Colonist is { } c && !ReferenceEquals(c, _crewDrag))
             {
-                DrawCrewChip(slot.Rect, c, hover, d.OptimalSpecialty);
+                DrawCrewChip(slot.Rect, c, hover, optimal, repair: slot.IsRepair);
             }
             else
             {
-                // Άδεια (ή προσωρινά κενή, επειδή σέρνεται ο άποικός της) θέση εργασίας.
+                // Άδεια (ή προσωρινά κενή, επειδή σέρνεται ο άποικός της) θέση.
                 bool highlight = _crewDrag is not null && hover;
-                _spriteBatch.Draw(_pixel, slot.Rect, new Color(18, 22, 30, 220));
-                DrawRectOutline(slot.Rect, highlight ? new Color(150, 220, 160) : new Color(60, 66, 80));
-                _spriteBatch.DrawString(_font, "empty", new Vector2(slot.Rect.X + 8, slot.Rect.Y + 5),
-                    new Color(110, 116, 130), 0f, Vector2.Zero, 0.85f, SpriteEffects.None, 0f);
+                _spriteBatch.Draw(_pixel, slot.Rect, slot.IsRepair ? new Color(34, 20, 22, 230) : new Color(18, 22, 30, 220));
+                DrawRectOutline(slot.Rect, highlight ? new Color(150, 220, 160)
+                    : slot.IsRepair ? new Color(190, 90, 80) : new Color(60, 66, 80));
+                string label = Truncate(slot.IsRepair ? "send an Engineer" : "empty", slot.Rect.Width - 16, 0.85f);
+                _spriteBatch.DrawString(_font, label,
+                    new Vector2(slot.Rect.X + 8, slot.Rect.Y + 5),
+                    slot.IsRepair ? new Color(235, 140, 120) : new Color(110, 116, 130),
+                    0f, Vector2.Zero, 0.85f, SpriteEffects.None, 0f);
             }
         }
     }
@@ -438,12 +485,14 @@ public partial class MarsGame
     /// «Καρτέλα» αποίκου: χρωματιστή λωρίδα ειδικότητας, όνομα και ειδικότητα. Όταν η ειδικότητα
     /// ταιριάζει με το κτήριο (<paramref name="optimal"/>) μπαίνει «*» και πράσινο περίγραμμα.
     /// </summary>
-    private void DrawCrewChip(Rectangle rect, Colonist colonist, bool hover, Specialty optimal, bool ghost = false)
+    private void DrawCrewChip(Rectangle rect, Colonist colonist, bool hover, Specialty optimal,
+        bool ghost = false, bool repair = false)
     {
         var accent = SpecialtyColor(colonist.Specialty);
         bool match = optimal != Specialty.None && colonist.Specialty == optimal;
 
-        _spriteBatch.Draw(_pixel, rect, ghost ? new Color(40, 52, 68, 245) : new Color(30, 36, 48, hover ? 250 : 235));
+        _spriteBatch.Draw(_pixel, rect, ghost ? new Color(40, 52, 68, 245)
+            : repair ? new Color(48, 30, 30, hover ? 250 : 240) : new Color(30, 36, 48, hover ? 250 : 235));
         DrawRectOutline(rect, ghost ? new Color(255, 220, 150) : match ? new Color(130, 220, 140) : hover ? new Color(120, 150, 190) : new Color(62, 68, 84));
         _spriteBatch.Draw(_pixel, new Rectangle(rect.X + 2, rect.Y + 2, 4, rect.Height - 4), accent);
 
@@ -454,6 +503,7 @@ public partial class MarsGame
             HudWhite, 0f, Vector2.Zero, 0.85f, SpriteEffects.None, 0f);
 
         string tag = colonist.Specialty == Specialty.None ? "worker" : colonist.Specialty.ToString().ToLowerInvariant();
+        if (repair) tag = "repairing  " + tag;
         if (colonist.Health < 0.9) tag += $"  hp {colonist.Health * 100:0}%";
         _spriteBatch.DrawString(_font, Truncate(tag, avail, 0.7f), new Vector2(textX, rect.Y + 2 + _font.LineSpacing * 0.72f),
             accent, 0f, Vector2.Zero, 0.7f, SpriteEffects.None, 0f);

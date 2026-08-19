@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 18
-VisualStudioVersion = 18.7.11925.98 stable
+VisualStudioVersion = 18.7.11925.98
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{827E0CD3-B72D-47B6-A68D-7590B98EB39B}"
 EndProject
@@ -17,6 +17,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "docs", "docs", "{B59DAE68-7
 		Phase2.md = Phase2.md
 		TerraformingMars_Spec.md = TerraformingMars_Spec.md
 	EndProjectSection
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TerraformingMars.Setup", "src\TerraformingMars.Setup\TerraformingMars.Setup.csproj", "{DEAB5B4C-993A-4D31-A3C9-A96F7994F408}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -64,6 +66,18 @@ Global
 		{60C365BF-E3BF-452E-8769-F61F4CEFB389}.Release|x64.Build.0 = Release|Any CPU
 		{60C365BF-E3BF-452E-8769-F61F4CEFB389}.Release|x86.ActiveCfg = Release|Any CPU
 		{60C365BF-E3BF-452E-8769-F61F4CEFB389}.Release|x86.Build.0 = Release|Any CPU
+		{DEAB5B4C-993A-4D31-A3C9-A96F7994F408}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DEAB5B4C-993A-4D31-A3C9-A96F7994F408}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DEAB5B4C-993A-4D31-A3C9-A96F7994F408}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{DEAB5B4C-993A-4D31-A3C9-A96F7994F408}.Debug|x64.Build.0 = Debug|Any CPU
+		{DEAB5B4C-993A-4D31-A3C9-A96F7994F408}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{DEAB5B4C-993A-4D31-A3C9-A96F7994F408}.Debug|x86.Build.0 = Debug|Any CPU
+		{DEAB5B4C-993A-4D31-A3C9-A96F7994F408}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DEAB5B4C-993A-4D31-A3C9-A96F7994F408}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DEAB5B4C-993A-4D31-A3C9-A96F7994F408}.Release|x64.ActiveCfg = Release|Any CPU
+		{DEAB5B4C-993A-4D31-A3C9-A96F7994F408}.Release|x64.Build.0 = Release|Any CPU
+		{DEAB5B4C-993A-4D31-A3C9-A96F7994F408}.Release|x86.ActiveCfg = Release|Any CPU
+		{DEAB5B4C-993A-4D31-A3C9-A96F7994F408}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -72,6 +86,7 @@ Global
 		{42556B78-1B35-46F4-93BC-30732CB5FCC9} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 		{B14344E5-5151-4B53-A1BB-F5F818FDF525} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 		{60C365BF-E3BF-452E-8769-F61F4CEFB389} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
+		{DEAB5B4C-993A-4D31-A3C9-A96F7994F408} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {922480E5-DA29-4EDF-AD78-8AB7E9A584CA}

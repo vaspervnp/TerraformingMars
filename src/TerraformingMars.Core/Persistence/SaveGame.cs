@@ -105,6 +105,9 @@ public sealed class ColonistSave
     public double Health { get; set; } = 1.0;
     public double Morale { get; set; } = 1.0;
     public int AssignmentIndex { get; set; } = -1; // index στη λίστα Buildings, -1 = idle
+
+    /// <summary>True αν είναι συνεργείο επισκευής του κτηρίου και όχι μέλος του προσωπικού του.</summary>
+    public bool Repairing { get; set; }
 }
 
 public sealed class TileSave

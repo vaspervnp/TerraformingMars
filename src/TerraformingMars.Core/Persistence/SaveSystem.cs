@@ -96,7 +96,8 @@ public static class SaveSystem
             Colonists = colony.Colonists.Select(c => new ColonistSave
             {
                 Name = c.Name, Specialty = c.Specialty.ToString(), Health = c.Health, Morale = c.Morale,
-                AssignmentIndex = c.Assignment is null ? -1 : colony.Buildings.IndexOf(c.Assignment)
+                AssignmentIndex = c.Assignment is null ? -1 : colony.Buildings.IndexOf(c.Assignment),
+                Repairing = c.Assignment is { } a && ReferenceEquals(a.RepairCrew, c)
             }).ToList(),
             TileOverrides = world.Map.Tiles
                 .Where(t => (pristine.TryGetValue(t.Coord, out var terr) && t.Terrain != terr)
@@ -161,7 +162,8 @@ public static class SaveSystem
             if (cs.AssignmentIndex >= 0 && cs.AssignmentIndex < colony.Buildings.Count)
             {
                 var b = colony.Buildings[cs.AssignmentIndex];
-                b.Workers.Add(c);
+                if (cs.Repairing) b.RepairCrew = c;      // συνεργείο επισκευής, όχι θέση εργασίας
+                else b.Workers.Add(c);
                 c.Assignment = b;
             }
         }

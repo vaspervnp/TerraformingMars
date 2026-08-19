@@ -1,4 +1,4 @@
-# Terraforming Mars — Gameplay Guide
+# Mars Terraforming — Gameplay Guide
 
 **🇬🇧 English** · [🇬🇷 Ελληνικά](GAMEPLAY.el.md) · [📄 Download PDF](docs/GAMEPLAY.en.pdf)
 
@@ -78,6 +78,8 @@ Colonists are precious. Each has a **specialty**, and putting them in the "right
 - **Doctor** — appears in **Phase 2**; staffs the Isolation Hospitals and is your only defence against the **Martian Plague**.
 
 **How you manage them:** right-click a building to select it, then use the **[+] / [–]** buttons (or the +/– keys) to assign or remove workers. A staffed building produces far more than an empty one.
+
+**Repairs:** a building knocked out by an event, a marsquake or a storm stops producing until it is repaired. In the crew screen those buildings sit **at the top**, in red, with a **repair slot** — and that includes buildings that normally run themselves, which have no jobs at all. Drop a colonist in it and the repair speeds up: an **Engineer repairs three times faster** than nobody, anyone else twice. The moment the repair finishes, that colonist is released back into the unassigned pool on their own.
 
 **The crew screen (C):** press **C** — or the two-colonists icon on the bottom bar — to see every colonist and every job in one place: the unassigned pool on the left, all the buildings with jobs on the right. **Drag** a colonist onto a slot to move them there; if that slot is already taken, the two colonists **swap buildings**. Drop someone on *UNASSIGNED* to pull them off the job. A `*` marks a colonist whose specialty matches the building (+50% output), and each building shows its current efficiency, so you can see at a glance where a reshuffle is worth it.
 
@@ -279,7 +281,7 @@ There is no single "right" path — you are constantly balancing keeping people 
 
 - **Multiple saves** — every save also keeps a **screenshot** of the screen. On the "Load Game" screen you see a list with those images, the date and time of each save; you can enlarge any image, and choose which one to load.
 - **Autosave** — the game saves itself every 5 minutes, cycling through 3 slots (Auto 1/2/3).
-- **Where the saves live** — in your own account folder, so they survive a rebuild or a reinstall: `%APPDATA%\Terraforming Mars\SavedGames` on Windows, `~/.local/share/TerraformingMars/SavedGames` on Linux (`$XDG_DATA_HOME` is honoured), `~/Library/Application Support/Terraforming Mars/SavedGames` on macOS. The exact path is written at the bottom of the "Load Game" screen. Saves left next to an older build are moved there automatically at start-up.
+- **Where the saves live** — in your own account folder, so they survive a rebuild or a reinstall: `%APPDATA%\Mars Terraforming\SavedGames` on Windows, `~/.local/share/MarsTerraforming/SavedGames` on Linux (`$XDG_DATA_HOME` is honoured), `~/Library/Application Support/Mars Terraforming/SavedGames` on macOS. The exact path is written at the bottom of the "Load Game" screen. Saves left next to an older build are moved there automatically at start-up.
 - **Tutorial** — from the main menu, a step-by-step guide that teaches you the basics (movement, building, selection, research, speed) as you actually perform them. Leave any time with **Esc**.
 
 ---
@@ -288,4 +290,4 @@ There is no single "right" path — you are constantly balancing keeping people 
 
 *And then you discover the hardest part: a living world **does not belong to you**. It has its own storms, its own diseases, its own politics. Building it was half the game — living with it is the other half.*
 
-*That is Terraforming Mars.*
+*That is Mars Terraforming.*

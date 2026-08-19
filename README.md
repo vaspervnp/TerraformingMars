@@ -1,4 +1,4 @@
-# 🔴 Terraforming Mars
+# 🔴 Mars Terraforming
 
 **🇬🇧 English** · [🇬🇷 Ελληνικά](README.el.md)
 
@@ -21,7 +21,7 @@ And then the second half begins: a **living planet** that pushes back.
 | | |
 |---|---|
 | ![Main menu](docs/screenshots/menu.png) <br> **Main menu** — sponsor, seed, music; the planet in the background cycles through every stage of terraforming | ![Buildings](docs/screenshots/buildings.png) <br> **Building palette** — 33 buildings, each with its own procedurally drawn icon |
-| ![Research](docs/screenshots/research.png) <br> **Tech tree** — 23 technologies, 10 of which unlock **only after** terraforming is complete | ![Saves](docs/screenshots/saves.png) <br> **Load Game** — multiple saves with screenshots, timestamps and 3 cyclic autosaves |
+| ![Research](docs/screenshots/research.png) <br> **Tech tree** — 25 technologies, 10 of which unlock **only after** terraforming is complete | ![Saves](docs/screenshots/saves.png) <br> **Load Game** — multiple saves with screenshots, timestamps and 3 cyclic autosaves |
 
 ---
 
@@ -62,7 +62,7 @@ explodes from a dozen named colonists into **tens of thousands** of residents.
 ### Quality of life
 
 * **Step-by-step tutorial wizard** (it advances as you actually perform each action; Esc to leave).
-* **Multiple saves** in your account folder — `%APPDATA%\Terraforming Mars\SavedGames` on Windows, `~/.local/share/TerraformingMars/SavedGames` on Linux, `~/Library/Application Support` on macOS; saves left next to an older build are moved there on start — each with a **screenshot**, name and timestamp — a scrollable list, a large preview, and a confirmation before Delete.
+* **Multiple saves** in your account folder — `%APPDATA%\Mars Terraforming\SavedGames` on Windows, `~/.local/share/MarsTerraforming/SavedGames` on Linux, `~/Library/Application Support` on macOS; saves left next to an older build are moved there on start — each with a **screenshot**, name and timestamp — a scrollable list, a large preview, and a confirmation before Delete.
 * **3 cyclic autosaves** (Auto 1/2/3) every 5 minutes.
 * **In-game help** for every building and every technology, in a scrollable window.
 * **HUD counters** for buildings that need crew or have exhausted their deposit (with a "jump to the next one" button).
@@ -77,7 +77,7 @@ explodes from a dozen named colonists into **tens of thousands** of residents.
 * Hex grid (pointy-top, axial/cube), procedural generation with Perlin noise (fBm + quantile classification)
 * Fixed-timestep simulation (pause / ×1 / ×2 / ×4) — **1 tick = 1 hour**, 24 hours = 1 Sol
 * **Data-driven**: buildings, technologies and sponsors are defined in JSON — you can add a building without touching code
-* **191 unit tests** (xUnit)
+* **220 unit tests** (xUnit)
 
 ## 📁 Solution layout
 
@@ -99,24 +99,42 @@ src/TerraformingMars.Core   — domain & simulation (engine-agnostic)
     Planet/      PlanetMetric, PlanetState (terraforming metrics)
     Events/      EventType, SponsorProfile, SponsorCatalog
     Persistence/ SaveSystem, SaveGame (JSON save/load)
-    Data/        buildings.json (33) · technologies.json (23) · sponsors.json (3)
+    Data/        buildings.json (33) · technologies.json (25) · sponsors.json (3)
 
 src/TerraformingMars.Game   — MonoGame: Camera2D, HexMapRenderer, IconFactory,
-                              AudioManager + MusicPlayer, SaveManager, MarsGame
+                              AudioManager + MusicPlayer, SaveManager, MarsGame,
+                              CrewScreen (drag & drop crew assignments)
 
-tests/TerraformingMars.Core.Tests — xUnit (191 tests)
+src/TerraformingMars.Setup  — builds the Windows / Linux / Linux-ARM installers
+
+tests/TerraformingMars.Core.Tests — xUnit (220 tests)
 ```
 
 ## ▶ Build & Run
 
 ```bash
-dotnet test                                    # 191 unit tests
+dotnet test                                    # 220 unit tests
 dotnet run --project src/TerraformingMars.Game # the game
 ```
 
 > **Linux:** audio needs the system OpenAL — `sudo apt install libopenal1` (MonoGame's bundled
 > libopenal wants a newer glibc). Music is OGG (cross-platform via `MediaPlayer`) and the HUD font is
 > a bundled DejaVu Sans Mono.
+
+## 📦 Installers
+
+Publish with the profiles in `src/TerraformingMars.Game/Properties/PublishProfiles` (they write to
+`C:\Deploy\TerraformingMars\{WinX64,LinuxX64,LinuxArm}`), then:
+
+```bash
+dotnet run --project src/TerraformingMars.Setup
+```
+
+You get one installer per platform — a self-extracting `.exe` for Windows (IExpress, no third-party
+toolchain) and self-extracting `.sh` scripts for Linux x64 and Linux ARM. Each one installs the game
+into the user's account, adds a **desktop icon and an application-menu entry**, and leaves an
+uninstaller behind (*Apps & features* on Windows, `uninstall.sh` on Linux). Saved games are never
+touched. Details: [src/TerraformingMars.Setup/README.md](src/TerraformingMars.Setup/README.md).
 
 ## ⌨ Controls
 

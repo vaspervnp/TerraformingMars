@@ -47,6 +47,13 @@ public sealed class Building
 
     public List<Colonist> Workers { get; } = new();
 
+    /// <summary>
+    /// Άποικος που έχει σταλεί να επισκευάσει το κτήριο. Ισχύει και για αυτόματα κτήρια (χωρίς
+    /// θέσεις εργασίας): δεν είναι πλήρωμα, είναι συνεργείο. Μόλις τελειώσει η επισκευή
+    /// αποδεσμεύεται μόνος του και γυρνά στους διαθέσιμους.
+    /// </summary>
+    public Colonist? RepairCrew { get; internal set; }
+
     public Building(BuildingDefinition definition, Hex location, bool startOperational = false)
     {
         Definition = definition;

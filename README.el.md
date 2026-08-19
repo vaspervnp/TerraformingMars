@@ -1,4 +1,4 @@
-# 🔴 Terraforming Mars
+# 🔴 Mars Terraforming
 
 [🇬🇧 English](README.md) · **🇬🇷 Ελληνικά**
 
@@ -20,7 +20,7 @@ hex χάρτη και real-time προσομοίωση. Ξεκινάς με μι
 | | |
 |---|---|
 | ![Μενού](docs/screenshots/menu.png) <br> **Κεντρικό μενού** — χορηγός, seed, μουσική· ο πλανήτης στο φόντο περνά από όλα τα στάδια του terraforming | ![Κτίρια](docs/screenshots/buildings.png) <br> **Παλέτα κτιρίων** — 33 κτίρια, το καθένα με δικό του διανυσματικό εικονίδιο |
-| ![Έρευνα](docs/screenshots/research.png) <br> **Δέντρο έρευνας** — 23 τεχνολογίες, οι 10 ξεκλειδώνουν μόνο **μετά** το terraforming | ![Saves](docs/screenshots/saves.png) <br> **Load Game** — πολλαπλά saves με screenshot, ημερομηνία & 3 κυκλικά autosaves |
+| ![Έρευνα](docs/screenshots/research.png) <br> **Δέντρο έρευνας** — 25 τεχνολογίες, οι 10 ξεκλειδώνουν μόνο **μετά** το terraforming | ![Saves](docs/screenshots/saves.png) <br> **Load Game** — πολλαπλά saves με screenshot, ημερομηνία & 3 κυκλικά autosaves |
 
 ---
 
@@ -61,7 +61,7 @@ hex χάρτη και real-time προσομοίωση. Ξεκινάς με μι
 ### Quality of life
 
 * **Tutorial wizard** βήμα-βήμα (προχωράει μόνο του καθώς εκτελείς τις ενέργειες· Esc για έξοδο).
-* **Πολλαπλά saves** στον φάκελο του λογαριασμού σου — `%APPDATA%\Terraforming Mars\SavedGames` σε Windows, `~/.local/share/TerraformingMars/SavedGames` σε Linux, `~/Library/Application Support` σε macOS· όσα save έχουν μείνει δίπλα σε παλιότερο build μεταφέρονται εκεί στο ξεκίνημα — το καθένα με **screenshot**, όνομα και ημερομηνία — λίστα με scroll, μεγάλο preview, επιβεβαίωση στο Delete.
+* **Πολλαπλά saves** στον φάκελο του λογαριασμού σου — `%APPDATA%\Mars Terraforming\SavedGames` σε Windows, `~/.local/share/MarsTerraforming/SavedGames` σε Linux, `~/Library/Application Support` σε macOS· όσα save έχουν μείνει δίπλα σε παλιότερο build μεταφέρονται εκεί στο ξεκίνημα — το καθένα με **screenshot**, όνομα και ημερομηνία — λίστα με scroll, μεγάλο preview, επιβεβαίωση στο Delete.
 * **3 κυκλικά autosaves** (Auto 1/2/3) κάθε 5 λεπτά.
 * **In-game help** για κάθε κτίριο και κάθε τεχνολογία, σε παράθυρο με scroll.
 * **HUD μετρητές** για κτίρια χωρίς προσωπικό ή με εξαντλημένο κοίτασμα (με κουμπί «βρες το επόμενο»).
@@ -76,7 +76,7 @@ hex χάρτη και real-time προσομοίωση. Ξεκινάς με μι
 * Hex grid (pointy-top, axial/cube), procedural generation με Perlin noise (fBm + quantile classification)
 * Fixed-timestep προσομοίωση (pause / ×1 / ×2 / ×4) — **1 tick = 1 ώρα**, 24 ώρες = 1 Sol
 * **Data-driven**: κτίρια, τεχνολογίες και χορηγοί ορίζονται σε JSON — προσθέτεις κτίριο χωρίς να αγγίξεις κώδικα
-* **191 unit tests** (xUnit)
+* **220 unit tests** (xUnit)
 
 ## 📁 Δομή Solution
 
@@ -98,24 +98,42 @@ src/TerraformingMars.Core   — domain & simulation (engine-agnostic)
     Planet/      PlanetMetric, PlanetState (μετρικές terraforming)
     Events/      EventType, SponsorProfile, SponsorCatalog
     Persistence/ SaveSystem, SaveGame (JSON save/load)
-    Data/        buildings.json (33) · technologies.json (23) · sponsors.json (3)
+    Data/        buildings.json (33) · technologies.json (25) · sponsors.json (3)
 
 src/TerraformingMars.Game   — MonoGame: Camera2D, HexMapRenderer, IconFactory,
-                              AudioManager + MusicPlayer, SaveManager, MarsGame
+                              AudioManager + MusicPlayer, SaveManager, MarsGame,
+                              CrewScreen (αναθέσεις πληρώματος με drag & drop)
 
-tests/TerraformingMars.Core.Tests — xUnit (191 tests)
+src/TerraformingMars.Setup  — φτιάχνει τους installers για Windows / Linux / Linux ARM
+
+tests/TerraformingMars.Core.Tests — xUnit (220 tests)
 ```
 
 ## ▶ Build & Run
 
 ```bash
-dotnet test                                    # 191 unit tests
+dotnet test                                    # 220 unit tests
 dotnet run --project src/TerraformingMars.Game # το παιχνίδι
 ```
 
 > **Linux:** για ήχο χρειάζεται το system OpenAL — `sudo apt install libopenal1` (το bundled libopenal
 > του MonoGame θέλει νεότερο glibc). Η μουσική είναι OGG (cross-platform μέσω `MediaPlayer`) και το HUD
 > font είναι bundled DejaVu Sans Mono.
+
+## 📦 Installers
+
+Κάνε publish με τα profiles στο `src/TerraformingMars.Game/Properties/PublishProfiles` (γράφουν στο
+`C:\Deploy\TerraformingMars\{WinX64,LinuxX64,LinuxArm}`) και μετά:
+
+```bash
+dotnet run --project src/TerraformingMars.Setup
+```
+
+Βγαίνει ένας installer ανά πλατφόρμα — self-extracting `.exe` για Windows (IExpress, χωρίς εργαλεία
+τρίτων) και self-extracting `.sh` για Linux x64 και Linux ARM. Ο καθένας εγκαθιστά το παιχνίδι στον
+λογαριασμό του χρήστη, φτιάχνει **εικονίδιο στην επιφάνεια εργασίας και καταχώρηση στο μενού
+εφαρμογών**, και αφήνει uninstaller (*Εφαρμογές & δυνατότητες* σε Windows, `uninstall.sh` σε Linux).
+Τα saves δεν πειράζονται ποτέ. Λεπτομέρειες: [src/TerraformingMars.Setup/README.md](src/TerraformingMars.Setup/README.md).
 
 ## ⌨ Controls
 
